@@ -6,10 +6,11 @@
 // and times use the system UI font instead of Torus, the key boxes are a plain stand-in (replays only store x and
 // dash), and the HP bar's tube is built from a few strokes instead of the real distance shader.
 
-import { hudAt, scoreShownAt } from './score.js?v=20261107j';
-import { healthAt } from './health.js?v=20261107j';
-import { livePp } from './pp.js?v=20261107j';
-import { keysAt } from './keys.js?v=20261107j';
+import { hudAt, scoreShownAt } from './score.js?v=20261107k';
+import { healthAt } from './health.js?v=20261107k';
+import { livePp } from './pp.js?v=20261107k';
+import { keysAt } from './keys.js?v=20261107k';
+import { drawModBadges } from './mods.js?v=20261107k';
 
 const FILES = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'dot', 'percentage', 'x', 'wireframes'];
 const GLYPH_SCALE = 0.125;                       // TexturedCharacterGlyph(..., 0.125f): 240 px textures -> 30 units
@@ -322,6 +323,7 @@ export function drawArgonHud(ctx, W, H, scene, t, G, { keys = null } = {}) {
   drawScore(ctx, G, v, t);
   drawAccuracy(ctx, G, v.acc, vw);
   drawPerformance(ctx, G, scene, v, t, vw);
+  if (scene.mods) drawModBadges(ctx, scene.mods, vw - 20, 126, 24);   // lazer's mod display, here under the pp counter
   drawCombo(ctx, G, scene, v, t, vh);
   drawProgress(ctx, scene, t, vw, vh);
   drawKeys(ctx, keys, t, vw, vh);

@@ -143,3 +143,8 @@ If the .osz has a beatmap video (an `[Events]` `Video,offset,"file"` line) and t
 ## Deploying
 
 GitHub Pages lets browsers cache the JavaScript modules for ten minutes. Every `import` in `src/` and the script tag in `index.html` carry a `?v=...` stamp so a new deploy is picked up straight away; when you change code, replace the stamp everywhere (`grep -rl "?v=" src index.html`), including `src/version.js` and the `app-version` meta tag; a test checks they agree. The page shows the running version at the bottom and says when a newer one is deployed.
+
+## Mods
+
+- **Hidden (HD)** fades fruit the way lazer's `CatchModHidden` does: the fade starts when 60% of the approach time is left and lasts 16% of it, linearly, for fruit, droplets and bananas.
+- Mods are listed under the accuracy in the stable HUD (the skin's `selection-mod-*` icons if present, otherwise badges) and as badges under the pp counter in the lazer HUD. NC replaces DT and PF replaces SD.

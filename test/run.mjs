@@ -753,6 +753,33 @@ if (!canvasLib) {
     fs.writeFileSync(path.join(root, 'test/out/frame-stable-skin.png'), draw(skin, keys));
   });
 
+  await test('mods: Hidden fades fruit like CatchModHidden, and the HUDs list the mods', async () => {
+    const { hiddenAlpha, drawFrame } = await import('../src/render.js');
+    const { modEntries } = await import('../src/mods.js');
+    const { loadArgonFonts } = await import('../src/argon.js');
+    near(hiddenAlpha(0.7 * 1000, 1000), 1, 1e-9);
+    near(hiddenAlpha(0.6 * 1000, 1000), 1, 1e-9);
+    near(hiddenAlpha(0.52 * 1000, 1000), 0.5, 1e-9);
+    near(hiddenAlpha(0.44 * 1000, 1000), 0, 1e-9);
+    near(hiddenAlpha(100, 1000), 0, 1e-9);
+    assert.deepEqual(modEntries(8 | 16 | 64).map((e) => e.code), ['HD', 'HR', 'DT']);
+    assert.deepEqual(modEntries(8 | 64 | 512).map((e) => e.code), ['HD', 'NC']);
+    assert.deepEqual(modEntries(32 | 16384).map((e) => e.code), ['PF']);
+    assert.equal(modEntries(0).length, 0);
+    const def = await loadDefaultSkin(env, bytesOf);
+    const argon = await loadArgonFonts(env, bytesOf);
+    const mk = (mods) => { const sc = buildScene(parseOsu(OSU), mods); const frames = []; for (let t = 0; t <= 6000; t += 50) frames.push({ t, x: 100 + 150 * Math.sin(t / 700), dash: false }); const tr = new ReplayTrack(frames); evaluateCatches(sc, tr); return [sc, tr]; };
+    const W = 1280, H = 720, cv = canvasLib.createCanvas(W, H), ctx = cv.getContext('2d');
+    const [nm, trNm] = mk(0), [hd, trHd] = mk(8 | 16);
+    const t = nm.objects.find((o) => o.kind !== 'banana').t - nm.preempt * 0.3;   // a fruit is 30% of its fall from the catch
+    const shot = (sc, tr, style, hud) => { drawFrame(ctx, W, H, sc, tr, t, { skin: def, argon, showHud: hud, style }); return cv.toBuffer('image/png'); };
+    assert.notEqual(Buffer.compare(shot(nm, trNm, 'stable', false), shot(hd, trHd, 'stable', false)), 0, 'Hidden changes the picture');
+    for (const style of ['stable', 'argon']) {
+      assert.notEqual(Buffer.compare(shot(hd, trHd, style, true), shot(hd, trHd, style, false)), 0);
+      fs.writeFileSync(path.join(root, `test/out/frame-mods-${style}.png`), shot(mk(8 | 16 | 64)[0], mk(8 | 16 | 64)[1], style, true));
+    }
+  });
+
   await test('render: the osu!lazer (Argon) HUD draws its digits, health bar, pp and combo, and reacts to a miss', async () => {
     const { drawFrame } = await import('../src/render.js');
     const { loadArgonFonts } = await import('../src/argon.js');

@@ -7,14 +7,15 @@
 //   - droplets use 0.8x and tiny droplets 0.4x of that; sprites are capped at 160 px
 //   - catcher sprite = texture size x 0.35 x catcher scale, hung from the plate line 16 px down
 
-import { FIELD_W, FIELD_H } from './catch.js?v=20261107j';
-import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261107j';
-import { hudAt, scoreShownAt } from './score.js?v=20261107j';
-import { plateAt, explosionsAt } from './plate.js?v=20261107j';
-import { drawArgonHud } from './argon.js?v=20261107j';
-import { healthAt } from './health.js?v=20261107j';
-import { livePp } from './pp.js?v=20261107j';
-import { keysAt } from './keys.js?v=20261107j';
+import { FIELD_W, FIELD_H } from './catch.js?v=20261107k';
+import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261107k';
+import { hudAt, scoreShownAt } from './score.js?v=20261107k';
+import { plateAt, explosionsAt } from './plate.js?v=20261107k';
+import { drawArgonHud } from './argon.js?v=20261107k';
+import { healthAt } from './health.js?v=20261107k';
+import { livePp } from './pp.js?v=20261107k';
+import { keysAt } from './keys.js?v=20261107k';
+import { drawModIcons, drawModBadges } from './mods.js?v=20261107k';
 
 const ZONE = 120;  // room below the field for the catcher, in field units
 const PAD = 12;
@@ -484,6 +485,12 @@ function drawStableKeys(ctx, W, H, skin, keys, t, u) {
   ctx.restore();
 }
 
+/** CatchModHidden: the fade starts 60% of the preempt before the catch and lasts 16% of it (linear). */
+export function hiddenAlpha(rem, preempt) {
+  const start = preempt * 0.6, dur = preempt * 0.16;
+  return Math.max(0, Math.min(1, 1 - (start - rem) / dur));
+}
+
 function drawStableHud(ctx, W, H, scene, t, skin, keys) {
   const hud = scene.hud;
   if (!hud) return;
@@ -501,6 +508,12 @@ function drawStableHud(ctx, W, H, scene, t, skin, keys) {
   // accuracy, right under the score (LegacyAccuracyCounter: scale 0.6 * 0.96, margin 9 / 17)
   drawGlyphs(ctx, skin, scorePrefix, `${(v.acc * 100).toFixed(2)}%`, W - 17 * u, scoreH + 9 * u, 0.6 * 0.96 * u,
     { anchor: 'right', fromTop: true, fixed: true, overlap: scoreOverlap });
+
+  // mods: the skin's own icons, else small badges, under the accuracy
+  if (scene.mods) {
+    const top = scoreH + 9 * u + 0.6 * 0.96 * (zero ? zero.h : 40) * u + 12 * u;
+    if (!drawModIcons(ctx, skin, scene.mods, W - 10 * u, top, 44 * u)) drawModBadges(ctx, scene.mods, W - 10 * u, top, 26 * u);
+  }
 
   // progress pie, left of the accuracy
   const objs = scene.objects;
@@ -592,14 +605,16 @@ export function drawFrame(ctx, W, H, scene, track, t, opts = {}) {
       for (const p of plateAt(scene.plate, t, catcherX)) drawFruitSprite(ctx, skin, scene, p.obj, p.x, p.y, CAUGHT_SCALE, p.alpha, 1, spinDeg(p.obj, scene, p.obj.t));
     }
 
+    const hidden = !!((scene.mods ?? 0) & 8);              // the Hidden mod: fruit fade out on the way down
     // draw later objects first so earlier ones sit on top
     for (let i = hi - 1; i >= lo; i--) {
       const o = objs[i];
       const rem = o.t - t;
       const progress = 1 - rem / preempt;
       if (rem > 0) {
-        drawFruitSprite(ctx, skin, scene, o, o.x, FIELD_H * progress, 1, 1, progress, spinDeg(o, scene, t));
-      } else if (!o.caught) {
+        const a = hidden ? hiddenAlpha(rem, preempt) : 1;
+        if (a > 0) drawFruitSprite(ctx, skin, scene, o, o.x, FIELD_H * progress, 1, a, progress, spinDeg(o, scene, t));
+      } else if (!o.caught && !hidden) {
         // a miss keeps falling while it fades out over 250 ms (DrawableCatchHitObject, ArmedState.Miss)
         const a = 1 - -rem / MISS_FADE_MS;
         if (a > 0) drawFruitSprite(ctx, skin, scene, o, o.x, FIELD_H * progress, 1, a, progress, spinDeg(o, scene, t));
