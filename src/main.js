@@ -5,6 +5,7 @@ import { compareWithReplay } from './score.js';
 import { nightcoreBeats } from './nightcore.js';
 import { ReplayTrack } from './replay.js';
 import { drawFrame, loadOverlayFonts } from './render.js';
+import { loadArgonFonts } from './argon.js';
 import { exportMp4, webCodecsAvailable } from './encode.js';
 import { md5 } from './md5.js';
 import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js';
@@ -27,6 +28,7 @@ const state = {
   defaultSounds: null,  // Map(file name -> bytes) of the bundled hitsounds, loaded on the first export
   osz: null,        // { difficulties, audio, images, name } from a loaded .osz
   bgFile: null,     // { name, bytes } when a background image was chosen by hand
+  argon: null,      // digit images of the osu!lazer (Argon) HUD
   bg: null, bgKey: '', // decoded background (ImageBitmap) and what it was decoded from
   keys: null,       // inferred key presses of the replay
   audioFile: null,  // { name, bytes } when a plain song file was chosen
@@ -66,15 +68,6 @@ function size() {
   return { w, h };
 }
 
-function infoLines() {
-  if (!$('showinfo').checked || !state.scene) return {};
-  const m = state.scene.meta;
-  return {
-    text: `${state.replay.player}  ·  ${modsToString(state.replay.mods)}`,
-    text2: `${m.artist} - ${m.title} [${m.version}]`,
-  };
-}
-
 function drawAt(t) {
   const { width: W, height: H } = canvas;
   if (!state.scene) {
@@ -88,12 +81,13 @@ function drawAt(t) {
     ctx.textAlign = 'start';
     return;
   }
-  drawFrame(ctx, W, H, state.scene, state.track, t, infoLines(), {
+  drawFrame(ctx, W, H, state.scene, state.track, t, {
     skin: state.skin,
     showCatchWidth: $('showwidth').checked,
     showHud: $('showhud').checked,
     hitLighting: $('showlight').checked,
     style: $('hudstyle').value,
+    argon: state.argon,
     bg: $('showbg').checked ? state.bg : null,
     bgDim: Math.min(100, Math.max(0, Number($('bgdim').value) || 0)) / 100,
     keys: state.keys,
@@ -589,13 +583,12 @@ $('seek').addEventListener('input', () => {
 });
 
 $('res').addEventListener('change', setSize);
-$('showinfo').addEventListener('change', () => drawAt(state.t));
 
 // ---------- export ----------
 function setBusy(busy) {
   $('export').disabled = busy || !state.scene;
   $('cancel').disabled = !busy;
-  for (const id of ['osr', 'osu', 'audio', 'skin', 'useDefault', 'res', 'fps', 'mbps', 'volume', 'usehits', 'hitvolume', 'showinfo', 'showwidth', 'showhud', 'showlight', 'hudstyle', 'showbg', 'bgdim', 'bgfile', 'play', 'seek']) $(id).disabled = busy;
+  for (const id of ['osr', 'osu', 'audio', 'skin', 'useDefault', 'res', 'fps', 'mbps', 'volume', 'usehits', 'hitvolume', 'showwidth', 'showhud', 'showlight', 'hudstyle', 'showbg', 'bgdim', 'bgfile', 'play', 'seek']) $(id).disabled = busy;
   $('usemusic').disabled = busy || !currentMusic()?.bytes;
   $('mirrorbtn').disabled = busy || !state.replay;
   $('mirrorid').disabled = busy;
@@ -702,6 +695,9 @@ loadDefaultSkin(skinEnv, bytesOf)
     state.skinMsgs = [['err', `Could not load the default skin (${err.message}). Serve this folder over http://localhost, not file://.`]];
     refresh();
   });
+
+// digits for the osu!lazer HUD
+loadArgonFonts(skinEnv, bytesOf).then((g) => { state.argon = g; drawAt(state.t); }).catch(() => {});
 
 // Roboto Mono for the overlay text; redraw the preview once it has loaded.
 loadOverlayFonts().then((ok) => { if (ok) drawAt(state.t); });

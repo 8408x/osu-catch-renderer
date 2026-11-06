@@ -49,6 +49,8 @@ Runs parser, juice stream, catch-logic, skin, .osz, mirror-download (mocked netw
 - `src/encode.js` WebCodecs VideoEncoder / AudioEncoder + mp4-muxer
 - `src/main.js`, `index.html` UI
 - `assets/default-skin/`, `assets/default-sounds/` osu!'s default catch textures and hitsounds (see Licenses)
+- `assets/argon/` the segmented digit images of lazer's Argon HUD (see Licenses)
+- `src/argon.js` the osu!lazer (Argon) HUD
 - `assets/fonts/` Roboto Mono (Apache 2.0), the font the tosu overlays use, so the overlay text matches
 
 ## Downloading the map
@@ -96,14 +98,14 @@ Runs parser, juice stream, catch-logic, skin, .osz, mirror-download (mocked netw
 
 ## Combo and accuracy HUD
 
-- The **Show score, HP, combo and accuracy** tick (default on) draws osu!'s legacy HUD: the combo bottom-left with its additive pop on every catch, the score (eight digits, rolling up over a second) and accuracy top-right, and a health bar top-left. It uses your skin's number images (`score-0` ... `score-x`, or whatever `ScorePrefix` / `ComboPrefix` / overlaps your skin.ini sets under `[Fonts]`), falling back to osu!'s defaults.
+- The **Show the HUD / overlay** tick (default on) draws one of two HUDs, picked in the **Overlay style** menu (below). Score, HP and the live pp follow osu!lazer's rules either way.
 - Rules follow lazer: each caught fruit or droplet adds 1 to the combo, a missed one resets it; tiny droplets and bananas never change the combo. Accuracy is caught / judged over fruits, droplets and tiny droplets (bananas excluded).
 - The page compares its catch result against the counts stored in the replay (300s, 100s, 50s, misses, max combo) and tells you if they differ; if they do, the HUD is not trustworthy for that replay.
 - **Score** is lazer's standardised score for catch (CatchScoreProcessor): up to 1,000,000 from fruit, big droplets and tiny droplets, weighted by combo, plus 200 per banana, times the mods' multiplier (EZ, NF, HT, HR, DT/NC, HD, FL, RX). It is not stable's classic score, so it will not match the number in the replay file.
 - **HP** follows lazer's CatchHealthProcessor: it drains from the first object to the last (not in breaks), at the rate stable would pick for the map's HP; fruit, droplets and bananas refill it, and a missed fruit or big droplet costs 3% to 20% depending on HP. The bar is drawn plainly (white, amber when low, red when very low); skin `scorebar-*` images are not used, and a replay that failed in the real game is not shown as failed.
 
 ## Clean overlay (title, timer, pp, keys)
-The **Overlay style** menu picks the look. The default, *Clean overlay*, is modelled on osu!catch replay videos: the beatmap background (from the .osz, or a picture you choose) dimmed behind a full-height playfield, a round timer on the map thumbnail, title / artist - mapper / difficulty pill / mods top-left, accuracy and rank (SS, SSH, S, SH, A...) top-right with `live pp / max pp` under it, `combo/max combo` bottom-left, and four key boxes at the right edge. *osu! legacy HUD* is the earlier skin-based HUD (score, HP bar, combo, accuracy).
+The **Overlay style** menu picks the look. The default, *Clean overlay*, is modelled on osu!catch replay videos: the beatmap background (from the .osz, or a picture you choose) dimmed behind a full-height playfield, a round timer on the map thumbnail, title / artist - mapper / difficulty pill / mods top-left, accuracy and rank (SS, SSH, S, SH, A...) top-right with `live pp / max pp` under it, `combo/max combo` bottom-left, and four key boxes at the right edge. *osu!lazer HUD* is lazer's default (Argon) gameplay HUD: the two sheared wedges with the segmented score digits and the curved HP bar top-left (with a red "damage" part after a miss), accuracy (with the faint wireframe digits) and the live pp top-right, the combo bottom-left that grows on every catch and flashes red on a miss, and the song progress bar with elapsed and remaining time along the bottom. Positions, sizes and behaviour follow ppy/osu's `Argon*` HUD classes. Approximations: labels and times use the system font instead of Torus, the progress bar's graph is a plain object-density histogram, the key boxes are a stand-in, and the HP bar tube is built from a few strokes instead of lazer's shader.
 - **pp** is lazer's osu!catch difficulty and performance calculation (`src/pp.js`): the star rating is rebuilt as the map is played (one step per fruit, juice stream or banana shower, like lazer's timed difficulty), and the live pp combines it with the judgements so far. The second number is the pp of a flawless play with the same mods. The port matches an independent Python re-implementation of the same formulas, and star rating and flawless-play pp agree with rosu-pp-js 4.0.1 (MaxOhn/rosu-pp) to within 0.1% (largest gap 0.08%, flawless-play pp with HR) on a 500-fruit test map with NoMod, DT, HR, EZ, HT and HD (the small gap is probably float32 rounding in the original). It has not been checked against the real game, so expect small differences.
 - **Keys:** a catch replay stores only the catcher's position and the dash flag, so left and right are *inferred* from which way the catcher moves, and the counts are an estimate of real key presses. The boxes are: left, right, dash, and a spare one.
 - Rank letters follow stable (SS, with H for HD or FL).
@@ -133,4 +135,4 @@ The **Overlay style** menu picks the look. The default, *Clean overlay*, is mode
 
 - `vendor/lzma-d-min.js` (LZMA-JS), `vendor/mp4-muxer.mjs` (mp4-muxer) and `vendor/fflate.mjs` (fflate): MIT.
 - Catch constants and juice stream logic follow osu!lazer (MIT).
-- **`assets/default-skin/*.png` and `assets/default-sounds/*.wav` are from ppy/osu-resources and licensed CC BY-NC 4.0: free to use with credit, but not for commercial use.** See the `ATTRIBUTION.md` in each folder. If you put this online, keep it free and non-commercial, or replace these images.
+- **`assets/default-skin/*.png`, `assets/argon/*.png` and `assets/default-sounds/*.wav` are from ppy/osu-resources and licensed CC BY-NC 4.0: free to use with credit, but not for commercial use.** See the `ATTRIBUTION.md` in each folder. If you put this online, keep it free and non-commercial, or replace these images.

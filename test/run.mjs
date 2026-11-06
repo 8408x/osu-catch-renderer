@@ -693,13 +693,13 @@ if (!canvasLib) {
     const ctx = cv.getContext('2d');
     fs.mkdirSync(path.join(root, 'test/out'), { recursive: true });
     for (const [name, t] of [['early', 1200], ['stream', 2550], ['late', 5200]]) {
-      drawFrame(ctx, W, H, scene, track, t, { text: 'Tester  ·  NM', text2: 'Test Artist - Test Song [Test Diff]' }, { skin: def, showCatchWidth: name === 'stream' });
+      drawFrame(ctx, W, H, scene, track, t, { skin: def, showCatchWidth: name === 'stream' });
       fs.writeFileSync(path.join(root, `test/out/frame-${name}.png`), cv.toBuffer('image/png'));
     }
     // frame must not be blank: compare against the empty playfield
     const empty = canvasLib.createCanvas(W, H);
-    drawFrame(empty.getContext('2d'), W, H, scene, new ReplayTrack([{ t: 0, x: 256, dash: false }]), -99999, {}, { skin: null });
-    drawFrame(ctx, W, H, scene, track, 2550, {}, { skin: def });
+    drawFrame(empty.getContext('2d'), W, H, scene, new ReplayTrack([{ t: 0, x: 256, dash: false }]), -99999, { skin: null });
+    drawFrame(ctx, W, H, scene, track, 2550, { skin: def });
     assert.notEqual(Buffer.compare(cv.toBuffer('image/png'), empty.toBuffer('image/png')), 0);
   });
 
@@ -714,11 +714,33 @@ if (!canvasLib) {
     const W = 1280, H = 720;
     const cv = canvasLib.createCanvas(W, H);
     const ctx = cv.getContext('2d');
-    const shot = (t, showHud) => { drawFrame(ctx, W, H, scene, track, t, {}, { skin: def, showHud }); return cv.toBuffer('image/png'); };
+    const shot = (t, showHud) => { drawFrame(ctx, W, H, scene, track, t, { skin: def, showHud }); return cv.toBuffer('image/png'); };
     const tCaught = scene.objects.find((o) => o.caught && o.kind !== 'banana').t;
     assert.notEqual(Buffer.compare(shot(tCaught + 600, true), shot(tCaught + 600, false)), 0, 'HUD changes the picture');
     assert.notEqual(Buffer.compare(shot(tCaught + 20, true), shot(tCaught + 600, true)), 0);
     fs.writeFileSync(path.join(root, 'test/out/frame-hud.png'), shot(tCaught + 120, true));
+  });
+
+  await test('render: the osu!lazer (Argon) HUD draws its digits, health bar, pp and combo, and reacts to a miss', async () => {
+    const { drawFrame } = await import('../src/render.js');
+    const { loadArgonFonts } = await import('../src/argon.js');
+    const def = await loadDefaultSkin(env, bytesOf);
+    const argon = await loadArgonFonts(env, bytesOf);
+    assert.equal(argon.img.size, 14, 'all digit images load');
+    const scene = buildScene(parseOsu(OSU), 0);
+    const frames = [];
+    for (let t = 0; t <= 6000; t += 50) frames.push({ t, x: 100 + 150 * Math.sin(t / 700), dash: false });
+    const track = new ReplayTrack(frames);
+    evaluateCatches(scene, track);
+    const W = 1280, H = 720;
+    const cv = canvasLib.createCanvas(W, H);
+    const ctx = cv.getContext('2d');
+    const shot = (t, style, showHud = true) => { drawFrame(ctx, W, H, scene, track, t, { skin: def, argon, showHud, style }); return cv.toBuffer('image/png'); };
+    const t = scene.objects.find((o) => o.caught && o.kind !== 'banana').t + 600;
+    assert.notEqual(Buffer.compare(shot(t, 'argon'), shot(t, 'argon', false)), 0, 'the Argon HUD changes the picture');
+    assert.notEqual(Buffer.compare(shot(t, 'argon'), shot(t, 'overlay')), 0, 'and differs from the clean overlay');
+    drawFrame(ctx, W, H, scene, track, t, { skin: def, showHud: true, style: 'argon' });   // images not loaded yet: must not throw
+    fs.writeFileSync(path.join(root, 'test/out/frame-argon.png'), shot(t, 'argon'));
   });
 
   await test('render: hyper glow, hyperdash catcher + trails and bananas change the picture', async () => {
@@ -734,7 +756,7 @@ if (!canvasLib) {
     const W = 1280, H = 720;
     const cv = canvasLib.createCanvas(W, H);
     const ctx = cv.getContext('2d');
-    const png = (t, skin = def) => { drawFrame(ctx, W, H, scene, track, t, {}, { skin }); return cv.toBuffer('image/png'); };
+    const png = (t, skin = def) => { drawFrame(ctx, W, H, scene, track, t, { skin }); return cv.toBuffer('image/png'); };
     for (const [name, t] of [['hyper-glow', 600], ['hyper-dash', 1120], ['bananas', 2900]]) fs.writeFileSync(path.join(root, `test/out/frame-${name}.png`), png(t));
     assert.notEqual(Buffer.compare(png(1120), png(500)), 0);
     // trails and tint really appear: same instant without fx differs
