@@ -31,7 +31,7 @@ const MAX_FILE_BYTES = 20 * 1024 * 1024;
 
 /** Parse the bits of skin.ini we use. */
 export function parseSkinIni(text) {
-  const ini = { name: '', version: 1, colours: [], hyperDash: null, hyperDashFruit: null, hyperDashAfterImage: null,
+  const ini = { name: '', version: 1, colours: [], hyperDash: null, hyperDashFruit: null, hyperDashAfterImage: null, hyperDashAfterImageAlpha: 1,
     scorePrefix: 'score', comboPrefix: 'score', scoreOverlap: 0, comboOverlap: 0 };
   let section = '';
   for (const raw of text.replace(/^﻿/, '').split(/\r?\n/)) {
@@ -51,12 +51,13 @@ export function parseSkinIni(text) {
       else if (k === 'comboprefix' && val) ini.comboPrefix = val.replace(/\\/g, '/').split('/').pop();
       else if (k === 'scoreoverlap') ini.scoreOverlap = parseInt(val, 10) || 0;
       else if (k === 'combooverlap') ini.comboOverlap = parseInt(val, 10) || 0;
-    } else if (section === 'colours' && /^hyperdash(fruit|afterimage)?$/i.test(key)) {
+    } else if ((section === 'colours' || section === 'catchthebeat') && /^hyperdash(fruit|afterimage)?$/i.test(key)) {   // skins put these under [CatchTheBeat] (lazer reads that) or [Colours]
       const rgb = val.split(',').map((v) => parseInt(v, 10));
       if (rgb.length >= 3 && rgb.slice(0, 3).every((v) => Number.isFinite(v))) {
         const name = key.toLowerCase();
         ini[name === 'hyperdash' ? 'hyperDash' : name === 'hyperdashfruit' ? 'hyperDashFruit' : 'hyperDashAfterImage'] =
           rgb.slice(0, 3).map((v) => Math.min(255, Math.max(0, v)));
+        if (name === 'hyperdashafterimage' && rgb.length >= 4 && Number.isFinite(rgb[3])) ini.hyperDashAfterImageAlpha = Math.min(255, Math.max(0, rgb[3])) / 255;
       }
     } else if (section === 'colours' && /^combo[1-8]$/i.test(key)) {
       const rgb = val.split(',').map((v) => parseInt(v, 10));
@@ -124,7 +125,7 @@ export class Skin {
   get hyperColours() {
     const RED = [255, 0, 0];
     const dash = this.ini.hyperDash || RED;
-    return { dash, fruit: this.ini.hyperDashFruit || dash, afterImage: this.ini.hyperDashAfterImage || dash };
+    return { dash, fruit: this.ini.hyperDashFruit || dash, afterImage: this.ini.hyperDashAfterImage || dash, afterImageAlpha: this.ini.hyperDashAfterImageAlpha };
   }
 
   /** Names of fruit elements (without extension) this skin itself provides. */

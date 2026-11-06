@@ -7,14 +7,14 @@
 //   - droplets use 0.8x and tiny droplets 0.4x of that; sprites are capped at 160 px
 //   - catcher sprite = texture size x 0.35 x catcher scale, hung from the plate line 16 px down
 
-import { FIELD_W, FIELD_H } from './catch.js?v=20261107d';
-import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261107d';
-import { hudAt, scoreShownAt } from './score.js?v=20261107d';
-import { plateAt, explosionsAt } from './plate.js?v=20261107d';
-import { drawArgonHud } from './argon.js?v=20261107d';
-import { healthAt } from './health.js?v=20261107d';
-import { livePp } from './pp.js?v=20261107d';
-import { keysAt } from './keys.js?v=20261107d';
+import { FIELD_W, FIELD_H } from './catch.js?v=20261107e';
+import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261107e';
+import { hudAt, scoreShownAt } from './score.js?v=20261107e';
+import { plateAt, explosionsAt } from './plate.js?v=20261107e';
+import { drawArgonHud } from './argon.js?v=20261107e';
+import { healthAt } from './health.js?v=20261107e';
+import { livePp } from './pp.js?v=20261107e';
+import { keysAt } from './keys.js?v=20261107e';
 
 const ZONE = 120;  // room below the field for the catcher, in field units
 const PAD = 12;
@@ -148,14 +148,14 @@ function drawTrails(ctx, skin, scene, fx, t) {
   let lo = 0, hi = trails.length;
   const from = t - AFTERIMAGE_LIFE_MS;
   while (lo < hi) { const mid = (lo + hi) >> 1; if (trails[mid].t < from) lo = mid + 1; else hi = mid; }
-  const { dash, afterImage } = skin.hyperColours;
+  const { dash, afterImage, afterImageAlpha } = skin.hyperColours;
   for (let i = lo; i < trails.length && trails[i].t <= t; i++) {
     const e = trails[i];
     const age = t - e.t;
     if (e.kind === 'after') {
       const p = age / AFTERIMAGE_LIFE_MS;
       drawCatcher(ctx, skin, scene, e.x, e.state, e.facing, {
-        rgb: afterImage, alpha: 1 - p, scale: lerp(0.95, 1.2, p * p), dy: -10 * p * p, additive: true,
+        rgb: afterImage, alpha: (1 - p) * afterImageAlpha, scale: lerp(0.95, 1.2, p * p), dy: -10 * p * p, additive: true,
       });
     } else if (age < TRAIL_LIFE_MS) {
       drawCatcher(ctx, skin, scene, e.x, e.state, e.facing, {

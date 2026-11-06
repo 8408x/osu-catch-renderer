@@ -4,7 +4,7 @@
 // and the output has perfectly even frame timing.
 
 import { Muxer, ArrayBufferTarget } from '../vendor/mp4-muxer.mjs';
-import { SAMPLE_RATE } from './audio.js?v=20261107d';
+import { SAMPLE_RATE } from './audio.js?v=20261107e';
 
 // Tried in order; the first one this browser can encode wins.
 const CANDIDATES = [

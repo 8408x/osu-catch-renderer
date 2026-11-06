@@ -978,6 +978,12 @@ await test('hyper tint amount and state lookups follow the segments', async () =
   assert.ok(fx.trails.some((e) => e.kind === 'hyper') && fx.trails.some((e) => e.kind === 'dash'));
 });
 
+await test('parseSkinIni: hyper colours under [CatchTheBeat] (as real skins have them), commented lines, after-image alpha', () => {
+  const ini = parseSkinIni("[CatchTheBeat]\nHyperDash: 255,255,255\nHyperDashAfterImage: 0,0,0,0\n//HyperDashFruit: 255,0,0\nHyperDashFruit: 204,76,255 // purple\n");
+  assert.deepEqual([ini.hyperDash, ini.hyperDashFruit, ini.hyperDashAfterImage, ini.hyperDashAfterImageAlpha], [[255, 255, 255], [204, 76, 255], [0, 0, 0], 0]);
+  assert.equal(parseSkinIni('[Colours]\nHyperDashAfterImage: 1,2,3\n').hyperDashAfterImageAlpha, 1);
+});
+
 await test('parseSkinIni: HyperDash / HyperDashFruit / HyperDashAfterImage, with fallbacks to red / HyperDash', () => {
   const full = parseSkinIni('[Colours]\nHyperDash: 10,20,30\nHyperDashFruit: 40,50,60\nHyperDashAfterImage : 70,80,90\n');
   assert.deepEqual([full.hyperDash, full.hyperDashFruit, full.hyperDashAfterImage], [[10, 20, 30], [40, 50, 60], [70, 80, 90]]);
