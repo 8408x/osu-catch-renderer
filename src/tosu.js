@@ -5,8 +5,8 @@
 // are needed for a whole song. Chromium, Edge and Firefox can rasterise this; where it is not possible the caller falls
 // back to the canvas drawing.
 
-import { hudAt } from './score.js?v=20261107h';
-import { livePp } from './pp.js?v=20261107h';
+import { hudAt } from './score.js?v=20261107i';
+import { livePp } from './pp.js?v=20261107i';
 
 const CIRCUMFERENCE = 30 * Math.PI * 2;                 // the progress ring's circle, as in the overlay's App.js
 const OSU_GRADE = ['SSH', 'SS', 'SH', 'S', 'A', 'B', 'C', 'D', 'F', ''];   // lib/consts.js
@@ -15,7 +15,8 @@ const OSU_GRADE = ['SSH', 'SS', 'SH', 'S', 'A', 'B', 'C', 'D', 'F', ''];   // li
 export const PLACEMENT = {
   title: { w: 800, h: 90, k: 1.222 },                  // Resolution 800x90
   acc: { w: 340, h: 80, k: 1.7 },                      // Resolution 170x75; widened so the longest "100.00% SSH" line is not clipped
-  combo: { w: 420, h: 44, k: 1.7 },                    // Resolution 350x40, widened for "(1234)" after the total
+  combo: { w: 420, h: 44, k: 1.7 },
+  pp: { w: 190, h: 100, k: 1.222 },                    // InGame3 v1.004 by Dartandr, Resolution 190x100: the pp counter under the map details                    // Resolution 350x40, widened for "(1234)" after the total
 };
 
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -102,8 +103,13 @@ export function titleHtml(k, coverUrl) {
 export function accHtml(k) {
   return `<div class="overlay"><div class="overlay-playing"><div class="performance">
 <div class="acc"><span class="text">${esc(k.acc)}% <span class="rank">${esc(k.grade)}</span></span></div>
-<div class="pp"><span class="score">${k.ppIfMapEndsNow}pp<span class="subtext">/${k.ppIfRestFced}pp</span></span></div>
 </div></div></div>`;
+}
+
+/** InGame3's pp counter: the live pp, and the "if FC" bubble that appears once there is a miss. */
+export function ppHtml(k) {
+  return `<div class="base" id="base"><div class="pp"><span id="pp">${k.ppIfMapEndsNow}</span>pp</div></div>`
+    + `<div class="ifFcpp" style="opacity:${k.fcing ? 0 : 1}"><span id="ifFcpp">${k.ppIfRestFced}</span>pp</div>`;
 }
 
 export function comboHtml(k) {
@@ -115,7 +121,8 @@ export function comboHtml(k) {
 function keysOf(k) {
   return {
     title: [k.time, Math.round(k.pct * 400), k.titleRoman, k.artistUnicode, k.creator, k.diffName, k.mods].join('|'),
-    acc: [k.acc, k.grade, k.ppIfMapEndsNow, k.ppIfRestFced].join('|'),
+    acc: [k.acc, k.grade].join('|'),
+    pp: [k.ppIfMapEndsNow, k.fcing ? '' : k.ppIfRestFced].join('|'),
     combo: [k.combo, k.maxCombo, k.fcing ? '' : k.currentMaxCombo].join('|'),
   };
 }
@@ -128,8 +135,9 @@ const b64 = (bytes) => {
 
 export class TosuOverlays {
   /** @param {string} css the overlays' stylesheet, fonts already inlined */
-  constructor(css) {
+  constructor(css, ppCss = '') {
     this.css = css;
+    this.ppCss = ppCss;
     this.cache = new Map();                              // `${name}#${key}` -> ImageBitmap
     this.pending = new Map();                            // same keys -> Promise
     this.last = {};                                      // newest finished image per overlay, shown while a new one renders
@@ -153,7 +161,13 @@ export class TosuOverlays {
     }
     // the overlays' own @font-face rules point at files we do not serve; drop them and keep everything else verbatim
     const rest = css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/@font-face\s*\{[^}]*\}/g, '').replace(/(^|\n)body\s*\{/, '$1.tosu-body {');
-    return new TosuOverlays(`${faces.join('')}\n${rest}`);
+    let ppCss = '';
+    try {   // InGame3 (pp counter): its stylesheet and the rounded font it names "Custom-Font"
+      const ig = new TextDecoder().decode(await bytesOf(`${base}tosu/ingame3.css`));
+      const font = await bytesOf(`${base}fonts/MPLUSRounded1c-ExtraBold-latin.woff2`);
+      ppCss = `@font-face{font-family:'Custom-Font';src:url(data:font/woff2;base64,${b64(font)}) format('woff2');}\n${ig}`;
+    } catch { /* without it the pp counter falls back to the AccuracyPP-less layout (no pp shown by tosu overlays) */ }
+    return new TosuOverlays(`${faces.join('')}\n${rest}`, ppCss);
   }
 
   /** Give the title overlay the map's picture, cropped square like tosu's `backgroundImage?crop=1`. */
@@ -173,10 +187,11 @@ export class TosuOverlays {
 
   svgFor(name, k) {
     const { w, h, k: scale } = PLACEMENT[name];
-    const body = name === 'title' ? titleHtml(k, this.coverUrl) : name === 'acc' ? accHtml(k) : comboHtml(k);
+    const body = name === 'title' ? titleHtml(k, this.coverUrl) : name === 'acc' ? accHtml(k) : name === 'pp' ? ppHtml(k) : comboHtml(k);
+    const css = name === 'pp' ? this.ppCss : this.css;
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${w * scale}" height="${h * scale}" viewBox="0 0 ${w} ${h}">`
       + `<foreignObject x="0" y="0" width="${w}" height="${h}"><div xmlns="http://www.w3.org/1999/xhtml" class="tosu-body" style="width:${w}px;height:${h}px;position:relative;overflow:hidden;">`
-      + `<style>${this.css.replace(/&/g, '&amp;').replace(/</g, '&lt;')}\n.tosu-body *{transition:none !important;}</style>${body}</div></foreignObject></svg>`;
+      + `<style>${css.replace(/&/g, '&amp;').replace(/</g, '&lt;')}\n.tosu-body *{transition:none !important;}</style>${body}</div></foreignObject></svg>`;
   }
 
   request(name, k, key) {
@@ -200,7 +215,7 @@ export class TosuOverlays {
   /** Render (and wait for) the three overlays for beatmap time t. Used by the exporter before every frame. */
   async prepare(scene, t) {
     const k = tosuTokens(scene, t), keys = keysOf(k);
-    await Promise.all(['title', 'acc', 'combo'].map((n) => this.request(n, k, keys[n])));
+    await Promise.all((this.ppCss ? ['title', 'acc', 'pp', 'combo'] : ['title', 'acc', 'combo']).map((n) => this.request(n, k, keys[n])));
   }
 
   /**
@@ -212,10 +227,11 @@ export class TosuOverlays {
     const k = tosuTokens(scene, t), keys = keysOf(k), u = H / 1080;
     const at = {
       title: (p) => [6 * u, 8 * u, p.w * p.k * u, p.h * p.k * u],
+      pp: (p) => [6 * u, (8 + PLACEMENT.title.h * PLACEMENT.title.k + 4) * u, p.w * p.k * u, p.h * p.k * u],
       acc: (p) => [W - 8 * u - p.w * p.k * u, 0, p.w * p.k * u, p.h * p.k * u],
       combo: (p) => [4 * u, H - 12 * u - p.h * p.k * u, p.w * p.k * u, p.h * p.k * u],
     };
-    for (const name of ['title', 'acc', 'combo']) {
+    for (const name of (this.ppCss ? ['title', 'acc', 'pp', 'combo'] : ['title', 'acc', 'combo'])) {
       const id = `${name}#${this.version}#${keys[name]}`;
       let img = this.cache.get(id);
       if (!img) {

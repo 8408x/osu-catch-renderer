@@ -1493,6 +1493,10 @@ await test('tosu overlays: tokens and markup follow the real overlays\' bindings
   assert.equal(k.ppIfRestFced, 500);
   assert.match(T.titleHtml(k, null), /T&lt;&amp;&gt;/);
   assert.match(T.accHtml(k), /class="rank"/);
+  assert.doesNotMatch(T.accHtml(k), /class="pp"/, 'the pp counter is InGame3\'s now');
+  assert.match(T.ppHtml(k), /id="pp"/);
+  assert.match(T.ppHtml(k), /opacity:1/, 'the if-FC bubble shows after a miss');
+  assert.match(T.ppHtml({ ...k, fcing: true }), /opacity:0/);
   assert.match(T.comboHtml(k), /\(25\)/);
   assert.doesNotMatch(T.comboHtml({ ...k, fcing: true }), /\(25\)/);
 });
