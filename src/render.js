@@ -572,8 +572,10 @@ export function drawFrame(ctx, W, H, scene, track, t, info = {}, opts = {}) {
     ctx.font = `${size}px system-ui, -apple-system, "Segoe UI", sans-serif`;
     ctx.textBaseline = 'top';
     ctx.fillStyle = 'rgba(255,255,255,0.80)';
-    if (info.text) ctx.fillText(info.text, size, size);
+    // the legacy HP bar sits in the top-left corner (y 10..24 at 1080p): start the text below it
+    const top = showHud && scene.health ? Math.max(size, 34 * (H / 1080)) : size;
+    if (info.text) ctx.fillText(info.text, size, top);
     ctx.fillStyle = 'rgba(255,255,255,0.55)';
-    if (info.text2) ctx.fillText(info.text2, size, size * 2.4);
+    if (info.text2) ctx.fillText(info.text2, size, top + size * 1.4);
   }
 }
