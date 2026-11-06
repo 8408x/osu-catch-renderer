@@ -7,15 +7,16 @@
 //   - droplets use 0.8x and tiny droplets 0.4x of that; sprites are capped at 160 px
 //   - catcher sprite = texture size x 0.35 x catcher scale, hung from the plate line 16 px down
 
-import { FIELD_W, FIELD_H } from './catch.js?v=20261107k';
-import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261107k';
-import { hudAt, scoreShownAt } from './score.js?v=20261107k';
-import { plateAt, explosionsAt } from './plate.js?v=20261107k';
-import { drawArgonHud } from './argon.js?v=20261107k';
-import { healthAt } from './health.js?v=20261107k';
-import { livePp } from './pp.js?v=20261107k';
-import { keysAt } from './keys.js?v=20261107k';
-import { drawModIcons, drawModBadges } from './mods.js?v=20261107k';
+import { FIELD_W, FIELD_H } from './catch.js?v=20261107l';
+import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261107l';
+import { hudAt, scoreShownAt } from './score.js?v=20261107l';
+import { plateAt, explosionsAt } from './plate.js?v=20261107l';
+import { drawArgonHud } from './argon.js?v=20261107l';
+import { healthAt } from './health.js?v=20261107l';
+import { livePp } from './pp.js?v=20261107l';
+import { keysAt } from './keys.js?v=20261107l';
+import { drawModIcons, drawModBadges } from './mods.js?v=20261107l';
+import { drawFlashlight } from './flashlight.js?v=20261107l';
 
 const ZONE = 120;  // room below the field for the catcher, in field units
 const PAD = 12;
@@ -627,6 +628,7 @@ export function drawFrame(ctx, W, H, scene, track, t, opts = {}) {
     drawCatcher(ctx, skin, scene, catcherX, state, track.facingAt(t), { rgb: amount > 0.001 ? mixRgb(skin.hyperColours.dash, amount) : null });
     if (fx) drawTrails(ctx, skin, scene, fx, t);
     if (hitLighting) drawHitLighting(ctx, skin, scene, t, catcherX);
+    if ((scene.mods ?? 0) & 1024) drawFlashlight(ctx, scene, t, catcherX, FIELD_H);   // the Flashlight mod
   }
 
   if (showCatchWidth) {

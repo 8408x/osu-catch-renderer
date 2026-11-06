@@ -148,3 +148,5 @@ GitHub Pages lets browsers cache the JavaScript modules for ten minutes. Every `
 
 - **Hidden (HD)** fades fruit the way lazer's `CatchModHidden` does: the fade starts when 60% of the approach time is left and lasts 16% of it, linearly, for fruit, droplets and bananas.
 - Mods are listed under the accuracy in the stable HUD (the skin's `selection-mod-*` icons if present, otherwise badges) and as badges under the pp counter in the lazer HUD. NC replaces DT and PF replaces SD.
+- **Flashlight (FL)** blacks out everything outside a soft circle around the catcher (`CatchModFlashlight`): radius 203 playfield units, x0.885 from 100 combo, x0.77 from 200, x1.54 during breaks, gliding between sizes at about 1.15 x the default per second.
+- Relax, Autoplay and Cinema replays render normally (the cursor path is in the replay); they just have no special visuals. Lazer-only mods are not in stable `.osr` flags and are not read.

@@ -780,6 +780,30 @@ if (!canvasLib) {
     }
   });
 
+  await test('mods: Flashlight radius follows combo, breaks and the glide; the frame goes dark away from the catcher', async () => {
+    const { flashlightRadius, FL_DEFAULT } = await import('../src/flashlight.js');
+    const { drawFrame } = await import('../src/render.js');
+    const fake = (combos, breaks = []) => ({ hud: { timeline: combos.map(([t, combo]) => ({ t, combo })) }, breaks });
+    near(flashlightRadius(fake([[0, 0]]), 1000), FL_DEFAULT, 1e-9);
+    near(flashlightRadius(fake([[0, 0], [1000, 100]]), 60000), FL_DEFAULT * 0.885, 1e-6);
+    near(flashlightRadius(fake([[0, 0], [1000, 200]]), 60000), FL_DEFAULT * 0.77, 1e-6);
+    // glide: 1.154 * default per second, so 0.5 s after the drop to 0.885 it has moved 0.577 default of the 0.115 gap -> arrived
+    const mid = flashlightRadius(fake([[0, 0], [1000, 200]]), 1100);
+    assert.ok(mid < FL_DEFAULT && mid > FL_DEFAULT * 0.77, 'still gliding after 100 ms');
+    near(flashlightRadius(fake([[0, 0]], [{ start: 1000, end: 2000 }]), 1900), FL_DEFAULT * 1.538, 1e-6 + FL_DEFAULT * 0.01);
+    const def = await loadDefaultSkin(env, bytesOf);
+    const mk = (mods) => { const sc = buildScene(parseOsu(OSU), mods); const frames = []; for (let t = 0; t <= 6000; t += 50) frames.push({ t, x: 100 + 150 * Math.sin(t / 700), dash: false }); const tr = new ReplayTrack(frames); evaluateCatches(sc, tr); return [sc, tr]; };
+    const [sc, tr] = mk(1024), [sc0, tr0] = mk(0);
+    const W = 1280, H = 720, cv = canvasLib.createCanvas(W, H), ctx = cv.getContext('2d');
+    const t = sc.objects[0].t - sc.preempt * 0.3;
+    drawFrame(ctx, W, H, sc, tr, t, { skin: def });
+    const dark = [...ctx.getImageData(5, 5, 1, 1).data];
+    assert.deepEqual(dark.slice(0, 3), [0, 0, 0], 'far corner is black');
+    fs.writeFileSync(path.join(root, 'test/out/frame-flashlight.png'), cv.toBuffer('image/png'));
+    drawFrame(ctx, W, H, sc0, tr0, t, { skin: def });
+    assert.notDeepEqual([...ctx.getImageData(5, 5, 1, 1).data].slice(0, 3), [0, 0, 0], 'no mod: not black');
+  });
+
   await test('render: the osu!lazer (Argon) HUD draws its digits, health bar, pp and combo, and reacts to a miss', async () => {
     const { drawFrame } = await import('../src/render.js');
     const { loadArgonFonts } = await import('../src/argon.js');
