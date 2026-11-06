@@ -739,6 +739,8 @@ if (!canvasLib) {
     const t = scene.objects.find((o) => o.caught && o.kind !== 'banana').t + 600;
     assert.notEqual(Buffer.compare(shot(t, 'argon'), shot(t, 'argon', false)), 0, 'the Argon HUD changes the picture');
     assert.notEqual(Buffer.compare(shot(t, 'argon'), shot(t, 'overlay')), 0, 'and differs from the clean overlay');
+    assert.notEqual(Buffer.compare(shot(t, 'stable'), shot(t, 'overlay')), 0, 'the osu!stable HUD differs from the clean overlay');
+    assert.notEqual(Buffer.compare(shot(t, 'stable'), shot(t, 'argon')), 0, 'and from the lazer HUD');
     drawFrame(ctx, W, H, scene, track, t, { skin: def, showHud: true, style: 'argon' });   // images not loaded yet: must not throw
     fs.writeFileSync(path.join(root, 'test/out/frame-argon.png'), shot(t, 'argon'));
   });

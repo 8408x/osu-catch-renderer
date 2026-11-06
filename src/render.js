@@ -9,9 +9,10 @@
 
 import { FIELD_W, FIELD_H } from './catch.js';
 import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js';
-import { hudAt } from './score.js';
+import { hudAt, scoreShownAt } from './score.js';
 import { plateAt, explosionsAt } from './plate.js';
 import { drawArgonHud } from './argon.js';
+import { healthAt } from './health.js';
 import { livePp } from './pp.js';
 import { keysAt } from './keys.js';
 
@@ -360,6 +361,113 @@ function livePpOf(scene, v, t) {
   return v ? livePp(scene.diff, scene, v, t) : 0;
 }
 
+// ---------- osu!stable HUD: score and accuracy top-right with the progress pie, flat HP bar top-left, combo bottom-left ----------
+const HUD_GLYPH = { ',': 'comma', '.': 'dot', '%': 'percent', x: 'x' };
+const HUD_POP_MS = 300;
+
+/** Glyph textures for a font prefix; falls back to osu!'s own `score` numbers when the skin renamed the prefix but lacks the images. */
+function glyphFor(skin, prefix, ch) {
+  const key = HUD_GLYPH[ch] ?? ch;
+  return skin.get(`${prefix}-${key}`) ?? (prefix !== 'score' ? skin.get(`score-${key}`) : null);
+}
+
+/**
+ * Draw a string of skin number glyphs. `anchor` 'left' | 'right' places the text's bottom edge (or top for
+ * `fromTop`) at (x, y). Digits share the width of '5' when `fixed`, like osu!'s score font.
+ */
+function drawGlyphs(ctx, skin, prefix, text, x, y, k, { anchor = 'left', fromTop = false, fixed = false, overlap = 0, alpha = 1, additive = false } = {}) {
+  const glyphs = [...text].map((ch) => glyphFor(skin, prefix, ch));
+  if (glyphs.some((g) => !g)) return;
+  const five = glyphFor(skin, prefix, '5');
+  const widths = glyphs.map((g, i) => (fixed && /[0-9]/.test(text[i]) && five ? five.w : g.w) * k - overlap * k);
+  const total = widths.reduce((a, b) => a + b, 0);
+  let cx = anchor === 'right' ? x - total : x;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  if (additive) ctx.globalCompositeOperation = 'lighter';
+  glyphs.forEach((g, i) => {
+    const w = g.w * k, h = g.h * k;
+    const gx = cx + (widths[i] + overlap * k - w) / 2;
+    ctx.drawImage(g.img, gx, fromTop ? y : y - h, w, h);
+    cx += widths[i];
+  });
+  ctx.restore();
+}
+
+/** Stable's HP bar: a flat dark track with a thin light border, a fill that is white (amber, then red when low) and a round marker at its end. */
+function drawHealthBar(ctx, hp, x, y, w, h) {
+  hp = Math.max(0, Math.min(1, hp));
+  ctx.save();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = hp > 0.5 ? '#ffffff' : hp > 0.25 ? '#ffc94d' : '#ff5555';
+  ctx.fillRect(x + 1, y + 1, Math.max(0, (w - 2) * hp), h - 2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+  ctx.lineWidth = Math.max(1, h / 9);
+  ctx.strokeRect(x, y, w, h);
+  ctx.beginPath();
+  ctx.arc(x + 1 + (w - 2) * hp, y + h / 2, h * 0.75, 0, Math.PI * 2);
+  ctx.fillStyle = '#fff';
+  ctx.globalAlpha = hp > 0 ? 1 : 0;
+  ctx.fill();
+  ctx.restore();
+}
+
+/** The song progress pie stable draws left of the accuracy. */
+function drawProgressPie(ctx, cx, cy, r, p) {
+  ctx.save();
+  ctx.lineWidth = Math.max(1, r / 6);
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+  if (p > 0) {
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r * 0.8, -Math.PI / 2, -Math.PI / 2 + p * Math.PI * 2); ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawStableHud(ctx, W, H, scene, t, skin) {
+  const hud = scene.hud;
+  if (!hud) return;
+  const v = hudAt(hud, t);
+  const u = H / 768;                                     // osu! lays its HUD out for a 768 px high screen
+  const { comboPrefix, scorePrefix, comboOverlap, scoreOverlap } = skin.fonts;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+  // score, top right (LegacyScoreCounter: scale 0.96, margin 10), eight digits like stable
+  const zero = glyphFor(skin, scorePrefix, '0');
+  const scoreH = zero ? zero.h * 0.96 * u : 0;
+  drawGlyphs(ctx, skin, scorePrefix, String(scoreShownAt(v, t)).padStart(8, '0'), W - 10 * u, 0, 0.96 * u,
+    { anchor: 'right', fromTop: true, fixed: true, overlap: scoreOverlap });
+
+  // accuracy, right under the score (LegacyAccuracyCounter: scale 0.6 * 0.96, margin 9 / 17)
+  drawGlyphs(ctx, skin, scorePrefix, `${(v.acc * 100).toFixed(2)}%`, W - 17 * u, scoreH + 9 * u, 0.6 * 0.96 * u,
+    { anchor: 'right', fromTop: true, fixed: true, overlap: scoreOverlap });
+
+  // progress pie, left of the accuracy
+  const objs = scene.objects;
+  if (objs.length) {
+    const a = objs[0].t, b = objs[objs.length - 1].t;
+    drawProgressPie(ctx, W - 17 * u - 150 * u, scoreH + 9 * u + 12 * u, 9 * u, Math.min(1, Math.max(0, (t - a) / Math.max(1, b - a))));
+  }
+
+  // health bar, top left
+  if (scene.health) drawHealthBar(ctx, healthAt(scene.health, t), 10 * u, 10 * u, 340 * u, 14 * u);
+
+  // combo, bottom left (LegacyDefaultComboCounter: scale 1.28, margin 10) with its additive pop-out
+  if (v.combo > 0) {
+    const text = `${v.combo}x`;
+    const k = 1.28 * u;
+    drawGlyphs(ctx, skin, comboPrefix, text, 10 * u, H - 10 * u, k, { overlap: comboOverlap });
+    const age = t - v.bumpT;
+    if (age >= 0 && age < HUD_POP_MS) {
+      const p = age / HUD_POP_MS;
+      drawGlyphs(ctx, skin, comboPrefix, text, 10 * u, H - 10 * u, k * (1 + 0.6 * (1 - p)), { overlap: comboOverlap, alpha: 0.65 * (1 - p), additive: true });
+    }
+  }
+}
+
 /** Hit lighting: lazer's LegacyHitExplosion, additive and tinted with the object's colour, riding on the catcher. */
 function drawHitLighting(ctx, skin, scene, t, catcherX) {
   const one = skin.get('lazer-explosion-2'), two = skin.get('lazer-explosion-1');   // explosion1 uses scoreboard-explosion-2, explosion2 uses -1
@@ -456,6 +564,7 @@ export function drawFrame(ctx, W, H, scene, track, t, opts = {}) {
   }
 
   if (showHud && style === 'argon') drawArgonHud(ctx, W, H, scene, t, argon, { keys });
+  else if (showHud && style === 'stable' && skin) drawStableHud(ctx, W, H, scene, t, skin);
   else if (showHud) drawOverlay(ctx, W, H, scene, t, { bg, keys });
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
