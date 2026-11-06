@@ -7,14 +7,14 @@
 //   - droplets use 0.8x and tiny droplets 0.4x of that; sprites are capped at 160 px
 //   - catcher sprite = texture size x 0.35 x catcher scale, hung from the plate line 16 px down
 
-import { FIELD_W, FIELD_H } from './catch.js?v=20261107b';
-import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261107b';
-import { hudAt, scoreShownAt } from './score.js?v=20261107b';
-import { plateAt, explosionsAt } from './plate.js?v=20261107b';
-import { drawArgonHud } from './argon.js?v=20261107b';
-import { healthAt } from './health.js?v=20261107b';
-import { livePp } from './pp.js?v=20261107b';
-import { keysAt } from './keys.js?v=20261107b';
+import { FIELD_W, FIELD_H } from './catch.js?v=20261107c';
+import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261107c';
+import { hudAt, scoreShownAt } from './score.js?v=20261107c';
+import { plateAt, explosionsAt } from './plate.js?v=20261107c';
+import { drawArgonHud } from './argon.js?v=20261107c';
+import { healthAt } from './health.js?v=20261107c';
+import { livePp } from './pp.js?v=20261107c';
+import { keysAt } from './keys.js?v=20261107c';
 
 const ZONE = 120;  // room below the field for the catcher, in field units
 const PAD = 12;
@@ -219,7 +219,7 @@ export const rankOf = (acc, mods) => {
 };
 const mmss = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
 
-function drawOverlay(ctx, W, H, scene, t, { bg, keys }) {
+function drawOverlay(ctx, W, H, scene, t, { bg, keys, tosu }) {
   const u = H / 1080;
   const v = scene.hud ? hudAt(scene.hud, t) : null;
   const meta = scene.meta ?? {};
@@ -230,95 +230,99 @@ function drawOverlay(ctx, W, H, scene, t, { bg, keys }) {
   ctx.shadowColor = 'rgba(0,0,0,0.65)';
   ctx.shadowBlur = 6 * u;
 
-  // --- timer ring with the map thumbnail, top left ---
-  const box = 110 * u;
-  ctx.save();
-  ctx.beginPath(); ctx.rect(0, 0, box, box); ctx.clip();
-  if (bg && bg.width) {
-    const k = Math.max(box / bg.width, box / bg.height);
-    ctx.drawImage(bg, (box - bg.width * k) / 2, (box - bg.height * k) / 2, bg.width * k, bg.height * k);
-  } else { ctx.fillStyle = '#20222c'; ctx.fillRect(0, 0, box, box); }
-  ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(0, 0, box, box);
-  ctx.restore();
-  const first = scene.objects[0]?.t ?? 0, last = scene.objects[scene.objects.length - 1]?.t ?? 1;
-  const progress = Math.min(1, Math.max(0, (t - first) / Math.max(1, last - first)));
-  ctx.shadowBlur = 0;
-  ctx.lineWidth = 4 * u;
-  ctx.strokeStyle = 'rgba(255,255,255,0.28)';
-  ctx.beginPath(); ctx.arc(box / 2, box / 2, box * 0.42, 0, Math.PI * 2); ctx.stroke();
-  ctx.strokeStyle = '#fff';
-  ctx.beginPath(); ctx.arc(box / 2, box / 2, box * 0.42, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2); ctx.stroke();
-  ctx.shadowBlur = 6 * u;
-  ctx.fillStyle = '#fff';
-  ctx.font = `600 ${19 * u}px ${MONO}`;
-  ctx.textAlign = 'center';
-  ctx.fillText(mmss(t), box / 2, box / 2 + 7 * u);
-  ctx.textAlign = 'left';
-
-  // --- title, artist - mapper, difficulty pill and mods ---
-  const tx = 128 * u;
-  ctx.fillStyle = '#fff';
-  ctx.font = `700 ${29 * u}px ${MONO}`;
-  ctx.fillText(meta.title ?? "", tx, 34 * u);
-  ctx.font = `${21 * u}px ${MONO}`;
-  ctx.fillStyle = 'rgba(255,255,255,0.92)';
-  ctx.fillText(`${meta.artist ?? ""} - ${meta.creator ?? ""}`, tx, 62 * u);
-  const pillText = String(meta.version ?? '').toUpperCase();
-  ctx.font = `800 ${12 * u}px ${MONO}`;
-  const pw = spacedWidth(ctx, pillText, 3.4 * u) + 20 * u, ph = 26 * u, py = 78 * u;
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = '#fff';
-  roundRectPath(ctx, tx, py, pw, ph, 3 * u); ctx.fill();
-  ctx.fillStyle = '#111';
-  spacedText(ctx, pillText, tx + 10 * u, py + 17.5 * u, 3.4 * u);
-  ctx.shadowBlur = 6 * u;
-  const modText = modsLabel(scene.mods ?? 0);
-  if (modText) {
+  // the real tosu overlays when they can be rendered; otherwise the canvas copy below
+  const usedTosu = tosu ? tosu.draw(ctx, W, H, scene, t) : false;
+  if (!usedTosu) {
+    // --- timer ring with the map thumbnail, top left ---
+    const box = 110 * u;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0, 0, box, box); ctx.clip();
+    if (bg && bg.width) {
+      const k = Math.max(box / bg.width, box / bg.height);
+      ctx.drawImage(bg, (box - bg.width * k) / 2, (box - bg.height * k) / 2, bg.width * k, bg.height * k);
+    } else { ctx.fillStyle = '#20222c'; ctx.fillRect(0, 0, box, box); }
+    ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(0, 0, box, box);
+    ctx.restore();
+    const first = scene.objects[0]?.t ?? 0, last = scene.objects[scene.objects.length - 1]?.t ?? 1;
+    const progress = Math.min(1, Math.max(0, (t - first) / Math.max(1, last - first)));
+    ctx.shadowBlur = 0;
+    ctx.lineWidth = 4 * u;
+    ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+    ctx.beginPath(); ctx.arc(box / 2, box / 2, box * 0.42, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = '#fff';
+    ctx.beginPath(); ctx.arc(box / 2, box / 2, box * 0.42, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2); ctx.stroke();
+    ctx.shadowBlur = 6 * u;
     ctx.fillStyle = '#fff';
-    ctx.font = `${20 * u}px ${MONO}`;
-    ctx.fillText(`+ ${modText}`, tx + pw + 14 * u, py + 20 * u);
-  }
+    ctx.font = `600 ${19 * u}px ${MONO}`;
+    ctx.textAlign = 'center';
+    ctx.fillText(mmss(t), box / 2, box / 2 + 7 * u);
+    ctx.textAlign = 'left';
 
-  // --- accuracy + rank, then pp, top right ---
-  const acc = v ? v.acc : 1;
-  const rank = rankOf(acc, scene.mods ?? 0);
-  const rx = W - 8 * u;
-  ctx.textAlign = 'right';
-  ctx.fillStyle = '#fff';
-  ctx.font = `700 ${58 * u}px ${MONO}`;
-  const rankW = ctx.measureText(rank).width;
-  ctx.fillText(rank, rx, 56 * u);
-  ctx.font = `600 ${42 * u}px ${MONO}`;
-  ctx.fillText(`${(acc * 100).toFixed(2)}%`, rx - rankW - 18 * u, 56 * u);
-  if (scene.diff) {
-    const pp = livePpOf(scene, v, t);
-    const maxText = `/${Math.round(scene.maxPp)}pp`;
-    ctx.font = `600 ${25 * u}px ${MONO}`;
-    ctx.fillStyle = 'rgba(255,255,255,0.8)';
-    ctx.fillText(maxText, rx, 108 * u);
-    const mw = ctx.measureText(maxText).width;
+    // --- title, artist - mapper, difficulty pill and mods ---
+    const tx = 128 * u;
     ctx.fillStyle = '#fff';
+    ctx.font = `700 ${29 * u}px ${MONO}`;
+    ctx.fillText(meta.title ?? "", tx, 34 * u);
+    ctx.font = `${21 * u}px ${MONO}`;
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.fillText(`${meta.artist ?? ""} - ${meta.creator ?? ""}`, tx, 62 * u);
+    const pillText = String(meta.version ?? '').toUpperCase();
+    ctx.font = `800 ${12 * u}px ${MONO}`;
+    const pw = spacedWidth(ctx, pillText, 3.4 * u) + 20 * u, ph = 26 * u, py = 78 * u;
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#fff';
+    roundRectPath(ctx, tx, py, pw, ph, 3 * u); ctx.fill();
+    ctx.fillStyle = '#111';
+    spacedText(ctx, pillText, tx + 10 * u, py + 17.5 * u, 3.4 * u);
+    ctx.shadowBlur = 6 * u;
+    const modText = modsLabel(scene.mods ?? 0);
+    if (modText) {
+      ctx.fillStyle = '#fff';
+      ctx.font = `${20 * u}px ${MONO}`;
+      ctx.fillText(`+ ${modText}`, tx + pw + 14 * u, py + 20 * u);
+    }
+
+    // --- accuracy + rank, then pp, top right ---
+    const acc = v ? v.acc : 1;
+    const rank = rankOf(acc, scene.mods ?? 0);
+    const rx = W - 8 * u;
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#fff';
+    ctx.font = `700 ${58 * u}px ${MONO}`;
+    const rankW = ctx.measureText(rank).width;
+    ctx.fillText(rank, rx, 56 * u);
     ctx.font = `600 ${42 * u}px ${MONO}`;
-    ctx.fillText(`${Math.round(pp)}pp`, rx - mw, 108 * u);
-  }
-  ctx.textAlign = 'left';
+    ctx.fillText(`${(acc * 100).toFixed(2)}%`, rx - rankW - 18 * u, 56 * u);
+    if (scene.diff) {
+      const pp = livePpOf(scene, v, t);
+      const maxText = `/${Math.round(scene.maxPp)}pp`;
+      ctx.font = `600 ${25 * u}px ${MONO}`;
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      ctx.fillText(maxText, rx, 108 * u);
+      const mw = ctx.measureText(maxText).width;
+      ctx.fillStyle = '#fff';
+      ctx.font = `600 ${42 * u}px ${MONO}`;
+      ctx.fillText(`${Math.round(pp)}pp`, rx - mw, 108 * u);
+    }
+    ctx.textAlign = 'left';
 
-  // --- combo as current/total, bottom left ---
-  const total = scene.diff?.maxCombo ?? 0;
-  const combo = v ? v.combo : 0;
-  const cy = H - 12 * u;
-  ctx.fillStyle = '#fff';
-  ctx.font = `600 ${51 * u}px ${MONO}`;
-  const cs = String(combo);
-  ctx.fillText(cs, 4 * u, cy);
-  let cx = 4 * u + ctx.measureText(cs).width;
-  ctx.font = `600 ${34 * u}px ${MONO}`;
-  ctx.fillStyle = 'rgba(255,255,255,0.8)';
-  const ts = `/${total}`;
-  ctx.fillText(ts, cx, cy);
-  cx += ctx.measureText(ts).width;
-  ctx.fillStyle = 'rgba(255,255,255,0.8)';
-  ctx.fillText(' Combo', cx, cy);
+    // --- combo as current/total, bottom left ---
+    const total = scene.diff?.maxCombo ?? 0;
+    const combo = v ? v.combo : 0;
+    const cy = H - 12 * u;
+    ctx.fillStyle = '#fff';
+    ctx.font = `600 ${51 * u}px ${MONO}`;
+    const cs = String(combo);
+    ctx.fillText(cs, 4 * u, cy);
+    let cx = 4 * u + ctx.measureText(cs).width;
+    ctx.font = `600 ${34 * u}px ${MONO}`;
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    const ts = `/${total}`;
+    ctx.fillText(ts, cx, cy);
+    cx += ctx.measureText(ts).width;
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.fillText(' Combo', cx, cy);
+  }
 
   // --- key overlay, right edge: left, right, dash, and a spare box ---
   if (keys) {
@@ -502,7 +506,7 @@ function drawHitLighting(ctx, skin, scene, t, catcherX) {
  * @param {{skin: import('./skin.js').Skin, showCatchWidth?: boolean}} opts
  */
 export function drawFrame(ctx, W, H, scene, track, t, opts = {}) {
-  const { skin, showCatchWidth = false, showHud = false, hitLighting = false, style = 'overlay', bg = null, bgDim = 0.8, keys = null, argon = null } = opts;
+  const { skin, showCatchWidth = false, showHud = false, hitLighting = false, style = 'overlay', bg = null, bgDim = 0.8, keys = null, argon = null, tosu = null } = opts;
   const overlay = true;                                    // both HUD styles use the full-height playfield
   const { s, ox, oy } = layout(W, H, overlay);
 
@@ -565,7 +569,7 @@ export function drawFrame(ctx, W, H, scene, track, t, opts = {}) {
 
   if (showHud && style === 'argon') drawArgonHud(ctx, W, H, scene, t, argon, { keys });
   else if (showHud && style === 'stable' && skin) drawStableHud(ctx, W, H, scene, t, skin);
-  else if (showHud) drawOverlay(ctx, W, H, scene, t, { bg, keys });
+  else if (showHud) drawOverlay(ctx, W, H, scene, t, { bg, keys, tosu });
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
 }

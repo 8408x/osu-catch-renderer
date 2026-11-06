@@ -1433,4 +1433,29 @@ await test('background: parsed from [Events], found in the .osz by its (case-ins
 });
 
 
+await test('tosu overlays: tokens and markup follow the real overlays\' bindings', async () => {
+  const T = await import('../src/tosu.js');
+  assert.equal(T.mmss(61000), '01:01');
+  assert.equal(T.gradeToken(1, 0), 'SS');
+  assert.equal(T.gradeToken(1, 8), 'SSH');
+  assert.equal(T.gradeToken(0.9865, 0), 'S');
+  assert.equal(T.gradeToken(0.95, 0), 'A');
+  assert.equal(T.modsToken(8 | 64), 'HD,DT');
+  const scene = { objects: [{ t: 1000 }, { t: 61000 }], mods: 0,
+    meta: { title: 'T<&>', artistUnicode: 'A', creator: 'C', version: 'V' },
+    hud: { timeline: [{ t: 2000, combo: 25, acc: 0.9865, nMiss: 1 }, { t: 3000, combo: 3, acc: 0.98, nMiss: 1 }] },
+    diff: { maxCombo: 100, steps: [] }, maxPp: 500 };
+  const k = T.tosuTokens(scene, 3500);
+  assert.equal(k.time, '00:03');
+  assert.equal(k.combo, 3);
+  assert.equal(k.currentMaxCombo, 25);
+  assert.equal(k.fcing, false);
+  assert.equal(k.maxCombo, 100);
+  assert.equal(k.ppIfRestFced, 500);
+  assert.match(T.titleHtml(k, null), /T&lt;&amp;&gt;/);
+  assert.match(T.accHtml(k), /class="rank"/);
+  assert.match(T.comboHtml(k), /\(25\)/);
+  assert.doesNotMatch(T.comboHtml({ ...k, fcing: true }), /\(25\)/);
+});
+
 console.log(`\n${passed} tests passed${process.exitCode ? ' (with failures)' : ''}`);

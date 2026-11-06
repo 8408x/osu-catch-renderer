@@ -4,7 +4,7 @@
 // and the output has perfectly even frame timing.
 
 import { Muxer, ArrayBufferTarget } from '../vendor/mp4-muxer.mjs';
-import { SAMPLE_RATE } from './audio.js?v=20261107b';
+import { SAMPLE_RATE } from './audio.js?v=20261107c';
 
 // Tried in order; the first one this browser can encode wins.
 const CANDIDATES = [
@@ -100,7 +100,7 @@ async function encodeAudioTrack({ channels, sampleRate }, picked, muxer, signal,
 /**
  * @param {object} o
  * @param {HTMLCanvasElement|OffscreenCanvas} o.canvas canvas that drawAt() paints on (even width/height)
- * @param {(timeMs:number)=>void} o.drawAt paints the frame for beatmap time `timeMs`
+ * @param {(timeMs:number)=>void|Promise<void>} o.drawAt paints the frame for beatmap time `timeMs`
  * @param {number} o.startTime beatmap time of the first frame (ms)
  * @param {number} o.endTime beatmap time to stop at (ms)
  * @param {number} [o.rate] playback rate (DT = 1.5): video seconds = map seconds / rate
@@ -161,7 +161,7 @@ export async function exportMp4({ canvas, drawAt, startTime, endTime, rate = 1, 
       if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError');
       if (encoderError) throw encoderError;
 
-      drawAt(startTime + (i / fps) * 1000 * rate);
+      await drawAt(startTime + (i / fps) * 1000 * rate);
 
       const frame = new VideoFrame(canvas, { timestamp: Math.round(i * frameUs), duration: Math.round(frameUs) });
       encoder.encode(frame, { keyFrame: i % (fps * 2) === 0 });

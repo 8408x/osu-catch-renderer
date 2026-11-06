@@ -2,14 +2,14 @@
 // from a parsed beatmap, following osu!lazer's JuiceStream / SliderEventGenerator logic,
 // and works out which objects a given replay caught.
 
-import { createPath } from './slider.js?v=20261107b';
-import { LegacyRandom, statelessInt, statelessSingle } from './rng.js?v=20261107b';
-import { buildCatcherFx } from './catcher.js?v=20261107b';
-import { buildHud } from './score.js?v=20261107b';
-import { buildHealth } from './health.js?v=20261107b';
-import { buildDifficulty, maxPerformance } from './pp.js?v=20261107b';
-import { buildPlate } from './plate.js?v=20261107b';
-import { makeSampler, bananaSamples } from './hitsounds.js?v=20261107b';
+import { createPath } from './slider.js?v=20261107c';
+import { LegacyRandom, statelessInt, statelessSingle } from './rng.js?v=20261107c';
+import { buildCatcherFx } from './catcher.js?v=20261107c';
+import { buildHud } from './score.js?v=20261107c';
+import { buildHealth } from './health.js?v=20261107c';
+import { buildDifficulty, maxPerformance } from './pp.js?v=20261107c';
+import { buildPlate } from './plate.js?v=20261107c';
+import { makeSampler, bananaSamples } from './hitsounds.js?v=20261107c';
 
 export const FIELD_W = 512;
 export const FIELD_H = 384;
@@ -296,7 +296,7 @@ export function buildScene(bm, mods = 0) {
     objects,
     startTime: firstT - preempt - 500,
     endTime: lastT + 1500,
-    meta: { title: bm.title, artist: bm.artist, version: bm.version, creator: bm.creator },
+    meta: { title: bm.title, artist: bm.artist, artistUnicode: bm.artistUnicode || bm.artist, version: bm.version, creator: bm.creator },
   };
 }
 

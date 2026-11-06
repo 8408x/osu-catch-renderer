@@ -8,7 +8,7 @@ export function parseOsu(text) {
     mode: 0,
     audioFilename: '', audioLeadIn: 0,
     sampleSet: 1, sampleVolume: 100,   // [General] SampleSet (1 normal, 2 soft, 3 drum) and default volume
-    title: '', artist: '', version: '', creator: '',
+    title: '', artist: '', artistUnicode: '', version: '', creator: '',
     cs: 5, ar: null, od: 5, hp: 5,
     background: '',                    // [Events] background image file name
     breaks: [],                        // [Events] break periods: {start, end} in ms
@@ -69,6 +69,7 @@ export function parseOsu(text) {
       else if (section === 'Metadata') {
         if (key === 'Title') bm.title = val;
         else if (key === 'Artist') bm.artist = val;
+        else if (key === 'ArtistUnicode') bm.artistUnicode = val;
         else if (key === 'Version') bm.version = val;
         else if (key === 'Creator') bm.creator = val;
       } else if (section === 'Difficulty') {

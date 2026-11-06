@@ -1,19 +1,20 @@
-import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261107b';
-import { parseOsu } from './osu.js?v=20261107b';
-import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261107b';
-import { compareWithReplay } from './score.js?v=20261107b';
-import { nightcoreBeats } from './nightcore.js?v=20261107b';
-import { ReplayTrack } from './replay.js?v=20261107b';
-import { drawFrame, loadOverlayFonts } from './render.js?v=20261107b';
-import { loadArgonFonts } from './argon.js?v=20261107b';
-import { exportMp4, webCodecsAvailable } from './encode.js?v=20261107b';
-import { md5 } from './md5.js?v=20261107b';
-import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261107b';
-import { readOsz, findDifficulty, findAudio, findImage } from './osz.js?v=20261107b';
-import { buildKeys } from './keys.js?v=20261107b';
-import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261107b';
-import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261107b';
-import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261107b';
+import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261107c';
+import { parseOsu } from './osu.js?v=20261107c';
+import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261107c';
+import { compareWithReplay } from './score.js?v=20261107c';
+import { nightcoreBeats } from './nightcore.js?v=20261107c';
+import { ReplayTrack } from './replay.js?v=20261107c';
+import { drawFrame, loadOverlayFonts } from './render.js?v=20261107c';
+import { loadArgonFonts } from './argon.js?v=20261107c';
+import { TosuOverlays } from './tosu.js?v=20261107c';
+import { exportMp4, webCodecsAvailable } from './encode.js?v=20261107c';
+import { md5 } from './md5.js?v=20261107c';
+import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261107c';
+import { readOsz, findDifficulty, findAudio, findImage } from './osz.js?v=20261107c';
+import { buildKeys } from './keys.js?v=20261107c';
+import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261107c';
+import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261107c';
+import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261107c';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('stage');
@@ -28,6 +29,7 @@ const state = {
   defaultSounds: null,  // Map(file name -> bytes) of the bundled hitsounds, loaded on the first export
   osz: null,        // { difficulties, audio, images, name } from a loaded .osz
   bgFile: null,     // { name, bytes } when a background image was chosen by hand
+  tosu: null,       // the real tosu overlays (CPOL look), rendered through SVG foreignObject
   argon: null,      // digit images of the osu!lazer (Argon) HUD
   bg: null, bgKey: '', // decoded background (ImageBitmap) and what it was decoded from
   keys: null,       // inferred key presses of the replay
@@ -88,6 +90,7 @@ function drawAt(t) {
     hitLighting: $('showlight').checked,
     style: $('hudstyle').value,
     argon: state.argon,
+    tosu: state.tosu,
     bg: $('showbg').checked ? state.bg : null,
     bgDim: Math.min(100, Math.max(0, Number($('bgdim').value) || 0)) / 100,
     keys: state.keys,
@@ -229,10 +232,11 @@ async function loadBackground() {
   if (key === state.bgKey) return;
   state.bgKey = key;
   state.bg = null;
+  state.tosu?.setCover(null);
   if (bytes) {
     try {
       const bmp = await createImageBitmap(new Blob([bytes]));
-      if (state.bgKey === key) state.bg = bmp;
+      if (state.bgKey === key) { state.bg = bmp; state.tosu?.setCover(bmp); }
     } catch { /* unreadable image: no background */ }
   }
   drawAt(state.t);
@@ -619,7 +623,10 @@ $('export').addEventListener('click', async () => {
   try {
     const res = await exportMp4({
       canvas,
-      drawAt: (t) => drawAt(t),
+      drawAt: async (t) => {
+        if (state.tosu && $('hudstyle').value === 'overlay' && $('showhud').checked) { try { await state.tosu.prepare(sc, t); } catch { /* drawn by the canvas fallback */ } }
+        drawAt(t);
+      },
       startTime: sc.startTime,
       endTime: sc.endTime,
       rate: sc.rate,
@@ -695,6 +702,15 @@ loadDefaultSkin(skinEnv, bytesOf)
     state.skinMsgs = [['err', `Could not load the default skin (${err.message}). Serve this folder over http://localhost, not file://.`]];
     refresh();
   });
+
+// the real tosu overlays: load their stylesheet + font, redraw as images arrive
+TosuOverlays.load(bytesOf).then((o) => {
+  let queued = false;
+  o.onReady = () => { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; drawAt(state.t); }); };
+  o.setCover(state.bg);
+  state.tosu = o;
+  drawAt(state.t);
+}).catch(() => {});
 
 // digits for the osu!lazer HUD
 loadArgonFonts(skinEnv, bytesOf).then((g) => { state.argon = g; drawAt(state.t); }).catch(() => {});
