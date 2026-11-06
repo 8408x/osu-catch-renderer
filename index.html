@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="app-version" content="20261107i">
+  <meta name="app-version" content="20261107j">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>osu!catch Replay Renderer</title>
   <style>
@@ -119,6 +119,7 @@
         </select>
       </label>
       <label class="check"><input id="showbg" type="checkbox" checked> Show background</label>
+      <label class="check"><input id="showvideo" type="checkbox" checked disabled> Background video</label>
       <label>Background dim (%)
         <input id="bgdim" type="number" min="0" max="100" step="5" value="80" style="width:90px">
       </label>
@@ -126,6 +127,7 @@
       <label class="check"><input id="showlight" type="checkbox" checked> Hit lighting</label>
       <label class="check"><input id="showwidth" type="checkbox"> Show catch width line</label>
     </div>
+    <p id="videonote" class="dim" style="margin:0 0 10px;font-size:13px"></p>
     <div class="controls" style="margin-top:0">
       <button id="export" disabled>Render MP4</button>
       <button id="cancel" class="ghost" disabled>Cancel</button>
@@ -138,6 +140,6 @@
 <footer id="ver" class="dim" style="max-width:960px;margin:0 auto;padding:0 16px 24px;font-size:12px"></footer>
 
 <script src="vendor/lzma-d-min.js"></script>
-<script type="module" src="src/main.js?v=20261107i"></script>
+<script type="module" src="src/main.js?v=20261107j"></script>
 </body>
 </html>

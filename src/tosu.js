@@ -5,8 +5,8 @@
 // are needed for a whole song. Chromium, Edge and Firefox can rasterise this; where it is not possible the caller falls
 // back to the canvas drawing.
 
-import { hudAt } from './score.js?v=20261107i';
-import { livePp } from './pp.js?v=20261107i';
+import { hudAt } from './score.js?v=20261107j';
+import { livePp } from './pp.js?v=20261107j';
 
 const CIRCUMFERENCE = 30 * Math.PI * 2;                 // the progress ring's circle, as in the overlay's App.js
 const OSU_GRADE = ['SSH', 'SS', 'SH', 'S', 'A', 'B', 'C', 'D', 'F', ''];   // lib/consts.js
@@ -151,7 +151,7 @@ export class TosuOverlays {
   /** Fetch the stylesheet and the three Roboto Mono weights and build the overlay renderer. */
   static async load(bytesOf, base = 'assets/') {
     const css = new TextDecoder().decode(await bytesOf(`${base}tosu/main.css`));
-    const weights = [[400, 'regular'], [500, '500'], [600, '600'], [700, '700']];
+    const weights = [[400, 'regular'], [600, '600'], [700, '700']];
     const faces = [];
     for (const [w, n] of weights) {
       try {
@@ -202,11 +202,12 @@ export class TosuOverlays {
       const img = new Image();
       img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(this.svgFor(name, k))}`;
       await img.decode();
-      const bmp = await createImageBitmap(img);
-      this.cache.set(id, bmp);
-      if (this.cache.size > 600) { const old = this.cache.keys().next().value; this.cache.get(old)?.close?.(); this.cache.delete(old); }
-      this.last[name] = bmp;
-      return bmp;
+      // keep the decoded <img> itself: drawing it keeps the canvas clean, whereas createImageBitmap() of an SVG with a
+      // foreignObject marks the bitmap (and any canvas it is drawn on) as tainted, which makes VideoFrame() throw on export
+      this.cache.set(id, img);
+      if (this.cache.size > 600) this.cache.delete(this.cache.keys().next().value);
+      this.last[name] = img;
+      return img;
     })().catch((err) => { this.failed = true; throw err; }).finally(() => this.pending.delete(id));
     this.pending.set(id, job);
     return job;

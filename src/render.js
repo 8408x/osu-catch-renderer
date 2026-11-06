@@ -7,14 +7,14 @@
 //   - droplets use 0.8x and tiny droplets 0.4x of that; sprites are capped at 160 px
 //   - catcher sprite = texture size x 0.35 x catcher scale, hung from the plate line 16 px down
 
-import { FIELD_W, FIELD_H } from './catch.js?v=20261107i';
-import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261107i';
-import { hudAt, scoreShownAt } from './score.js?v=20261107i';
-import { plateAt, explosionsAt } from './plate.js?v=20261107i';
-import { drawArgonHud } from './argon.js?v=20261107i';
-import { healthAt } from './health.js?v=20261107i';
-import { livePp } from './pp.js?v=20261107i';
-import { keysAt } from './keys.js?v=20261107i';
+import { FIELD_W, FIELD_H } from './catch.js?v=20261107j';
+import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261107j';
+import { hudAt, scoreShownAt } from './score.js?v=20261107j';
+import { plateAt, explosionsAt } from './plate.js?v=20261107j';
+import { drawArgonHud } from './argon.js?v=20261107j';
+import { healthAt } from './health.js?v=20261107j';
+import { livePp } from './pp.js?v=20261107j';
+import { keysAt } from './keys.js?v=20261107j';
 
 const ZONE = 120;  // room below the field for the catcher, in field units
 const PAD = 12;
@@ -184,7 +184,7 @@ export function loadOverlayFonts(base = new URL('../assets/fonts/', import.meta.
 
 /** Cover-fit the beatmap background over the whole frame and darken it. */
 function drawBackground(ctx, W, H, img, dim) {
-  const iw = img.width, ih = img.height;
+  const iw = img.videoWidth || img.width, ih = img.videoHeight || img.height;   // a <video> or an image
   if (!iw || !ih) return;
   const k = Math.max(W / iw, H / ih);
   ctx.setTransform(1, 0, 0, 1, 0, 0);

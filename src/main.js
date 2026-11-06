@@ -1,21 +1,22 @@
-import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261107i';
-import { parseOsu } from './osu.js?v=20261107i';
-import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261107i';
-import { compareWithReplay } from './score.js?v=20261107i';
-import { nightcoreBeats } from './nightcore.js?v=20261107i';
-import { ReplayTrack } from './replay.js?v=20261107i';
-import { drawFrame, loadOverlayFonts } from './render.js?v=20261107i';
-import { loadArgonFonts } from './argon.js?v=20261107i';
-import { TosuOverlays } from './tosu.js?v=20261107i';
-import { exportMp4, webCodecsAvailable } from './encode.js?v=20261107i';
-import { VERSION } from './version.js?v=20261107i';
-import { md5 } from './md5.js?v=20261107i';
-import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261107i';
-import { readOsz, findDifficulty, findAudio, findImage } from './osz.js?v=20261107i';
-import { buildKeys } from './keys.js?v=20261107i';
-import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261107i';
-import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261107i';
-import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261107i';
+import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261107j';
+import { parseOsu } from './osu.js?v=20261107j';
+import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261107j';
+import { compareWithReplay } from './score.js?v=20261107j';
+import { nightcoreBeats } from './nightcore.js?v=20261107j';
+import { ReplayTrack } from './replay.js?v=20261107j';
+import { drawFrame, loadOverlayFonts } from './render.js?v=20261107j';
+import { loadArgonFonts } from './argon.js?v=20261107j';
+import { TosuOverlays } from './tosu.js?v=20261107j';
+import { exportMp4, webCodecsAvailable } from './encode.js?v=20261107j';
+import { VERSION } from './version.js?v=20261107j';
+import { md5 } from './md5.js?v=20261107j';
+import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261107j';
+import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261107j';
+import { BackgroundVideo } from './bgvideo.js?v=20261107j';
+import { buildKeys } from './keys.js?v=20261107j';
+import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261107j';
+import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261107j';
+import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261107j';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('stage');
@@ -32,6 +33,7 @@ const state = {
   bgFile: null,     // { name, bytes } when a background image was chosen by hand
   tosu: null,       // the real tosu overlays (CPOL look), rendered through SVG foreignObject
   argon: null,      // digit images of the osu!lazer (Argon) HUD
+  bgv: null, bgvKey: '', // the beatmap's background video (BackgroundVideo) and what it was loaded from
   bg: null, bgKey: '', // decoded background (ImageBitmap) and what it was decoded from
   keys: null,       // inferred key presses of the replay
   audioFile: null,  // { name, bytes } when a plain song file was chosen
@@ -71,7 +73,16 @@ function size() {
   return { w, h };
 }
 
-function drawAt(t) {
+/** What to paint behind the playfield at time t: the video frame when it is on and ready, else the still picture. */
+function backgroundFor(t) {
+  if (!$('showbg').checked) { state.bgv?.sync(t, false); return null; }
+  if (state.bgv && $('showvideo').checked && state.bgv.sync(t, playing, state.scene?.rate ?? 1)) return state.bgv.el;
+  return state.bg;
+}
+
+let exporting = false;     // while the exporter owns the canvas (and the background video), preview redraws stand aside
+function drawAt(t, fromExport = false) {
+  if (exporting && !fromExport) return;
   const { width: W, height: H } = canvas;
   if (!state.scene) {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -92,7 +103,7 @@ function drawAt(t) {
     style: $('hudstyle').value,
     argon: state.argon,
     tosu: state.tosu,
-    bg: $('showbg').checked ? state.bg : null,
+    bg: backgroundFor(t),
     bgDim: Math.min(100, Math.max(0, Number($('bgdim').value) || 0)) / 100,
     keys: state.keys,
   });
@@ -219,6 +230,7 @@ function refresh() {
   drawAt(state.t);
   updateClock();
   loadBackground();
+  loadBackgroundVideo();
 }
 
 /** Decode the background (picked file, else the .osz's own image for this difficulty) and redraw when it is ready. */
@@ -242,6 +254,31 @@ async function loadBackground() {
   }
   drawAt(state.t);
 }
+
+/** Load the beatmap's background video from the .osz (the picture stays as the fallback). */
+async function loadBackgroundVideo() {
+  const v = state.beatmap?.video;
+  const bytes = v && state.osz ? findVideo(state.osz, v.file) : null;
+  const key = bytes ? `${state.osz.name}:${v.file}|${v.offset}|${bytes.length}` : '';
+  if (key === state.bgvKey) return;
+  state.bgvKey = key;
+  state.bgv?.dispose();
+  state.bgv = null;
+  $('showvideo').disabled = true;
+  setVideoNote('');
+  if (!bytes) { if (v && state.osz) setVideoNote(`The map has a video (${v.file}) but it is not in the .osz, so the picture is used.`); return; }
+  setVideoNote(`Loading the background video (${(bytes.length / 1e6).toFixed(0)} MB)…`);
+  const bgv = await BackgroundVideo.create(bytes, v.file, v.offset);
+  if (state.bgvKey !== key) { bgv?.dispose(); return; }
+  if (!bgv) { setVideoNote(`This browser cannot play the map's video (${v.file}), so the picture is used. Chrome and Edge play mp4 and webm.`); return; }
+  state.bgv = bgv;
+  bgv.onFrame = () => { if (!playing) drawAt(state.t); };
+  $('showvideo').disabled = false;
+  setVideoNote(`Background video: ${v.file} (${bgv.duration.toFixed(0)} s, starts at ${(v.offset / 1000).toFixed(1)} s)`);
+  drawAt(state.t);
+}
+
+function setVideoNote(text) { const el = $('videonote'); if (el) el.textContent = text; }
 
 function updateClock() {
   const sc = state.scene;
@@ -489,7 +526,7 @@ $('useDefault').addEventListener('click', () => {
 $('showwidth').addEventListener('change', () => drawAt(state.t));
 $('showhud').addEventListener('change', () => drawAt(state.t));
 $('showlight').addEventListener('change', () => drawAt(state.t));
-for (const id of ['hudstyle', 'showbg', 'bgdim']) $(id).addEventListener('input', () => drawAt(state.t));
+for (const id of ['hudstyle', 'showbg', 'bgdim', 'showvideo']) $(id).addEventListener('input', () => drawAt(state.t));
 
 $('bgfile').addEventListener('change', async (e) => {
   const file = e.target.files[0];
@@ -591,9 +628,11 @@ $('res').addEventListener('change', setSize);
 
 // ---------- export ----------
 function setBusy(busy) {
+  exporting = busy;
   $('export').disabled = busy || !state.scene;
   $('cancel').disabled = !busy;
   for (const id of ['osr', 'osu', 'audio', 'skin', 'useDefault', 'res', 'fps', 'mbps', 'volume', 'usehits', 'hitvolume', 'showwidth', 'showhud', 'showlight', 'hudstyle', 'showbg', 'bgdim', 'bgfile', 'play', 'seek']) $(id).disabled = busy;
+  $('showvideo').disabled = busy || !state.bgv;
   $('usemusic').disabled = busy || !currentMusic()?.bytes;
   $('mirrorbtn').disabled = busy || !state.replay;
   $('mirrorid').disabled = busy;
@@ -625,8 +664,9 @@ $('export').addEventListener('click', async () => {
     const res = await exportMp4({
       canvas,
       drawAt: async (t) => {
+        if (state.bgv && $('showbg').checked && $('showvideo').checked && state.bgv.active(t)) await state.bgv.seek(t);
         if (state.tosu && $('hudstyle').value === 'overlay' && $('showhud').checked) { try { await state.tosu.prepare(sc, t); } catch { /* drawn by the canvas fallback */ } }
-        drawAt(t);
+        drawAt(t, true);
       },
       startTime: sc.startTime,
       endTime: sc.endTime,

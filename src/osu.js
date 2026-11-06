@@ -11,6 +11,7 @@ export function parseOsu(text) {
     title: '', artist: '', artistUnicode: '', version: '', creator: '',
     cs: 5, ar: null, od: 5, hp: 5,
     background: '',                    // [Events] background image file name
+    video: null,                       // [Events] background video: {file, offset} (offset in ms, may be negative)
     breaks: [],                        // [Events] break periods: {start, end} in ms
     sliderMultiplier: 1.4,
     sliderTickRate: 1,
@@ -48,6 +49,11 @@ export function parseOsu(text) {
       if (parts[0] === '0' && parts[2] && !bm.background) {
         const name = parts[2].replace(/^"|"$/g, '').trim();
         if (/\.(jpe?g|png)$/i.test(name)) bm.background = name;
+      }
+      if ((parts[0] === '1' || parts[0] === 'Video') && parts[2] && !bm.video) {
+        const file = parts[2].replace(/^"|"$/g, '').trim();
+        const offset = parseInt(parts[1], 10);
+        if (/\.(mp4|m4v|mov|webm|ogv|mkv|avi|flv|wmv)$/i.test(file)) bm.video = { file, offset: Number.isFinite(offset) ? offset : 0 };
       }
       if (parts[0] === '2' || parts[0] === 'Break') {
         const start = parseFloat(parts[1]), end = parseFloat(parts[2]);

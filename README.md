@@ -137,6 +137,9 @@ The **Overlay style** menu picks the look. The default, *CPOL*, recreates the lo
 - Catch constants and juice stream logic follow osu!lazer (MIT).
 - **`assets/default-skin/*.png`, `assets/argon/*.png` and `assets/default-sounds/*.wav` are from ppy/osu-resources and licensed CC BY-NC 4.0: free to use with credit, but not for commercial use.** See the `ATTRIBUTION.md` in each folder. If you put this online, keep it free and non-commercial, or replace these images.
 
+## Background video
+If the .osz has a beatmap video (an `[Events]` `Video,offset,"file"` line) and the browser can play it (Chrome and Edge: mp4, webm), it is painted behind the playfield from its start offset to its end, dimmed like the picture; before and after it the still background shows. The preview plays it with the song at the map's rate (a long jump re-syncs it); the export seeks it to the exact time of every frame, which makes video exports slower than picture ones. The **Background video** tick turns it off. avi / flv and other formats the browser cannot decode fall back to the picture with a note. The video's own sound is never used. Videos over 300 MB in the .osz are skipped.
+
 ## Deploying
 
 GitHub Pages lets browsers cache the JavaScript modules for ten minutes. Every `import` in `src/` and the script tag in `index.html` carry a `?v=...` stamp so a new deploy is picked up straight away; when you change code, replace the stamp everywhere (`grep -rl "?v=" src index.html`), including `src/version.js` and the `app-version` meta tag; a test checks they agree. The page shows the running version at the bottom and says when a newer one is deployed.

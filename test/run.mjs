@@ -1513,4 +1513,17 @@ await test('version: the stamp in version.js, index.html and every ?v= import ag
   assert.deepEqual([...stamps], [VERSION]);
 });
 
+await test('background video: [Events] Video line parsed, videos read from the .osz and found by name', async () => {
+  const bm = parseOsu('osu file format v14\n[General]\nMode: 2\n[Events]\n0,0,"bg.jpg",0,0\nVideo,-1500,"Intro/Clip.MP4",0,0\n2,100,200\n');
+  assert.deepEqual(bm.video, { file: 'Intro/Clip.MP4', offset: -1500 });
+  assert.equal(bm.background, 'bg.jpg');
+  assert.equal(parseOsu('osu file format v14\n[Events]\n1,0,"x.avi",0,0\n').video.offset, 0);
+  assert.equal(parseOsu('osu file format v14\n[Events]\n0,0,"bg.jpg"\n').video, null);
+  const OSZ = await import('../src/osz.js');
+  const zip = zipSync({ 'a.osu': strToU8('osu file format v14\n'), 'sub/Clip.MP4': new Uint8Array([9, 9]), 'bg.jpg': new Uint8Array([1]) });
+  const osz = OSZ.readOsz(zip);
+  assert.deepEqual([...OSZ.findVideo(osz, 'clip.mp4')], [9, 9]);
+  assert.equal(OSZ.findVideo(osz, 'other.mp4'), null);
+});
+
 console.log(`\n${passed} tests passed${process.exitCode ? ' (with failures)' : ''}`);
