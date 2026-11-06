@@ -745,6 +745,8 @@ if (!canvasLib) {
     const draw = (sk, keys) => { drawFrame(ctx, W, H, scene, track, t, { skin: sk, showHud: true, style: 'stable', keys }); return cv.toBuffer('image/png'); };
     const keys = buildKeys(frames);
     assert.notEqual(Buffer.compare(draw(skin, keys), draw(def, keys)), 0, 'skin images change the HUD');
+    const ov = (sk) => { drawFrame(ctx, W, H, scene, track, t, { skin: sk, showHud: true, style: 'overlay', keys }); return cv.toBuffer('image/png'); };
+    assert.notEqual(Buffer.compare(ov(skin), ov(def)), 0, 'CPOL key counter follows the skin\'s inputoverlay-key');
     drawFrame(ctx, W, H, scene, track, t, { skin, showHud: true, style: 'stable', keys });
     const px = (x, y) => [...ctx.getImageData(x, y, 1, 1).data];
     assert.deepEqual(px(Math.round(1200 * H / 768 * 0.5), 300).slice(0, 3).length, 3);
@@ -1477,6 +1479,7 @@ await test('tosu overlays: tokens and markup follow the real overlays\' bindings
   assert.equal(T.gradeToken(0.9865, 0), 'S');
   assert.equal(T.gradeToken(0.95, 0), 'A');
   assert.equal(T.modsToken(8 | 64), 'HD,DT');
+  assert.equal(T.modsToken(0), 'NM');
   const scene = { objects: [{ t: 1000 }, { t: 61000 }], mods: 0,
     meta: { title: 'T<&>', artistUnicode: 'A', creator: 'C', version: 'V' },
     hud: { timeline: [{ t: 2000, combo: 25, acc: 0.9865, nMiss: 1 }, { t: 3000, combo: 3, acc: 0.98, nMiss: 1 }] },

@@ -5,8 +5,8 @@
 // are needed for a whole song. Chromium, Edge and Firefox can rasterise this; where it is not possible the caller falls
 // back to the canvas drawing.
 
-import { hudAt } from './score.js?v=20261107f';
-import { livePp } from './pp.js?v=20261107f';
+import { hudAt } from './score.js?v=20261107g';
+import { livePp } from './pp.js?v=20261107g';
 
 const CIRCUMFERENCE = 30 * Math.PI * 2;                 // the progress ring's circle, as in the overlay's App.js
 const OSU_GRADE = ['SSH', 'SS', 'SH', 'S', 'A', 'B', 'C', 'D', 'F', ''];   // lib/consts.js
@@ -27,7 +27,7 @@ const MOD_LABELS = [[1, 'NF'], [2, 'EZ'], [8, 'HD'], [16, 'HR'], [32, 'SD'], [64
 export function modsToken(mods) {
   const list = MOD_LABELS.filter(([bit]) => mods & bit).map(([, n]) => n);
   if (mods & 512) { const i = list.indexOf('DT'); if (i >= 0) list[i] = 'NC'; else list.push('NC'); }
-  return list.join(',');
+  return list.length ? list.join(',') : 'NM';   // tosu names no mods "NM"
 }
 
 /** osu! grade as tosu names it (SSH / SS / SH / S / A / B / C / D). */

@@ -7,14 +7,14 @@
 //   - droplets use 0.8x and tiny droplets 0.4x of that; sprites are capped at 160 px
 //   - catcher sprite = texture size x 0.35 x catcher scale, hung from the plate line 16 px down
 
-import { FIELD_W, FIELD_H } from './catch.js?v=20261107f';
-import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261107f';
-import { hudAt, scoreShownAt } from './score.js?v=20261107f';
-import { plateAt, explosionsAt } from './plate.js?v=20261107f';
-import { drawArgonHud } from './argon.js?v=20261107f';
-import { healthAt } from './health.js?v=20261107f';
-import { livePp } from './pp.js?v=20261107f';
-import { keysAt } from './keys.js?v=20261107f';
+import { FIELD_W, FIELD_H } from './catch.js?v=20261107g';
+import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261107g';
+import { hudAt, scoreShownAt } from './score.js?v=20261107g';
+import { plateAt, explosionsAt } from './plate.js?v=20261107g';
+import { drawArgonHud } from './argon.js?v=20261107g';
+import { healthAt } from './health.js?v=20261107g';
+import { livePp } from './pp.js?v=20261107g';
+import { keysAt } from './keys.js?v=20261107g';
 
 const ZONE = 120;  // room below the field for the catcher, in field units
 const PAD = 12;
@@ -219,7 +219,7 @@ export const rankOf = (acc, mods) => {
 };
 const mmss = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
 
-function drawOverlay(ctx, W, H, scene, t, { bg, keys, tosu }) {
+function drawOverlay(ctx, W, H, scene, t, { bg, keys, tosu, skin }) {
   const u = H / 1080;
   const v = scene.hud ? hudAt(scene.hud, t) : null;
   const meta = scene.meta ?? {};
@@ -325,7 +325,10 @@ function drawOverlay(ctx, W, H, scene, t, { bg, keys, tosu }) {
   }
 
   // --- key overlay, right edge: left, right, dash, and a spare box ---
-  if (keys) {
+  if (keys && skin?.get('inputoverlay-key')) {            // the skin's own key counter design
+    ctx.shadowBlur = 0;
+    drawStableKeys(ctx, W, H, skin, keys, t, H / 768);
+  } else if (keys) {
     const ks = keysAt(keys, t);
     const size = 56 * u, gap = 10 * u, kx = W - size - 8 * u;
     const top = H * 0.5 - (4 * size + 3 * gap) / 2 + 36 * u;
@@ -622,7 +625,7 @@ export function drawFrame(ctx, W, H, scene, track, t, opts = {}) {
 
   if (showHud && style === 'argon') drawArgonHud(ctx, W, H, scene, t, argon, { keys });
   else if (showHud && style === 'stable' && skin) drawStableHud(ctx, W, H, scene, t, skin, keys);
-  else if (showHud) drawOverlay(ctx, W, H, scene, t, { bg, keys, tosu });
+  else if (showHud) drawOverlay(ctx, W, H, scene, t, { bg, keys, tosu, skin });
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
