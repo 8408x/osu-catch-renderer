@@ -1248,5 +1248,74 @@ await test('nightcore beat: a later timing point takes over from its own time; s
   assert.ok(mid.length > 0 && mid[0].t === 4100, 'the loop is already running when the song starts');
 });
 
+// ---------- score and HP ----------
+const HP = await import('../src/health.js');
+const mkRun = (spec, extra = {}) => ({ mods: 0, hp: 5, breaks: [], ...extra,
+  objects: spec.map(([kind, t, caught = true]) => ({ kind, t, caught })) });
+
+await test('score: a perfect run is exactly 1,000,000 plus 200 per banana; misses and missed tinies take part away', () => {
+  const run = (caught) => {
+    const objs = [];
+    for (let i = 0; i < 300; i++) objs.push(['fruit', 1000 + i * 100, caught === true || caught.includes(i)]);
+    for (let i = 0; i < 100; i++) objs.push(['tiny', 1050 + i * 300, true]);
+    objs.push(['banana', 40000, true], ['banana', 40100, true]);
+    return mkRun(objs.sort((a, b) => a[1] - b[1]));
+  };
+  const perfect = SC.buildHud(run(true));
+  assert.equal(perfect.totals.score, 1000400);
+  const one = SC.buildHud(mkRun([['fruit', 100, true], ['fruit', 200, true], ['fruit', 300, false], ['fruit', 400, true]]));
+  assert.ok(one.totals.score < 1000000 && one.totals.score > 0);
+  // the first fruits weigh 0.5 (combo 1-2), so a fruit-only map with every fruit caught is exactly 1M
+  assert.equal(SC.buildHud(mkRun([['fruit', 100], ['fruit', 200], ['fruit', 300]])).totals.score, 1000000);
+  // every tiny missed on a map where they are half of fruits + tinies
+  const tinyMiss = SC.buildHud(mkRun([['fruit', 100], ['tiny', 150, false], ['fruit', 200], ['tiny', 250, false]]));
+  assert.equal(tinyMiss.totals.score, 800000, 'tinies are half of fruits + tinies here, so the 400k * 0.5 tiny share is lost');
+});
+
+await test('score: mod multipliers (CatchScoreMultiplierCalculator) and the 1 s roll-up of the counter', () => {
+  near(SC.scoreMultiplier(0), 1);
+  near(SC.scoreMultiplier(2), 0.5);
+  near(SC.scoreMultiplier(16 | 8), 1.12 * 1.06);
+  near(SC.scoreMultiplier(64 | 512 | 8), 1.1 * 1.06);
+  near(SC.scoreMultiplier(256), 0.3);
+  const hud = SC.buildHud(mkRun([['fruit', 1000], ['fruit', 1100]]));
+  const v = SC.hudAt(hud, 1100);
+  assert.equal(SC.scoreShownAt(v, 1100), Math.round(v.scoreFrom), 'right at the judgement the counter still shows the old value');
+  assert.equal(SC.scoreShownAt(v, 1100 + 1000), v.score, 'a second later it has arrived');
+  const half = SC.scoreShownAt(v, 1100 + 500);
+  assert.ok(half > v.scoreFrom && half < v.score);
+  assert.equal(SC.scoreShownAt(SC.hudAt(hud, 10), 10), 0);
+});
+
+await test('health: starts full, drains between objects, catching refills, a missed fruit costs 3-20% by HP, tinies and bananas cost nothing', () => {
+  const sc = mkRun([['fruit', 1000], ['fruit', 2000, false], ['tiny', 3000, false], ['banana', 4000, false], ['fruit', 5000]], { hp: 0 });
+  const h = HP.buildHealth(sc);
+  near(HP.healthAt(h, 0), 1);
+  near(HP.healthAt(h, 1000), 1, 1e-9);
+  const before = HP.healthAt(h, 1999), after = HP.healthAt(h, 2000);
+  near(before - after, 0.03 - 0, 1e-6, 'HP 0 miss costs 3%');
+  near(HP.healthAt(h, 2999) - HP.healthAt(h, 3000), 0, 1e-6);
+  assert.ok(HP.healthAt(h, 1500) < 1 || h.drain === 0);
+  const hard = HP.buildHealth(mkRun([['fruit', 1000], ['fruit', 2000, false]], { hp: 10 }));
+  assert.ok(HP.healthAt(hard, 1999) - HP.healthAt(hard, 2000) > 0.19, 'HP 10 miss costs about 20%');
+});
+
+await test('health: a perfect run stays near the legacy floor for its HP and never leaves 0..1; breaks stop the drain', () => {
+  const objs = [];
+  for (let i = 0; i < 400; i++) objs.push(['fruit', 1000 + i * 250]);
+  for (const hp of [2, 5, 8]) {
+    const sc = mkRun(objs, { hp });
+    const h = HP.buildHealth(sc);
+    let lo = 1;
+    for (let t = 0; t <= 101000; t += 50) { const v = HP.healthAt(h, t); assert.ok(v >= 0 && v <= 1); lo = Math.min(lo, v); }
+    assert.ok(lo > 0.25 && lo < 1, `hp ${hp}: lowest ${lo}`);
+    assert.ok(h.drain > 0);
+  }
+  // a break between 10000 and 40000: health does not move while it lasts
+  const withBreak = mkRun([['fruit', 1000], ['fruit', 10000, false], ['fruit', 40000, false], ['fruit', 41000]], { hp: 5, breaks: [{ start: 12000, end: 38000 }] });
+  const hb = HP.buildHealth(withBreak);
+  near(HP.healthAt(hb, 10001), HP.healthAt(hb, 39999), 1e-12);
+});
+
 
 console.log(`\n${passed} tests passed${process.exitCode ? ' (with failures)' : ''}`);

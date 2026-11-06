@@ -1,15 +1,5 @@
 # osu!catch Replay Renderer
 
-**Live site:** https://8408x.github.io/osu-catch-renderer/
-
-Drop in an `.osr` replay and its beatmap and get an MP4 of the run. Nothing is uploaded anywhere. Needs a recent Chrome or Edge (WebCodecs).
-
-**Features:** custom skin upload, map audio and hitsounds, hyperdashes and bananas, plate stacking, hit lighting, combo and accuracy HUD, Nightcore beat.
-
-**Limitations:** the rules are ported from osu!lazer and checked against my own reference code and tests, not the real game. The score and HP bar are not drawn yet. If the mirror download fails, attach the `.osz` yourself.
-
-**Credits:** default skin and sounds come from ppy/osu-resources (CC BY-NC 4.0), so this project is non-commercial; see the `ATTRIBUTION.md` files in `assets/`. Not affiliated with or endorsed by ppy or osu!.
-
 Turns an osu!catch replay (.osr) plus its beatmap difficulty (.osu) into an MP4, entirely in the browser. Rendering is offline and uses a fixed timestep, so it is not tied to real time (it often runs faster than playback) and frame timing is perfectly even.
 
 ## Run
@@ -102,10 +92,11 @@ Runs parser, juice stream, catch-logic, skin, .osz, mirror-download (mocked netw
 
 ## Combo and accuracy HUD
 
-- The **Show combo and accuracy** tick (default on) draws osu!'s legacy HUD: the combo bottom-left with its additive pop on every catch, the accuracy top-right. It uses your skin's number images (`score-0` ... `score-x`, or whatever `ScorePrefix` / `ComboPrefix` / overlaps your skin.ini sets under `[Fonts]`), falling back to osu!'s defaults.
+- The **Show score, HP, combo and accuracy** tick (default on) draws osu!'s legacy HUD: the combo bottom-left with its additive pop on every catch, the score (eight digits, rolling up over a second) and accuracy top-right, and a health bar top-left. It uses your skin's number images (`score-0` ... `score-x`, or whatever `ScorePrefix` / `ComboPrefix` / overlaps your skin.ini sets under `[Fonts]`), falling back to osu!'s defaults.
 - Rules follow lazer: each caught fruit or droplet adds 1 to the combo, a missed one resets it; tiny droplets and bananas never change the combo. Accuracy is caught / judged over fruits, droplets and tiny droplets (bananas excluded).
 - The page compares its catch result against the counts stored in the replay (300s, 100s, 50s, misses, max combo) and tells you if they differ; if they do, the HUD is not trustworthy for that replay.
-- Score and HP bars are still not drawn.
+- **Score** is lazer's standardised score for catch (CatchScoreProcessor): up to 1,000,000 from fruit, big droplets and tiny droplets, weighted by combo, plus 200 per banana, times the mods' multiplier (EZ, NF, HT, HR, DT/NC, HD, FL, RX). It is not stable's classic score, so it will not match the number in the replay file.
+- **HP** follows lazer's CatchHealthProcessor: it drains from the first object to the last (not in breaks), at the rate stable would pick for the map's HP; fruit, droplets and bananas refill it, and a missed fruit or big droplet costs 3% to 20% depending on HP. The bar is drawn plainly (white, amber when low, red when very low); skin `scorebar-*` images are not used, and a replay that failed in the real game is not shown as failed.
 
 ## Caught fruit on the plate
 
@@ -125,7 +116,6 @@ Runs parser, juice stream, catch-logic, skin, .osz, mirror-download (mocked netw
 
 ## Not done yet
 
-- Score and HP HUD
 - Catching is checked only at each object's hit time, and the preview counts are approximate, not the official score
 
 ## Licenses

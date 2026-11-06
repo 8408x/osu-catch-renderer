@@ -6,6 +6,7 @@ import { createPath } from './slider.js';
 import { LegacyRandom, statelessInt, statelessSingle } from './rng.js';
 import { buildCatcherFx } from './catcher.js';
 import { buildHud } from './score.js';
+import { buildHealth } from './health.js';
 import { buildPlate } from './plate.js';
 import { makeSampler, bananaSamples } from './hitsounds.js';
 
@@ -287,6 +288,9 @@ export function buildScene(bm, mods = 0) {
   return {
     cs, ar, preempt, fruitRadius, fruitScale, catcherScale, catchWidth,
     rate: modRate(mods),
+    mods,
+    hp: Math.min(10, (mods & MOD_HR ? bm.hp * 1.4 : mods & MOD_EZ ? bm.hp * 0.5 : bm.hp)),
+    breaks: bm.breaks ?? [],
     colours: resolveColours(bm, null),
     objects,
     startTime: firstT - preempt - 500,
@@ -312,6 +316,7 @@ export function evaluateCatches(scene, track) {
   }
   scene.fx = buildCatcherFx(scene, track);
   scene.hud = buildHud(scene);
+  scene.health = buildHealth(scene);
   scene.plate = buildPlate(scene, track);
   return { caught, total, bananas, bananasCaught, hud: scene.hud.totals };
 }

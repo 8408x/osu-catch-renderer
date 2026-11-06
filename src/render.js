@@ -9,8 +9,9 @@
 
 import { FIELD_W, FIELD_H } from './catch.js';
 import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js';
-import { hudAt } from './score.js';
+import { hudAt, scoreShownAt } from './score.js';
 import { plateAt, explosionsAt } from './plate.js';
+import { healthAt } from './health.js';
 
 const ZONE = 120;  // room below the field for the catcher, in field units
 const PAD = 12;
@@ -191,6 +192,39 @@ function drawGlyphs(ctx, skin, prefix, text, x, y, k, { anchor = 'left', fromTop
   ctx.restore();
 }
 
+/** A plain health bar (the real skins' scorebar images are not used): dark track, fill that turns amber then red when low. */
+function drawHealthBar(ctx, hp, x, y, w, h) {
+  const r = h / 2;
+  const pill = (px, pw) => {
+    ctx.beginPath();
+    ctx.moveTo(px + r, y);
+    ctx.lineTo(px + pw - r, y);
+    ctx.arc(px + pw - r, y + r, r, -Math.PI / 2, Math.PI / 2);
+    ctx.lineTo(px + r, y + h);
+    ctx.arc(px + r, y + r, r, Math.PI / 2, Math.PI * 1.5);
+    ctx.closePath();
+  };
+  ctx.save();
+  ctx.globalAlpha = 1;
+  pill(x, w);
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fill();
+  const fillW = Math.max(0, Math.min(1, hp)) * w;
+  if (fillW > 0) {
+    ctx.save();
+    pill(x, w);
+    ctx.clip();
+    ctx.fillStyle = hp > 0.5 ? '#ffffff' : hp > 0.25 ? '#ffc94d' : '#ff5555';
+    ctx.fillRect(x, y, fillW, h);
+    ctx.restore();
+  }
+  pill(x, w);
+  ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+  ctx.lineWidth = Math.max(1, h / 7);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawHud(ctx, W, H, scene, t, skin) {
   const hud = scene.hud;
   if (!hud) return;
@@ -199,9 +233,18 @@ function drawHud(ctx, W, H, scene, t, skin) {
   const { comboPrefix, scorePrefix, comboOverlap, scoreOverlap } = skin.fonts;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-  // accuracy, top right (LegacyAccuracyCounter: scale 0.6 * 0.96, margin 9 / 17)
-  drawGlyphs(ctx, skin, scorePrefix, `${(v.acc * 100).toFixed(2)}%`, W - 17 * u, 9 * u, 0.6 * 0.96 * u,
+  // score, top right (LegacyScoreCounter: scale 0.96, margin 10), eight digits like stable
+  const zero = glyphFor(skin, scorePrefix, '0');
+  const scoreH = zero ? zero.h * 0.96 * u : 0;
+  drawGlyphs(ctx, skin, scorePrefix, String(scoreShownAt(v, t)).padStart(8, '0'), W - 10 * u, 0, 0.96 * u,
     { anchor: 'right', fromTop: true, fixed: true, overlap: scoreOverlap });
+
+  // accuracy, right under the score (LegacyAccuracyCounter: scale 0.6 * 0.96, margin 9 / 17)
+  drawGlyphs(ctx, skin, scorePrefix, `${(v.acc * 100).toFixed(2)}%`, W - 17 * u, scoreH + 9 * u, 0.6 * 0.96 * u,
+    { anchor: 'right', fromTop: true, fixed: true, overlap: scoreOverlap });
+
+  // health bar, top left
+  if (scene.health) drawHealthBar(ctx, healthAt(scene.health, t), 10 * u, 10 * u, 340 * u, 14 * u);
 
   // combo, bottom left (LegacyDefaultComboCounter: scale 1.28, margin 10) with its additive pop-out
   if (v.combo > 0) {

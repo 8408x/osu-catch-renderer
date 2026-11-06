@@ -9,7 +9,8 @@ export function parseOsu(text) {
     audioFilename: '', audioLeadIn: 0,
     sampleSet: 1, sampleVolume: 100,   // [General] SampleSet (1 normal, 2 soft, 3 drum) and default volume
     title: '', artist: '', version: '', creator: '',
-    cs: 5, ar: null, od: 5,
+    cs: 5, ar: null, od: 5, hp: 5,
+    breaks: [],                        // [Events] break periods: {start, end} in ms
     sliderMultiplier: 1.4,
     sliderTickRate: 1,
     timingPoints: [],
@@ -41,6 +42,12 @@ export function parseOsu(text) {
         sampleIndex: p.length > 4 ? num(p[4], 0) : 0,
         volume: p.length > 5 ? num(p[5], bm.sampleVolume) : bm.sampleVolume,
       });
+    } else if (section === 'Events') {
+      const parts = line.split(',');
+      if (parts[0] === '2' || parts[0] === 'Break') {
+        const start = parseFloat(parts[1]), end = parseFloat(parts[2]);
+        if (Number.isFinite(start) && Number.isFinite(end)) bm.breaks.push({ start, end });
+      }
     } else if (section === 'HitObjects') {
       const h = parseHitObject(line);
       if (h) bm.hitObjects.push(h);
@@ -64,6 +71,7 @@ export function parseOsu(text) {
         if (key === 'CircleSize') bm.cs = n;
         else if (key === 'ApproachRate') bm.ar = n;
         else if (key === 'OverallDifficulty') bm.od = n;
+        else if (key === 'HPDrainRate') bm.hp = n;
         else if (key === 'SliderMultiplier') bm.sliderMultiplier = n;
         else if (key === 'SliderTickRate') bm.sliderTickRate = n;
       } else if (section === 'Colours' && /^Combo\d+$/.test(key)) {
