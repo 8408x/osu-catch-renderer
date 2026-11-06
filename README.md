@@ -49,6 +49,7 @@ Runs parser, juice stream, catch-logic, skin, .osz, mirror-download (mocked netw
 - `src/encode.js` WebCodecs VideoEncoder / AudioEncoder + mp4-muxer
 - `src/main.js`, `index.html` UI
 - `assets/default-skin/`, `assets/default-sounds/` osu!'s default catch textures and hitsounds (see Licenses)
+- `assets/fonts/` Roboto Mono (Apache 2.0), the font the tosu overlays use, so the overlay text matches
 
 ## Downloading the map
 

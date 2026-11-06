@@ -166,7 +166,20 @@ function drawTrails(ctx, skin, scene, fx, t) {
 
 
 // ---------- background and the clean overlay ----------
-const MONO = 'ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace';
+const MONO = '"Roboto Mono", ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace';
+
+/** Load the bundled Roboto Mono (the font the tosu overlays use) so canvas text matches. Safe to call more than once. */
+let fontsReady = null;
+export function loadOverlayFonts(base = new URL('../assets/fonts/', import.meta.url)) {
+  if (fontsReady) return fontsReady;
+  if (typeof FontFace === 'undefined' || typeof document === 'undefined') return (fontsReady = Promise.resolve(false));
+  const files = [[400, 'regular'], [600, '600'], [700, '700']];
+  fontsReady = Promise.all(files.map(async ([weight, name]) => {
+    const f = new FontFace('Roboto Mono', `url(${new URL(`roboto-mono-v23-latin-${name}.woff2`, base)})`, { weight: String(weight) });
+    document.fonts.add(await f.load());
+  })).then(() => true, () => false);
+  return fontsReady;
+}
 
 /** Cover-fit the beatmap background over the whole frame and darken it. */
 function drawBackground(ctx, W, H, img, dim) {
@@ -236,7 +249,7 @@ function drawOverlay(ctx, W, H, scene, t, { bg, keys }) {
   ctx.beginPath(); ctx.arc(box / 2, box / 2, box * 0.42, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2); ctx.stroke();
   ctx.shadowBlur = 6 * u;
   ctx.fillStyle = '#fff';
-  ctx.font = `bold ${19 * u}px ${MONO}`;
+  ctx.font = `600 ${19 * u}px ${MONO}`;
   ctx.textAlign = 'center';
   ctx.fillText(mmss(t), box / 2, box / 2 + 7 * u);
   ctx.textAlign = 'left';
@@ -244,14 +257,14 @@ function drawOverlay(ctx, W, H, scene, t, { bg, keys }) {
   // --- title, artist - mapper, difficulty pill and mods ---
   const tx = 128 * u;
   ctx.fillStyle = '#fff';
-  ctx.font = `bold ${29 * u}px ${MONO}`;
-  ctx.fillText(meta.title ?? '', tx, 24 * u);
+  ctx.font = `700 ${29 * u}px ${MONO}`;
+  ctx.fillText(meta.title ?? "", tx, 34 * u);
   ctx.font = `${21 * u}px ${MONO}`;
   ctx.fillStyle = 'rgba(255,255,255,0.92)';
-  ctx.fillText(`${meta.artist ?? ''} - ${meta.creator ?? ''}`, tx, 58 * u);
+  ctx.fillText(`${meta.artist ?? ""} - ${meta.creator ?? ""}`, tx, 62 * u);
   const pillText = String(meta.version ?? '').toUpperCase();
-  ctx.font = `bold ${12 * u}px ${MONO}`;
-  const pw = spacedWidth(ctx, pillText, 3.4 * u) + 20 * u, ph = 26 * u, py = 84 * u;
+  ctx.font = `800 ${12 * u}px ${MONO}`;
+  const pw = spacedWidth(ctx, pillText, 3.4 * u) + 20 * u, ph = 26 * u, py = 78 * u;
   ctx.shadowBlur = 0;
   ctx.fillStyle = '#fff';
   roundRectPath(ctx, tx, py, pw, ph, 3 * u); ctx.fill();
@@ -271,19 +284,20 @@ function drawOverlay(ctx, W, H, scene, t, { bg, keys }) {
   const rx = W - 8 * u;
   ctx.textAlign = 'right';
   ctx.fillStyle = '#fff';
-  ctx.font = `bold ${58 * u}px ${MONO}`;
+  ctx.font = `700 ${58 * u}px ${MONO}`;
   const rankW = ctx.measureText(rank).width;
   ctx.fillText(rank, rx, 56 * u);
-  ctx.font = `bold ${42 * u}px ${MONO}`;
+  ctx.font = `600 ${42 * u}px ${MONO}`;
   ctx.fillText(`${(acc * 100).toFixed(2)}%`, rx - rankW - 18 * u, 56 * u);
   if (scene.diff) {
     const pp = livePpOf(scene, v, t);
     const maxText = `/${Math.round(scene.maxPp)}pp`;
-    ctx.font = `bold ${30 * u}px ${MONO}`;
-    ctx.fillStyle = 'rgba(255,255,255,0.62)';
+    ctx.font = `600 ${25 * u}px ${MONO}`;
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
     ctx.fillText(maxText, rx, 108 * u);
     const mw = ctx.measureText(maxText).width;
     ctx.fillStyle = '#fff';
+    ctx.font = `600 ${42 * u}px ${MONO}`;
     ctx.fillText(`${Math.round(pp)}pp`, rx - mw, 108 * u);
   }
   ctx.textAlign = 'left';
@@ -293,17 +307,16 @@ function drawOverlay(ctx, W, H, scene, t, { bg, keys }) {
   const combo = v ? v.combo : 0;
   const cy = H - 12 * u;
   ctx.fillStyle = '#fff';
-  ctx.font = `bold ${58 * u}px ${MONO}`;
+  ctx.font = `600 ${51 * u}px ${MONO}`;
   const cs = String(combo);
   ctx.fillText(cs, 4 * u, cy);
   let cx = 4 * u + ctx.measureText(cs).width;
-  ctx.font = `bold ${32 * u}px ${MONO}`;
-  ctx.fillStyle = 'rgba(255,255,255,0.62)';
+  ctx.font = `600 ${34 * u}px ${MONO}`;
+  ctx.fillStyle = 'rgba(255,255,255,0.8)';
   const ts = `/${total}`;
   ctx.fillText(ts, cx, cy);
   cx += ctx.measureText(ts).width;
-  ctx.font = `bold ${32 * u}px ${MONO}`;
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = 'rgba(255,255,255,0.8)';
   ctx.fillText(' Combo', cx, cy);
 
   // --- key overlay, right edge: left, right, dash, and a spare box ---
@@ -327,7 +340,7 @@ function drawOverlay(ctx, W, H, scene, t, { bg, keys }) {
         roundRectPath(ctx, kx, y, size, size, 7 * u); ctx.stroke();
         ctx.fillStyle = '#fff';
       }
-      ctx.font = `bold ${22 * u}px ${MONO}`;
+      ctx.font = `600 ${22 * u}px ${MONO}`;
       ctx.fillText(String(sp.k.count), kx + size / 2, y + size / 2 + 8 * u);
     });
     ctx.textAlign = 'left';

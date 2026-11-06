@@ -4,7 +4,7 @@ import { buildScene, evaluateCatches, resolveColours } from './catch.js';
 import { compareWithReplay } from './score.js';
 import { nightcoreBeats } from './nightcore.js';
 import { ReplayTrack } from './replay.js';
-import { drawFrame } from './render.js';
+import { drawFrame, loadOverlayFonts } from './render.js';
 import { exportMp4, webCodecsAvailable } from './encode.js';
 import { md5 } from './md5.js';
 import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js';
@@ -702,3 +702,6 @@ loadDefaultSkin(skinEnv, bytesOf)
     state.skinMsgs = [['err', `Could not load the default skin (${err.message}). Serve this folder over http://localhost, not file://.`]];
     refresh();
   });
+
+// Roboto Mono for the overlay text; redraw the preview once it has loaded.
+loadOverlayFonts().then((ok) => { if (ok) drawAt(state.t); });
