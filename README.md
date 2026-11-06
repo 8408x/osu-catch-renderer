@@ -1,5 +1,15 @@
 # osu!catch Replay Renderer
 
+**Live site:** https://8408x.github.io/osu-catch-renderer/
+
+Drop in an `.osr` replay and its beatmap and get an MP4 of the run. Nothing is uploaded anywhere. Needs a recent Chrome or Edge (WebCodecs).
+
+**Features:** custom skin upload, map audio and hitsounds, hyperdashes and bananas, plate stacking, hit lighting, combo and accuracy HUD, Nightcore beat.
+
+**Limitations:** the rules are ported from osu!lazer and checked against my own reference code and tests, not the real game. The score and HP bar are not drawn yet. If the mirror download fails, attach the `.osz` yourself.
+
+**Credits:** default skin and sounds come from ppy/osu-resources (CC BY-NC 4.0), so this project is non-commercial; see the `ATTRIBUTION.md` files in `assets/`. Not affiliated with or endorsed by ppy or osu!.
+
 Turns an osu!catch replay (.osr) plus its beatmap difficulty (.osu) into an MP4, entirely in the browser. Rendering is offline and uses a fixed timestep, so it is not tied to real time (it often runs faster than playback) and frame timing is perfectly even.
 
 ## Run
