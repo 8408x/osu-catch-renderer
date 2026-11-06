@@ -7,14 +7,14 @@
 //   - droplets use 0.8x and tiny droplets 0.4x of that; sprites are capped at 160 px
 //   - catcher sprite = texture size x 0.35 x catcher scale, hung from the plate line 16 px down
 
-import { FIELD_W, FIELD_H } from './catch.js?v=20261107e';
-import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261107e';
-import { hudAt, scoreShownAt } from './score.js?v=20261107e';
-import { plateAt, explosionsAt } from './plate.js?v=20261107e';
-import { drawArgonHud } from './argon.js?v=20261107e';
-import { healthAt } from './health.js?v=20261107e';
-import { livePp } from './pp.js?v=20261107e';
-import { keysAt } from './keys.js?v=20261107e';
+import { FIELD_W, FIELD_H } from './catch.js?v=20261107f';
+import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261107f';
+import { hudAt, scoreShownAt } from './score.js?v=20261107f';
+import { plateAt, explosionsAt } from './plate.js?v=20261107f';
+import { drawArgonHud } from './argon.js?v=20261107f';
+import { healthAt } from './health.js?v=20261107f';
+import { livePp } from './pp.js?v=20261107f';
+import { keysAt } from './keys.js?v=20261107f';
 
 const ZONE = 120;  // room below the field for the catcher, in field units
 const PAD = 12;

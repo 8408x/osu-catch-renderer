@@ -1,20 +1,21 @@
-import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261107e';
-import { parseOsu } from './osu.js?v=20261107e';
-import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261107e';
-import { compareWithReplay } from './score.js?v=20261107e';
-import { nightcoreBeats } from './nightcore.js?v=20261107e';
-import { ReplayTrack } from './replay.js?v=20261107e';
-import { drawFrame, loadOverlayFonts } from './render.js?v=20261107e';
-import { loadArgonFonts } from './argon.js?v=20261107e';
-import { TosuOverlays } from './tosu.js?v=20261107e';
-import { exportMp4, webCodecsAvailable } from './encode.js?v=20261107e';
-import { md5 } from './md5.js?v=20261107e';
-import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261107e';
-import { readOsz, findDifficulty, findAudio, findImage } from './osz.js?v=20261107e';
-import { buildKeys } from './keys.js?v=20261107e';
-import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261107e';
-import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261107e';
-import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261107e';
+import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261107f';
+import { parseOsu } from './osu.js?v=20261107f';
+import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261107f';
+import { compareWithReplay } from './score.js?v=20261107f';
+import { nightcoreBeats } from './nightcore.js?v=20261107f';
+import { ReplayTrack } from './replay.js?v=20261107f';
+import { drawFrame, loadOverlayFonts } from './render.js?v=20261107f';
+import { loadArgonFonts } from './argon.js?v=20261107f';
+import { TosuOverlays } from './tosu.js?v=20261107f';
+import { exportMp4, webCodecsAvailable } from './encode.js?v=20261107f';
+import { VERSION } from './version.js?v=20261107f';
+import { md5 } from './md5.js?v=20261107f';
+import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261107f';
+import { readOsz, findDifficulty, findAudio, findImage } from './osz.js?v=20261107f';
+import { buildKeys } from './keys.js?v=20261107f';
+import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261107f';
+import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261107f';
+import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261107f';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('stage');
@@ -717,3 +718,18 @@ loadArgonFonts(skinEnv, bytesOf).then((g) => { state.argon = g; drawAt(state.t);
 
 // Roboto Mono for the overlay text; redraw the preview once it has loaded.
 loadOverlayFonts().then((ok) => { if (ok) drawAt(state.t); });
+
+// ---- version line: what is running here, and whether the deployed page is newer ----
+(async () => {
+  const el = document.getElementById('ver');
+  if (!el) return;
+  const pageV = document.querySelector('meta[name="app-version"]')?.content ?? '?';
+  const say = (text, cls = 'dim') => { el.textContent = text; el.className = cls; };
+  say(pageV === VERSION ? `Version ${VERSION}` : `Version ${VERSION} (page ${pageV}: mixed cache, hard-refresh with Ctrl+F5)`, pageV === VERSION ? 'dim' : 'warn');
+  try {
+    const r = await fetch(location.pathname, { cache: 'no-store' });
+    const latest = /<meta name="app-version" content="([^"]+)"/.exec(await r.text())?.[1];
+    if (latest && latest !== VERSION) say(`Version ${VERSION}. A newer version (${latest}) is deployed: hard-refresh (Ctrl+F5 / Cmd+Shift+R).`, 'warn');
+    else if (latest) say(`Version ${VERSION} (latest)`);
+  } catch { /* offline or opened from disk: keep the plain line */ }
+})();

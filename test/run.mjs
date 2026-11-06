@@ -1494,4 +1494,16 @@ await test('tosu overlays: tokens and markup follow the real overlays\' bindings
   assert.doesNotMatch(T.comboHtml({ ...k, fcing: true }), /\(25\)/);
 });
 
+await test('version: the stamp in version.js, index.html and every ?v= import agree', async () => {
+  const { VERSION } = await import('../src/version.js');
+  assert.match(VERSION, /^\d{8}[a-z]$/);
+  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  assert.equal(/<meta name="app-version" content="([^"]+)"/.exec(html)?.[1], VERSION);
+  const stamps = new Set();
+  for (const f of [...fs.readdirSync(path.join(root, 'src')).map((n) => path.join(root, 'src', n)), path.join(root, 'index.html')]) {
+    for (const m of fs.readFileSync(f, 'utf8').matchAll(/\?v=(\w+)/g)) stamps.add(m[1]);
+  }
+  assert.deepEqual([...stamps], [VERSION]);
+});
+
 console.log(`\n${passed} tests passed${process.exitCode ? ' (with failures)' : ''}`);

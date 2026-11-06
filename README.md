@@ -139,4 +139,4 @@ The **Overlay style** menu picks the look. The default, *CPOL*, recreates the lo
 
 ## Deploying
 
-GitHub Pages lets browsers cache the JavaScript modules for ten minutes. Every `import` in `src/` and the script tag in `index.html` carry a `?v=...` stamp so a new deploy is picked up straight away; when you change code, replace the stamp everywhere (`grep -rl "?v=" src index.html`).
+GitHub Pages lets browsers cache the JavaScript modules for ten minutes. Every `import` in `src/` and the script tag in `index.html` carry a `?v=...` stamp so a new deploy is picked up straight away; when you change code, replace the stamp everywhere (`grep -rl "?v=" src index.html`), including `src/version.js` and the `app-version` meta tag; a test checks they agree. The page shows the running version at the bottom and says when a newer one is deployed.
