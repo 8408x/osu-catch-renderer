@@ -303,7 +303,8 @@ await test('ReplayTrack interpolates and evaluateCatches uses 0.8 * 106.75 * sca
 });
 
 // ---------- .osz reader ----------
-const { readOsz, findDifficulty, findAudio } = await import('../src/osz.js');
+const { readOsz, findDifficulty, findAudio, findImage } = await import('../src/osz.js');
+const OSZ = { findImage };
 const { zipSync: zipSyncOsz, strToU8: strToU8Osz } = await import('../vendor/fflate.mjs');
 
 await test('readOsz: finds difficulties + audio, ignores videos/images, matches by md5, audio by name', () => {
@@ -1315,6 +1316,96 @@ await test('health: a perfect run stays near the legacy floor for its HP and nev
   const withBreak = mkRun([['fruit', 1000], ['fruit', 10000, false], ['fruit', 40000, false], ['fruit', 41000]], { hp: 5, breaks: [{ start: 12000, end: 38000 }] });
   const hb = HP.buildHealth(withBreak);
   near(HP.healthAt(hb, 10001), HP.healthAt(hb, 39999), 1e-12);
+});
+
+// ---------- pp ----------
+const PP = await import('../src/pp.js');
+const ppScene = (mods = 0) => {
+  const bm = parseOsu(OSU.replace(/\[HitObjects\][\s\S]*$/, '') + '[HitObjects]\n' +
+    Array.from({ length: 200 }, (_, i) => `${40 + ((i * 137) % 430)},300,${1000 + i * 140},${i % 8 === 0 ? 5 : 1},0,0:0:0:0:`).join('\n') + '\n');
+  const scene = buildScene(bm, mods);
+  const track = new ReplayTrack([{ t: 0, x: 256, dash: false }, { t: 40000, x: 256, dash: false }]);
+  evaluateCatches(scene, track);
+  return scene;
+};
+
+await test('pp: formula spot checks (CatchPerformanceCalculator)', () => {
+  // star 5, AR 9, 1000 fruit, full combo, 100% accuracy
+  const v = PP.catchPerformance({ star: 5, maxCombo: 1000 }, { n300: 1000, n100: 0, n50: 0, nKatu: 0, nMiss: 0, maxCombo: 1000 }, { mods: 0, ar: 9 });
+  const base = (5 * (5 / 0.0049) - 4) ** 2 / 100000;
+  near(v, base * (0.95 + 0.3 * (1000 / 2500)), 1e-6);
+  const miss = PP.catchPerformance({ star: 5, maxCombo: 1000 }, { n300: 990, n100: 0, n50: 0, nKatu: 0, nMiss: 10, maxCombo: 500 }, { mods: 0, ar: 9 });
+  assert.ok(miss < v * 0.97 ** 10 * 1, 'misses, a lower max combo and lower accuracy all cut pp');
+  const hd = PP.catchPerformance({ star: 5, maxCombo: 1000 }, { n300: 1000, n100: 0, n50: 0, nKatu: 0, nMiss: 0, maxCombo: 1000 }, { mods: 8, ar: 9 });
+  near(hd / v, 1.05 + 0.075 * 1, 1e-9, 'hidden at AR 9');
+});
+
+await test('pp: star rating grows as the map is played, DT raises it, and a perfect play ends at the max pp', () => {
+  const sc = ppScene();
+  const d = sc.diff;
+  for (let i = 1; i < d.steps.length; i++) assert.ok(d.steps[i].maxCombo >= d.steps[i - 1].maxCombo);
+  assert.ok(d.star > 1 && d.star < 12);
+  assert.equal(d.steps[d.steps.length - 1].star, d.star);
+  assert.ok(ppScene(64).diff.star > d.star, 'double time is harder');
+  assert.equal(PP.livePp(d, sc, { n300: 0, n100: 0, n50: 0, nKatu: 0, nMiss: 0, maxCombo: 0 }, 0), 0, 'before the first object there is no pp');
+  const all = { n300: 0, n100: 0, n50: 0, nKatu: 0, nMiss: 0, maxCombo: d.maxCombo };
+  for (const o of sc.objects) { if (o.kind === 'fruit') all.n300++; else if (o.kind === 'droplet') all.n100++; else if (o.kind === 'tiny') all.n50++; }
+  near(PP.livePp(d, sc, all, 1e9), sc.maxPp, 1e-9);
+});
+
+await test('pp: hud entries carry the judgement counts live pp needs', () => {
+  const hud = SC.buildHud({ objects: [mk('fruit', 100, true), mk('droplet', 150, false), mk('tiny', 160, false), mk('tiny', 170, true), mk('banana', 180, true)] });
+  const v = SC.hudAt(hud, 1000);
+  assert.deepEqual([v.n300, v.n100, v.n50, v.nKatu, v.nMiss], [1, 0, 1, 1, 1]);
+});
+
+// ---------- overlay: background, keys, rank ----------
+const KEYS = await import('../src/keys.js');
+const { rankOf, layout } = await import('../src/render.js');
+
+await test('keys: left / right inferred from the movement, dash from the flag, presses counted per run', () => {
+  const frames = [
+    { t: 0, x: 100, dash: false }, { t: 20, x: 100, dash: false },
+    { t: 40, x: 90, dash: false }, { t: 60, x: 80, dash: true },          // left from 20 to 60, dash from 60
+    { t: 80, x: 80, dash: true }, { t: 100, x: 80, dash: false },         // standing still, dash ends at 100
+    { t: 120, x: 95, dash: false }, { t: 140, x: 110, dash: false },      // right from 100 to 140
+    { t: 400, x: 110, dash: false }, { t: 420, x: 100, dash: false },     // left again from 400
+  ];
+  const k = KEYS.buildKeys(frames);
+  assert.deepEqual(k.left, [[20, 60], [400, 420]]);
+  assert.deepEqual(k.right, [[100, 140]]);
+  assert.deepEqual(k.dash, [[60, 100]]);
+  const a = KEYS.keysAt(k, 50);
+  assert.deepEqual([a.left.down, a.left.count, a.right.count, a.dash.count], [true, 1, 0, 0]);
+  const b = KEYS.keysAt(k, 80);
+  assert.deepEqual([b.left.down, b.dash.down, b.dash.count], [false, true, 1]);
+  assert.equal(KEYS.keysAt(k, 1000).left.count, 2);
+  assert.equal(KEYS.keysAt(k, 1000).left.down, false);
+  // a dash still held at the last frame is closed there
+  assert.deepEqual(KEYS.buildKeys([{ t: 0, x: 0, dash: true }, { t: 50, x: 0, dash: true }]).dash, [[0, 50]]);
+});
+
+await test('rank letters like stable: SS / S / A / B / C / D, with H for HD or FL', () => {
+  assert.equal(rankOf(1, 0), 'SS');
+  assert.equal(rankOf(1, 8), 'SSH');
+  assert.equal(rankOf(0.985, 1024), 'SH');
+  assert.equal(rankOf(0.95, 8), 'A');
+  assert.equal(rankOf(0.91, 0), 'B');
+  assert.equal(rankOf(0.86, 0), 'C');
+  assert.equal(rankOf(0.5, 0), 'D');
+});
+
+await test('background: parsed from [Events], found in the .osz by its (case-insensitive) name, overlay layout fills the height', () => {
+  const bm = parseOsu('osu file format v14\n\n[Events]\n//Background and Video events\n0,0,"Folder\\BG.JPG",0,0\nVideo,0,"v.avi"\n2,1000,3000\n\n[Difficulty]\nHPDrainRate:6\n');
+  assert.equal(bm.background, 'Folder\\BG.JPG');
+  assert.deepEqual(bm.breaks, [{ start: 1000, end: 3000 }]);
+  assert.equal(bm.hp, 6);
+  const osz = { images: new Map([['bg.jpg', new Uint8Array([1, 2, 3])]]) };
+  assert.deepEqual([...OSZ.findImage(osz, bm.background)], [1, 2, 3]);
+  assert.equal(OSZ.findImage(osz, 'other.png'), null);
+  const L = layout(1920, 1080, true);
+  near(L.ox + 256 * L.s, 960, 1e-6);
+  near(L.s * 384, 0.861 * 1080, 1e-6);
 });
 
 

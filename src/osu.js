@@ -10,6 +10,7 @@ export function parseOsu(text) {
     sampleSet: 1, sampleVolume: 100,   // [General] SampleSet (1 normal, 2 soft, 3 drum) and default volume
     title: '', artist: '', version: '', creator: '',
     cs: 5, ar: null, od: 5, hp: 5,
+    background: '',                    // [Events] background image file name
     breaks: [],                        // [Events] break periods: {start, end} in ms
     sliderMultiplier: 1.4,
     sliderTickRate: 1,
@@ -44,6 +45,10 @@ export function parseOsu(text) {
       });
     } else if (section === 'Events') {
       const parts = line.split(',');
+      if (parts[0] === '0' && parts[2] && !bm.background) {
+        const name = parts[2].replace(/^"|"$/g, '').trim();
+        if (/\.(jpe?g|png)$/i.test(name)) bm.background = name;
+      }
       if (parts[0] === '2' || parts[0] === 'Break') {
         const start = parseFloat(parts[1]), end = parseFloat(parts[2]);
         if (Number.isFinite(start) && Number.isFinite(end)) bm.breaks.push({ start, end });

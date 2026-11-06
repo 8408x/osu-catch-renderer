@@ -7,6 +7,7 @@ import { LegacyRandom, statelessInt, statelessSingle } from './rng.js';
 import { buildCatcherFx } from './catcher.js';
 import { buildHud } from './score.js';
 import { buildHealth } from './health.js';
+import { buildDifficulty, maxPerformance } from './pp.js';
 import { buildPlate } from './plate.js';
 import { makeSampler, bananaSamples } from './hitsounds.js';
 
@@ -188,8 +189,8 @@ function initialiseHyperDash(objects, catcherScale) {
     const timeToNext = Math.trunc(next.t) - Math.trunc(cur.t) - 1000 / 60 / 4;
     const distToNext = Math.abs(next.x - cur.x) - (lastDirection === dir ? lastExcess : half);
     const d = f32(timeToNext * 1.0 - distToNext);
-    if (d < 0) { cur.hyper = next; lastExcess = half; }
-    else lastExcess = clamp(d, 0, half);
+    if (d < 0) { cur.hyper = next; cur.distToHyper = 0; lastExcess = half; }
+    else { cur.distToHyper = d; lastExcess = clamp(d, 0, half); }
     lastDirection = dir;
   }
 }
@@ -317,6 +318,8 @@ export function evaluateCatches(scene, track) {
   scene.fx = buildCatcherFx(scene, track);
   scene.hud = buildHud(scene);
   scene.health = buildHealth(scene);
+  scene.diff = buildDifficulty(scene);
+  scene.maxPp = maxPerformance(scene, scene.diff);
   scene.plate = buildPlate(scene, track);
   return { caught, total, bananas, bananasCaught, hud: scene.hud.totals };
 }

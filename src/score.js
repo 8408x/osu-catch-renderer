@@ -14,30 +14,32 @@ export function buildHud(scene) {
   const timeline = [];
   let combo = 0, maxCombo = 0, hits = 0, judged = 0, bumpT = -Infinity;
   const sc = newScorer(scene);
+  const cnt = { n300: 0, n100: 0, n50: 0, nKatu: 0, nMiss: 0 };
   const totals = { fruits: 0, droplets: 0, tiny: 0, tinyMiss: 0, miss: 0, bananas: 0, bananasCaught: 0 };
   for (const o of scene.objects) {
     if (o.kind === 'banana') {
       totals.bananas++;
       if (o.caught) totals.bananasCaught++;
       const last = timeline[timeline.length - 1];
-      timeline.push({ ...(last ?? { combo: 0, maxCombo: 0, acc: 1, bumpT: -Infinity }), t: o.t, ...sc.judge(o, combo) });
+      timeline.push({ ...(last ?? { combo: 0, maxCombo: 0, acc: 1, bumpT: -Infinity, ...cnt }), t: o.t, ...sc.judge(o, combo) });
       continue;
     }
     o.comboBefore = combo;                         // JudgementResult.ComboAtJudgement: the combo prior to this result
     judged++;
     if (o.caught) hits++;
     if (o.kind === 'tiny') {
-      if (o.caught) totals.tiny++; else totals.tinyMiss++;
+      if (o.caught) { totals.tiny++; cnt.n50++; } else { totals.tinyMiss++; cnt.nKatu++; }
     } else if (o.caught) {
       combo++;
       if (combo > maxCombo) maxCombo = combo;
       bumpT = o.t;
-      if (o.kind === 'fruit') totals.fruits++; else totals.droplets++;
+      if (o.kind === 'fruit') { totals.fruits++; cnt.n300++; } else { totals.droplets++; cnt.n100++; }
     } else {
       combo = 0;
       totals.miss++;
+      cnt.nMiss++;
     }
-    timeline.push({ t: o.t, combo, maxCombo, acc: hits / judged, bumpT, ...sc.judge(o, combo) });
+    timeline.push({ t: o.t, combo, maxCombo, acc: hits / judged, bumpT, ...cnt, ...sc.judge(o, combo) });
   }
   totals.maxCombo = maxCombo;
   totals.accuracy = judged ? hits / judged : 1;
@@ -116,7 +118,7 @@ export function hudAt(hud, t) {
     const mid = (lo + hi) >> 1;
     if (tl[mid].t <= t + 1e-4) lo = mid; else hi = mid;
   }
-  return lo >= 0 ? tl[lo] : { t: -Infinity, combo: 0, maxCombo: 0, acc: 1, bumpT: -Infinity, score: 0, scoreFrom: 0 };
+  return lo >= 0 ? tl[lo] : { t: -Infinity, combo: 0, maxCombo: 0, acc: 1, bumpT: -Infinity, score: 0, scoreFrom: 0, n300: 0, n100: 0, n50: 0, nKatu: 0, nMiss: 0 };
 }
 
 /**

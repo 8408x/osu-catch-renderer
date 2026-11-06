@@ -42,6 +42,9 @@ Runs parser, juice stream, catch-logic, skin, .osz, mirror-download (mocked netw
 - `src/hitsounds.js` which samples each caught fruit / droplet / banana plays, finding the sound files, mixing them into the audio
 - `src/audio.js` music for the video: cut to the video's time range, pitch-preserving time-stretch for DT/HT, resampling for NC
 - `src/skin.js` skin loading (.osk zip via fflate, skin.ini, @2x, fallback to the bundled default skin)
+- `src/score.js`, `src/health.js` combo / accuracy / score and HP over time
+- `src/pp.js` osu!catch difficulty and performance (live pp), ported from osu!lazer
+- `src/keys.js` the key overlay: left / right / dash inferred from the replay
 - `src/render.js` draws one frame with skin sprites (same code for preview and export)
 - `src/encode.js` WebCodecs VideoEncoder / AudioEncoder + mp4-muxer
 - `src/main.js`, `index.html` UI
@@ -98,6 +101,12 @@ Runs parser, juice stream, catch-logic, skin, .osz, mirror-download (mocked netw
 - **Score** is lazer's standardised score for catch (CatchScoreProcessor): up to 1,000,000 from fruit, big droplets and tiny droplets, weighted by combo, plus 200 per banana, times the mods' multiplier (EZ, NF, HT, HR, DT/NC, HD, FL, RX). It is not stable's classic score, so it will not match the number in the replay file.
 - **HP** follows lazer's CatchHealthProcessor: it drains from the first object to the last (not in breaks), at the rate stable would pick for the map's HP; fruit, droplets and bananas refill it, and a missed fruit or big droplet costs 3% to 20% depending on HP. The bar is drawn plainly (white, amber when low, red when very low); skin `scorebar-*` images are not used, and a replay that failed in the real game is not shown as failed.
 
+## Clean overlay (title, timer, pp, keys)
+The **Overlay style** menu picks the look. The default, *Clean overlay*, is modelled on osu!catch replay videos: the beatmap background (from the .osz, or a picture you choose) dimmed behind a full-height playfield, a round timer on the map thumbnail, title / artist - mapper / difficulty pill / mods top-left, accuracy and rank (SS, SSH, S, SH, A...) top-right with `live pp / max pp` under it, `combo/max combo` bottom-left, and four key boxes at the right edge. *osu! legacy HUD* is the earlier skin-based HUD (score, HP bar, combo, accuracy).
+- **pp** is lazer's osu!catch difficulty and performance calculation (`src/pp.js`): the star rating is rebuilt as the map is played (one step per fruit, juice stream or banana shower, like lazer's timed difficulty), and the live pp combines it with the judgements so far. The second number is the pp of a flawless play with the same mods. The port matches an independent Python re-implementation of the same formulas, but it has not been checked against the real game, so expect small differences.
+- **Keys:** a catch replay stores only the catcher's position and the dash flag, so left and right are *inferred* from which way the catcher moves, and the counts are an estimate of real key presses. The boxes are: left, right, dash, and a spare one.
+- Rank letters follow stable (SS, with H for HD or FL).
+
 ## Caught fruit on the plate
 
 - Caught fruit land on the plate at their offset from the catcher's centre and pile up (nudged sideways and upward when they would overlap), half size, like lazer's `computePositionInStack`.
@@ -116,6 +125,7 @@ Runs parser, juice stream, catch-logic, skin, .osz, mirror-download (mocked netw
 
 ## Not done yet
 
+- Hidden (HD) fruit fade, and the hit error meter strip some videos show at the bottom
 - Catching is checked only at each object's hit time, and the preview counts are approximate, not the official score
 
 ## Licenses

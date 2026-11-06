@@ -8,7 +8,8 @@ import { drawFrame } from './render.js';
 import { exportMp4, webCodecsAvailable } from './encode.js';
 import { md5 } from './md5.js';
 import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js';
-import { readOsz, findDifficulty, findAudio } from './osz.js';
+import { readOsz, findDifficulty, findAudio, findImage } from './osz.js';
+import { buildKeys } from './keys.js';
 import { prepareAudio, SAMPLE_RATE } from './audio.js';
 import { fetchSetForReplay, parseSetId } from './mirror.js';
 import { collectHitsounds, mixHitsounds } from './hitsounds.js';
@@ -24,7 +25,10 @@ const state = {
   defaultSkin: null, skin: null, skinMsgs: [],
   previewAudio: null,   // { scene, key, buffer } soundtrack of the preview, rebuilt when settings change
   defaultSounds: null,  // Map(file name -> bytes) of the bundled hitsounds, loaded on the first export
-  osz: null,        // { difficulties, audio, name } from a loaded .osz
+  osz: null,        // { difficulties, audio, images, name } from a loaded .osz
+  bgFile: null,     // { name, bytes } when a background image was chosen by hand
+  bg: null, bgKey: '', // decoded background (ImageBitmap) and what it was decoded from
+  keys: null,       // inferred key presses of the replay
   audioFile: null,  // { name, bytes } when a plain song file was chosen
   decoded: null,    // { key: bytes, channels } cache of the decoded music
 };
@@ -89,6 +93,10 @@ function drawAt(t) {
     showCatchWidth: $('showwidth').checked,
     showHud: $('showhud').checked,
     hitLighting: $('showlight').checked,
+    style: $('hudstyle').value,
+    bg: $('showbg').checked ? state.bg : null,
+    bgDim: Math.min(100, Math.max(0, Number($('bgdim').value) || 0)) / 100,
+    keys: state.keys,
   });
 }
 
@@ -173,6 +181,7 @@ function refresh() {
       scene.colours = resolveColours(beatmap, state.skin);
       state.scene = scene;
       state.track = new ReplayTrack(replay.frames);
+      state.keys = buildKeys(replay.frames);
       const { caught, total, bananas, bananasCaught, hud } = evaluateCatches(scene, state.track);
       msgs.push(['dim', `${scene.objects.length} objects, ${caught}/${total} fruits and droplets${bananas ? ` and ${bananasCaught}/${bananas} bananas` : ''} caught in this replay (rough check against the real result).`]);
       const cmp = compareWithReplay(hud, state.replay);
@@ -211,6 +220,28 @@ function refresh() {
   }
   drawAt(state.t);
   updateClock();
+  loadBackground();
+}
+
+/** Decode the background (picked file, else the .osz's own image for this difficulty) and redraw when it is ready. */
+async function loadBackground() {
+  let name = '', bytes = null;
+  if (state.bgFile) { name = state.bgFile.name; bytes = state.bgFile.bytes; }
+  else if (state.osz && state.beatmap?.background) {
+    bytes = findImage(state.osz, state.beatmap.background);
+    name = `${state.osz.name}:${state.beatmap.background}`;
+  }
+  const key = bytes ? `${name}|${bytes.length}` : '';
+  if (key === state.bgKey) return;
+  state.bgKey = key;
+  state.bg = null;
+  if (bytes) {
+    try {
+      const bmp = await createImageBitmap(new Blob([bytes]));
+      if (state.bgKey === key) state.bg = bmp;
+    } catch { /* unreadable image: no background */ }
+  }
+  drawAt(state.t);
 }
 
 function updateClock() {
@@ -459,6 +490,16 @@ $('useDefault').addEventListener('click', () => {
 $('showwidth').addEventListener('change', () => drawAt(state.t));
 $('showhud').addEventListener('change', () => drawAt(state.t));
 $('showlight').addEventListener('change', () => drawAt(state.t));
+for (const id of ['hudstyle', 'showbg', 'bgdim']) $(id).addEventListener('input', () => drawAt(state.t));
+
+$('bgfile').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  state.bgFile = null;
+  if (file) {
+    try { state.bgFile = { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) }; } catch { /* ignore */ }
+  }
+  loadBackground();
+});
 
 // ---------- preview ----------
 // With sound, the preview plays the same soundtrack the export would encode (song + hitsounds, built once
@@ -554,7 +595,7 @@ $('showinfo').addEventListener('change', () => drawAt(state.t));
 function setBusy(busy) {
   $('export').disabled = busy || !state.scene;
   $('cancel').disabled = !busy;
-  for (const id of ['osr', 'osu', 'audio', 'skin', 'useDefault', 'res', 'fps', 'mbps', 'volume', 'usehits', 'hitvolume', 'showinfo', 'showwidth', 'showhud', 'showlight', 'play', 'seek']) $(id).disabled = busy;
+  for (const id of ['osr', 'osu', 'audio', 'skin', 'useDefault', 'res', 'fps', 'mbps', 'volume', 'usehits', 'hitvolume', 'showinfo', 'showwidth', 'showhud', 'showlight', 'hudstyle', 'showbg', 'bgdim', 'bgfile', 'play', 'seek']) $(id).disabled = busy;
   $('usemusic').disabled = busy || !currentMusic()?.bytes;
   $('mirrorbtn').disabled = busy || !state.replay;
   $('mirrorid').disabled = busy;

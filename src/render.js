@@ -12,6 +12,8 @@ import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from '
 import { hudAt, scoreShownAt } from './score.js';
 import { plateAt, explosionsAt } from './plate.js';
 import { healthAt } from './health.js';
+import { livePp } from './pp.js';
+import { keysAt } from './keys.js';
 
 const ZONE = 120;  // room below the field for the catcher, in field units
 const PAD = 12;
@@ -22,7 +24,11 @@ const MAX_SPRITE = 160;
 const FRUIT_NAMES = ['pear', 'grapes', 'apple', 'orange']; // chosen by (index in beatmap) % 4
 const CAUGHT_SCALE = 0.5;                                   // lazer: caught_fruit_scale_adjust
 
-export function layout(W, H) {
+export function layout(W, H, overlay = false) {
+  if (overlay) {                                          // full-screen look: field from the top, catcher plate at ~86% of the height
+    const s = (H * 0.861) / FIELD_H;
+    return { s, ox: (W - FIELD_W * s) / 2, oy: 0 };
+  }
   const s = H / (FIELD_H + ZONE + PAD * 2);
   return { s, ox: (W - FIELD_W * s) / 2, oy: PAD * s };
 }
@@ -159,6 +165,188 @@ function drawTrails(ctx, skin, scene, fx, t) {
 }
 
 
+// ---------- background and the clean overlay ----------
+const MONO = 'ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace';
+
+/** Cover-fit the beatmap background over the whole frame and darken it. */
+function drawBackground(ctx, W, H, img, dim) {
+  const iw = img.width, ih = img.height;
+  if (!iw || !ih) return;
+  const k = Math.max(W / iw, H / ih);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = 1;
+  ctx.drawImage(img, (W - iw * k) / 2, (H - ih * k) / 2, iw * k, ih * k);
+  ctx.fillStyle = `rgba(0,0,0,${Math.min(1, Math.max(0, dim))})`;
+  ctx.fillRect(0, 0, W, H);
+}
+
+const roundRectPath = (ctx, x, y, w, h, r) => {
+  r = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+};
+
+/** Letter-spaced text (canvas letterSpacing is not available everywhere). */
+function spacedText(ctx, text, x, y, spacing) {
+  let cx = x;
+  for (const ch of text) { ctx.fillText(ch, cx, y); cx += ctx.measureText(ch).width + spacing; }
+  return cx - spacing;
+}
+const spacedWidth = (ctx, text, spacing) => [...text].reduce((a, ch) => a + ctx.measureText(ch).width + spacing, -spacing);
+
+export const rankOf = (acc, mods) => {
+  const base = acc >= 1 ? 'SS' : acc >= 0.98 ? 'S' : acc >= 0.94 ? 'A' : acc >= 0.9 ? 'B' : acc >= 0.85 ? 'C' : 'D';
+  return base + ((mods & (8 | 1024)) && base.startsWith('S') ? 'H' : '');   // HD / FL turn S into SH, SS into SSH
+};
+const mmss = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
+
+function drawOverlay(ctx, W, H, scene, t, { bg, keys }) {
+  const u = H / 1080;
+  const v = scene.hud ? hudAt(scene.hud, t) : null;
+  const meta = scene.meta ?? {};
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = 1;
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = 'left';
+  ctx.shadowColor = 'rgba(0,0,0,0.65)';
+  ctx.shadowBlur = 6 * u;
+
+  // --- timer ring with the map thumbnail, top left ---
+  const box = 110 * u;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0, 0, box, box); ctx.clip();
+  if (bg && bg.width) {
+    const k = Math.max(box / bg.width, box / bg.height);
+    ctx.drawImage(bg, (box - bg.width * k) / 2, (box - bg.height * k) / 2, bg.width * k, bg.height * k);
+  } else { ctx.fillStyle = '#20222c'; ctx.fillRect(0, 0, box, box); }
+  ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(0, 0, box, box);
+  ctx.restore();
+  const first = scene.objects[0]?.t ?? 0, last = scene.objects[scene.objects.length - 1]?.t ?? 1;
+  const progress = Math.min(1, Math.max(0, (t - first) / Math.max(1, last - first)));
+  ctx.shadowBlur = 0;
+  ctx.lineWidth = 4 * u;
+  ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+  ctx.beginPath(); ctx.arc(box / 2, box / 2, box * 0.42, 0, Math.PI * 2); ctx.stroke();
+  ctx.strokeStyle = '#fff';
+  ctx.beginPath(); ctx.arc(box / 2, box / 2, box * 0.42, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2); ctx.stroke();
+  ctx.shadowBlur = 6 * u;
+  ctx.fillStyle = '#fff';
+  ctx.font = `bold ${19 * u}px ${MONO}`;
+  ctx.textAlign = 'center';
+  ctx.fillText(mmss(t), box / 2, box / 2 + 7 * u);
+  ctx.textAlign = 'left';
+
+  // --- title, artist - mapper, difficulty pill and mods ---
+  const tx = 128 * u;
+  ctx.fillStyle = '#fff';
+  ctx.font = `bold ${29 * u}px ${MONO}`;
+  ctx.fillText(meta.title ?? '', tx, 24 * u);
+  ctx.font = `${21 * u}px ${MONO}`;
+  ctx.fillStyle = 'rgba(255,255,255,0.92)';
+  ctx.fillText(`${meta.artist ?? ''} - ${meta.creator ?? ''}`, tx, 58 * u);
+  const pillText = String(meta.version ?? '').toUpperCase();
+  ctx.font = `bold ${12 * u}px ${MONO}`;
+  const pw = spacedWidth(ctx, pillText, 3.4 * u) + 20 * u, ph = 26 * u, py = 84 * u;
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#fff';
+  roundRectPath(ctx, tx, py, pw, ph, 3 * u); ctx.fill();
+  ctx.fillStyle = '#111';
+  spacedText(ctx, pillText, tx + 10 * u, py + 17.5 * u, 3.4 * u);
+  ctx.shadowBlur = 6 * u;
+  const modText = modsLabel(scene.mods ?? 0);
+  if (modText) {
+    ctx.fillStyle = '#fff';
+    ctx.font = `${20 * u}px ${MONO}`;
+    ctx.fillText(`+ ${modText}`, tx + pw + 14 * u, py + 20 * u);
+  }
+
+  // --- accuracy + rank, then pp, top right ---
+  const acc = v ? v.acc : 1;
+  const rank = rankOf(acc, scene.mods ?? 0);
+  const rx = W - 8 * u;
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#fff';
+  ctx.font = `bold ${58 * u}px ${MONO}`;
+  const rankW = ctx.measureText(rank).width;
+  ctx.fillText(rank, rx, 56 * u);
+  ctx.font = `bold ${42 * u}px ${MONO}`;
+  ctx.fillText(`${(acc * 100).toFixed(2)}%`, rx - rankW - 18 * u, 56 * u);
+  if (scene.diff) {
+    const pp = livePpOf(scene, v, t);
+    const maxText = `/${Math.round(scene.maxPp)}pp`;
+    ctx.font = `bold ${30 * u}px ${MONO}`;
+    ctx.fillStyle = 'rgba(255,255,255,0.62)';
+    ctx.fillText(maxText, rx, 108 * u);
+    const mw = ctx.measureText(maxText).width;
+    ctx.fillStyle = '#fff';
+    ctx.fillText(`${Math.round(pp)}pp`, rx - mw, 108 * u);
+  }
+  ctx.textAlign = 'left';
+
+  // --- combo as current/total, bottom left ---
+  const total = scene.diff?.maxCombo ?? 0;
+  const combo = v ? v.combo : 0;
+  const cy = H - 12 * u;
+  ctx.fillStyle = '#fff';
+  ctx.font = `bold ${58 * u}px ${MONO}`;
+  const cs = String(combo);
+  ctx.fillText(cs, 4 * u, cy);
+  let cx = 4 * u + ctx.measureText(cs).width;
+  ctx.font = `bold ${32 * u}px ${MONO}`;
+  ctx.fillStyle = 'rgba(255,255,255,0.62)';
+  const ts = `/${total}`;
+  ctx.fillText(ts, cx, cy);
+  cx += ctx.measureText(ts).width;
+  ctx.font = `bold ${32 * u}px ${MONO}`;
+  ctx.fillStyle = '#fff';
+  ctx.fillText(' Combo', cx, cy);
+
+  // --- key overlay, right edge: left, right, dash, and a spare box ---
+  if (keys) {
+    const ks = keysAt(keys, t);
+    const size = 56 * u, gap = 10 * u, kx = W - size - 8 * u;
+    const top = H * 0.5 - (4 * size + 3 * gap) / 2 + 36 * u;
+    const specs = [
+      { k: ks.left, fill: '#ffe14d' }, { k: ks.right, fill: '#ffe14d' }, { k: ks.dash, fill: '#ff7ab8' }, { k: null, fill: '#8a8d96' },
+    ];
+    ctx.shadowBlur = 0;
+    ctx.textAlign = 'center';
+    specs.forEach((sp, i) => {
+      const y = top + i * (size + gap);
+      if (!sp.k) { ctx.fillStyle = 'rgba(138,141,150,0.9)'; roundRectPath(ctx, kx, y, size, size, 7 * u); ctx.fill(); return; }
+      if (sp.k.down) {
+        ctx.fillStyle = sp.fill; roundRectPath(ctx, kx, y, size, size, 7 * u); ctx.fill();
+        ctx.fillStyle = '#111';
+      } else {
+        ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 2 * u;
+        roundRectPath(ctx, kx, y, size, size, 7 * u); ctx.stroke();
+        ctx.fillStyle = '#fff';
+      }
+      ctx.font = `bold ${22 * u}px ${MONO}`;
+      ctx.fillText(String(sp.k.count), kx + size / 2, y + size / 2 + 8 * u);
+    });
+    ctx.textAlign = 'left';
+  }
+  ctx.shadowBlur = 0;
+  ctx.shadowColor = 'transparent';
+}
+
+const MOD_LABELS = [[1, 'NF'], [2, 'EZ'], [8, 'HD'], [16, 'HR'], [32, 'SD'], [64, 'DT'], [128, 'RX'], [256, 'HT'], [1024, 'FL']];
+function modsLabel(mods) {
+  const list = MOD_LABELS.filter(([bit]) => mods & bit).map(([, n]) => n);
+  if (mods & 512) { const i = list.indexOf('DT'); if (i >= 0) list[i] = 'NC'; else list.push('NC'); }
+  return list.join(',');
+}
+
+function livePpOf(scene, v, t) {
+  return v ? livePp(scene.diff, scene, v, t) : 0;
+}
+
 // ---------- HUD (osu!'s legacy skin layout: combo bottom-left, accuracy top-right) ----------
 const HUD_GLYPH = { ',': 'comma', '.': 'dot', '%': 'percent', x: 'x' };
 const HUD_POP_MS = 300;
@@ -294,23 +482,27 @@ function drawHitLighting(ctx, skin, scene, t, catcherX) {
  * @param {{skin: import('./skin.js').Skin, showCatchWidth?: boolean}} opts
  */
 export function drawFrame(ctx, W, H, scene, track, t, info = {}, opts = {}) {
-  const { skin, showCatchWidth = false, showHud = false, hitLighting = false } = opts;
-  const { s, ox, oy } = layout(W, H);
+  const { skin, showCatchWidth = false, showHud = false, hitLighting = false, style = 'classic', bg = null, bgDim = 0.8, keys = null } = opts;
+  const overlay = style === 'overlay';
+  const { s, ox, oy } = layout(W, H, overlay);
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalAlpha = 1;
-  const bg = ctx.createLinearGradient(0, 0, 0, H);
-  bg.addColorStop(0, '#11131c');
-  bg.addColorStop(1, '#0a0b10');
-  ctx.fillStyle = bg;
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#11131c');
+  grad.addColorStop(1, '#0a0b10');
+  ctx.fillStyle = grad;
   ctx.fillRect(0, 0, W, H);
 
+  if (bg) drawBackground(ctx, W, H, bg, bgDim);
   ctx.setTransform(s, 0, 0, s, ox, oy);
-  ctx.fillStyle = 'rgba(255,255,255,0.04)';
-  ctx.fillRect(0, 0, FIELD_W, FIELD_H + ZONE);
-  ctx.strokeStyle = 'rgba(255,255,255,0.10)';
-  ctx.lineWidth = 1.5 / s;
-  ctx.strokeRect(0, 0, FIELD_W, FIELD_H + ZONE);
+  if (!overlay) {
+    ctx.fillStyle = 'rgba(255,255,255,0.04)';
+    ctx.fillRect(0, 0, FIELD_W, FIELD_H + ZONE);
+    ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+    ctx.lineWidth = 1.5 / s;
+    ctx.strokeRect(0, 0, FIELD_W, FIELD_H + ZONE);
+  }
 
   const objs = scene.objects;
   const preempt = scene.preempt;
@@ -358,10 +550,11 @@ export function drawFrame(ctx, W, H, scene, track, t, info = {}, opts = {}) {
     ctx.stroke();
   }
 
-  if (showHud && skin) drawHud(ctx, W, H, scene, t, skin);
+  if (showHud && skin && !overlay) drawHud(ctx, W, H, scene, t, skin);
+  if (showHud && overlay) drawOverlay(ctx, W, H, scene, t, { bg, keys });
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  if (info.text || info.text2) {
+  if (!overlay && (info.text || info.text2)) {
     const size = Math.max(11, Math.round(H / 42));
     ctx.font = `${size}px system-ui, -apple-system, "Segoe UI", sans-serif`;
     ctx.textBaseline = 'top';
