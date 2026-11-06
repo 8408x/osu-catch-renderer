@@ -7,14 +7,14 @@
 //   - droplets use 0.8x and tiny droplets 0.4x of that; sprites are capped at 160 px
 //   - catcher sprite = texture size x 0.35 x catcher scale, hung from the plate line 16 px down
 
-import { FIELD_W, FIELD_H } from './catch.js?v=20261107c';
-import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261107c';
-import { hudAt, scoreShownAt } from './score.js?v=20261107c';
-import { plateAt, explosionsAt } from './plate.js?v=20261107c';
-import { drawArgonHud } from './argon.js?v=20261107c';
-import { healthAt } from './health.js?v=20261107c';
-import { livePp } from './pp.js?v=20261107c';
-import { keysAt } from './keys.js?v=20261107c';
+import { FIELD_W, FIELD_H } from './catch.js?v=20261107d';
+import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261107d';
+import { hudAt, scoreShownAt } from './score.js?v=20261107d';
+import { plateAt, explosionsAt } from './plate.js?v=20261107d';
+import { drawArgonHud } from './argon.js?v=20261107d';
+import { healthAt } from './health.js?v=20261107d';
+import { livePp } from './pp.js?v=20261107d';
+import { keysAt } from './keys.js?v=20261107d';
 
 const ZONE = 120;  // room below the field for the catcher, in field units
 const PAD = 12;
@@ -372,7 +372,11 @@ const HUD_POP_MS = 300;
 /** Glyph textures for a font prefix; falls back to osu!'s own `score` numbers when the skin renamed the prefix but lacks the images. */
 function glyphFor(skin, prefix, ch) {
   const key = HUD_GLYPH[ch] ?? ch;
-  return skin.get(`${prefix}-${key}`) ?? (prefix !== 'score' ? skin.get(`score-${key}`) : null);
+  const own = skin.get(`${prefix}-${key}`);
+  if (own || prefix === 'score') return own;
+  // a skin with its own (even blank, like `invis`) number font but no `x` draws no `x`, rather than osu!'s
+  if (key === 'x' && skin.get(`${prefix}-0`)) return null;
+  return skin.get(`score-${key}`);
 }
 
 /**
@@ -381,7 +385,11 @@ function glyphFor(skin, prefix, ch) {
  */
 function drawGlyphs(ctx, skin, prefix, text, x, y, k, { anchor = 'left', fromTop = false, fixed = false, overlap = 0, alpha = 1, additive = false } = {}) {
   const glyphs = [...text].map((ch) => glyphFor(skin, prefix, ch));
-  if (glyphs.some((g) => !g)) return;
+  if (glyphs.some((g) => !g)) {
+    if (!(prefix !== 'score' && text.endsWith('x') && skin.get(`${prefix}-0`))) return;
+    glyphs.pop(); text = text.slice(0, -1);
+    if (glyphs.some((g) => !g)) return;
+  }
   const five = glyphFor(skin, prefix, '5');
   const widths = glyphs.map((g, i) => (fixed && /[0-9]/.test(text[i]) && five ? five.w : g.w) * k - overlap * k);
   const total = widths.reduce((a, b) => a + b, 0);
@@ -431,7 +439,49 @@ function drawProgressPie(ctx, cx, cy, r, p) {
   ctx.restore();
 }
 
-function drawStableHud(ctx, W, H, scene, t, skin) {
+/** A skin's own HP bar (scorebar-bg / -colour / -ki, kidanger at low health), laid out for the 768 px high screen like stable. Returns false when the skin has none. */
+function drawSkinHealth(ctx, skin, hp, u) {
+  const bg = skin.get('scorebar-bg'), fill = skin.get('scorebar-colour');
+  if (!bg && !fill) return false;
+  hp = Math.max(0, Math.min(1, hp));
+  const OX = 4.8 * u, OY = 16 * u;                       // stable: the fill sits at (3, 10) of its 640x480 layout, x1.6
+  ctx.save();
+  ctx.globalAlpha = 1;
+  if (bg) ctx.drawImage(bg.img, 0, 0, bg.w * u, bg.h * u);
+  let endX = OX;
+  if (fill && fill.w > 0) {
+    const cw = fill.w * hp;
+    if (cw > 0) ctx.drawImage(fill.img, 0, 0, fill.img.width * hp, fill.img.height, OX, OY, cw * u, fill.h * u);
+    endX = OX + cw * u;
+  }
+  const ki = skin.get(hp < 0.25 ? 'scorebar-kidanger2' : hp < 0.5 ? 'scorebar-kidanger' : 'scorebar-ki');
+  const mk = ki ?? skin.get('scorebar-ki');
+  if (mk && hp > 0) ctx.drawImage(mk.img, endX - mk.w * u / 2, OY + (fill ? fill.h * u : 0) / 2 - mk.h * u / 2, mk.w * u, mk.h * u);
+  ctx.restore();
+  return true;
+}
+
+/** Stable's key counter on the right edge: one `inputoverlay-key` per key (K1, K2, dash, unused) with its press count. */
+function drawStableKeys(ctx, W, H, skin, keys, t, u) {
+  const ks = keysAt(keys, t);
+  const key = skin.get('inputoverlay-key');
+  const kw = (key?.w ?? 43) * u, kh = (key?.h ?? 46) * u, gap = 1.5 * u;
+  const rows = [ks.left, ks.right, ks.dash, null];
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `${13 * u}px "Roboto Mono", ui-monospace, sans-serif`;
+  rows.forEach((k, i) => {
+    const y = H * 0.4556 + i * (kh + gap) - kh / 2;
+    ctx.globalAlpha = k?.down ? 1 : 0.6;
+    if (key) ctx.drawImage(key.img, W - kw, y, kw, kh);
+    else { ctx.fillStyle = k?.down ? '#4aa3ff' : '#1d5a99'; ctx.fillRect(W - kw, y + 4 * u, 4 * u, kh - 8 * u); }
+    if (k) { ctx.globalAlpha = 1; ctx.fillStyle = '#fff'; ctx.fillText(String(k.count), W - 21 * u, y + kh / 2); }
+  });
+  ctx.restore();
+}
+
+function drawStableHud(ctx, W, H, scene, t, skin, keys) {
   const hud = scene.hud;
   if (!hud) return;
   const v = hudAt(hud, t);
@@ -457,7 +507,10 @@ function drawStableHud(ctx, W, H, scene, t, skin) {
   }
 
   // health bar, top left
-  if (scene.health) drawHealthBar(ctx, healthAt(scene.health, t), 10 * u, 10 * u, 340 * u, 14 * u);
+  const hp = scene.health ? healthAt(scene.health, t) : 1;
+  if (!drawSkinHealth(ctx, skin, hp, u) && scene.health) drawHealthBar(ctx, hp, 10 * u, 10 * u, 340 * u, 14 * u);
+
+  if (keys) drawStableKeys(ctx, W, H, skin, keys, t, u);
 
   // combo, bottom left (LegacyDefaultComboCounter: scale 1.28, margin 10) with its additive pop-out
   if (v.combo > 0) {
@@ -568,7 +621,7 @@ export function drawFrame(ctx, W, H, scene, track, t, opts = {}) {
   }
 
   if (showHud && style === 'argon') drawArgonHud(ctx, W, H, scene, t, argon, { keys });
-  else if (showHud && style === 'stable' && skin) drawStableHud(ctx, W, H, scene, t, skin);
+  else if (showHud && style === 'stable' && skin) drawStableHud(ctx, W, H, scene, t, skin, keys);
   else if (showHud) drawOverlay(ctx, W, H, scene, t, { bg, keys, tosu });
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);

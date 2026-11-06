@@ -25,6 +25,7 @@ export const glyphNames = (prefix) => GLYPH_SUFFIXES.map((g) => `${prefix}-${g}`
 const WANTED = /\.(png|jpe?g)$/i;
 // hitsound files a skin may bring: normal-hitnormal.wav, soft-slidertick2.ogg, catch-banana.wav ...
 const GLYPH_FILE = /^[a-z0-9_]+-(?:[0-9]|comma|dot|percent|x)(?:@2x)?\.(?:png|jpe?g)$/i;   // HUD numbers under any font prefix
+const HUD_FILE = /^(?:scorebar-(?:bg|colour|ki|kidanger2?)|inputoverlay-(?:key|background))(?:@2x)?\.(?:png|jpe?g)$/i;   // HP bar parts and key counter
 const SAMPLE_FILE = /^((normal|soft|drum)-(hitnormal|hitwhistle|hitfinish|hitclap|slidertick)\d*|metronomelow|catch-banana)\.(wav|mp3|ogg)$/i;
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
 
@@ -76,7 +77,7 @@ export function readOsk(bytes) {
       filter: (f) => {
         const base = f.name.split('/').pop().toLowerCase();
         return !f.name.endsWith('/') && f.originalSize <= MAX_FILE_BYTES &&
-          (base === 'skin.ini' || (base.startsWith('fruit-') && WANTED.test(base)) || SAMPLE_FILE.test(base) || GLYPH_FILE.test(base));
+          (base === 'skin.ini' || (base.startsWith('fruit-') && WANTED.test(base)) || SAMPLE_FILE.test(base) || GLYPH_FILE.test(base) || HUD_FILE.test(base));
       },
     });
   } catch {
@@ -205,6 +206,9 @@ const ELEMENTS = [
   'fruit-catcher-idle', 'fruit-catcher-kiai', 'fruit-catcher-fail',
 ];
 
+/** Gameplay HUD images a skin may provide: HP bar parts and the key counter. */
+export const HUD_ELEMENTS = ['scorebar-bg', 'scorebar-colour', 'scorebar-ki', 'scorebar-kidanger', 'scorebar-kidanger2', 'inputoverlay-key', 'inputoverlay-background'];
+
 /** Bundled default skin. `fetchBytes(url)` returns a Uint8Array. */
 export async function loadDefaultSkin(env, fetchBytes, baseUrl = 'assets/default-skin/') {
   const files = new Map();
@@ -217,7 +221,7 @@ export async function loadDefaultSkin(env, fetchBytes, baseUrl = 'assets/default
 /** A user skin (.osk) layered on top of the default skin. */
 export async function loadOskSkin(bytes, env, defaultSkin, label = 'custom') {
   const skin = new Skin(readOsk(bytes), env, { label, fallback: defaultSkin });
-  await skin.preload([...ELEMENTS, ...EXPLOSIONS, ...glyphNames('score'), ...glyphNames(skin.ini.scorePrefix), ...glyphNames(skin.ini.comboPrefix)]);
+  await skin.preload([...ELEMENTS, ...EXPLOSIONS, ...HUD_ELEMENTS, ...glyphNames('score'), ...glyphNames(skin.ini.scorePrefix), ...glyphNames(skin.ini.comboPrefix)]);
   return skin;
 }
 

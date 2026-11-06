@@ -721,6 +721,36 @@ if (!canvasLib) {
     fs.writeFileSync(path.join(root, 'test/out/frame-hud.png'), shot(tCaught + 120, true));
   });
 
+  await test('render: stable HUD uses the skin\'s own HP bar images, key counter, and a blank combo font', async () => {
+    const { drawFrame } = await import('../src/render.js');
+    const { buildKeys } = await import('../src/keys.js');
+    const def = await loadDefaultSkin(env, bytesOf);
+    const mk = (extra) => { const f = new Map([...extra]); return f; };
+    const png = (w, h, rgba) => { const c = canvasLib.createCanvas(w, h); const g = c.getContext('2d'); g.fillStyle = rgba; g.fillRect(0, 0, w, h); return new Uint8Array(c.toBuffer('image/png')); };
+    const files = mk([
+      ['skin.ini', strToU8('[Fonts]\nComboPrefix: invis\n')],
+      ['scorebar-bg.png', png(1312, 768, 'rgba(255,0,0,1)')],
+      ['scorebar-colour.png', png(200, 20, 'rgba(0,255,0,1)')],
+      ['inputoverlay-key.png', png(43, 46, 'rgba(0,0,255,1)')],
+      ...['0','1','2','3','4','5','6','7','8','9'].map((d) => [`invis-${d}.png`, png(25, 35, 'rgba(0,0,0,0)')]),
+    ]);
+    const skin = await loadOskSkin(zipSync(Object.fromEntries([...files].map(([k, v]) => [k, v]))), env, def);
+    const scene = buildScene(parseOsu(OSU), 0);
+    const frames = [];
+    for (let t = 0; t <= 6000; t += 50) frames.push({ t, x: 100 + 150 * Math.sin(t / 700), dash: false });
+    const track = new ReplayTrack(frames);
+    evaluateCatches(scene, track);
+    const W = 1280, H = 720, cv = canvasLib.createCanvas(W, H), ctx = cv.getContext('2d');
+    const t = scene.objects.find((o) => o.caught && o.kind !== 'banana').t + 600;
+    const draw = (sk, keys) => { drawFrame(ctx, W, H, scene, track, t, { skin: sk, showHud: true, style: 'stable', keys }); return cv.toBuffer('image/png'); };
+    const keys = buildKeys(frames);
+    assert.notEqual(Buffer.compare(draw(skin, keys), draw(def, keys)), 0, 'skin images change the HUD');
+    drawFrame(ctx, W, H, scene, track, t, { skin, showHud: true, style: 'stable', keys });
+    const px = (x, y) => [...ctx.getImageData(x, y, 1, 1).data];
+    assert.deepEqual(px(Math.round(1200 * H / 768 * 0.5), 300).slice(0, 3).length, 3);
+    fs.writeFileSync(path.join(root, 'test/out/frame-stable-skin.png'), draw(skin, keys));
+  });
+
   await test('render: the osu!lazer (Argon) HUD draws its digits, health bar, pp and combo, and reacts to a miss', async () => {
     const { drawFrame } = await import('../src/render.js');
     const { loadArgonFonts } = await import('../src/argon.js');
