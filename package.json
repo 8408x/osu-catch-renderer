@@ -1,0 +1,17 @@
+{
+  "name": "osu-catch-renderer",
+  "version": "0.1.0",
+  "description": "Render osu!catch replays to MP4 in the browser (WebCodecs + mp4-muxer)",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "test": "node test/run.mjs"
+  },
+  "devDependencies": {
+    "lzma": "^2.3.2"
+  },
+  "optionalDependencies": {
+    "@napi-rs/canvas": "*"
+  }
+}

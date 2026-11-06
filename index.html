@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>osu!catch Replay Renderer</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0d0f16; --panel:#161a26; --line:#252b3d; --text:#e8ecf8; --dim:#98a2bd; --accent:#7fa8ff; --warn:#ffcf66; --err:#ff7b8f; }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; }
+    main { max-width: 980px; margin: 0 auto; padding: 28px 16px 60px; }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    .sub { color: var(--dim); margin: 0 0 22px; }
+    .panel { background: var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:16px; }
+    .row { display:flex; flex-wrap:wrap; gap:16px; }
+    .row > label { flex:1 1 260px; display:flex; flex-direction:column; gap:6px; color:var(--dim); font-size:13px; }
+    input[type=file], select, input[type=number], input[type=text] { background:#0f1220; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px; font:inherit; }
+    button { background:var(--accent); color:#0b1020; border:0; border-radius:8px; padding:9px 16px; font:inherit; font-weight:600; cursor:pointer; }
+    button.ghost { background:transparent; color:var(--text); border:1px solid var(--line); }
+    button:disabled { opacity:.4; cursor:not-allowed; }
+    canvas { width:100%; height:auto; display:block; border-radius:10px; background:#0a0b10; }
+    .controls { display:flex; gap:10px; align-items:center; margin-top:10px; }
+    .controls input[type=range] { flex:1; }
+    .msgs p { margin:4px 0; font-size:14px; }
+    .ok { color:var(--text); } .warn { color:var(--warn); } .err { color:var(--err); } .dim { color:var(--dim); }
+    progress { width:100%; height:10px; }
+    video { width:100%; margin-top:12px; border-radius:10px; }
+    a.dl { color:var(--accent); font-weight:600; }
+    .opts { display:flex; flex-wrap:wrap; gap:16px; align-items:end; margin-bottom:12px; }
+    .opts label { display:flex; flex-direction:column; gap:6px; color:var(--dim); font-size:13px; }
+    .check { flex-direction:row !important; align-items:center; gap:8px !important; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>osu!catch Replay Renderer</h1>
+  <p class="sub">Turns an osu!catch replay into an MP4, entirely in your browser. Nothing is uploaded.</p>
+
+  <section class="panel">
+    <div class="row">
+      <label>Replay (.osr)
+        <input id="osr" type="file" accept=".osr">
+      </label>
+      <label>Beatmap difficulty (.osu), the exact one you played
+        <input id="osu" type="file" accept=".osu">
+      </label>
+    </div>
+    <div class="row" style="margin-top:16px">
+      <label>Music, optional: the whole beatmap set (.osz) or just the song (mp3, ogg…). With an .osz you can skip the .osu above
+        <input id="audio" type="file" accept=".osz,.zip,.mp3,.ogg,.oga,.wav,.m4a,.aac,.flac,.opus">
+      </label>
+    </div>
+    <div class="row" style="margin-top:16px">
+      <label>No beatmap file? Load the replay, then download the map from an osu! mirror. Optional: the beatmap set link or ID, if the automatic lookup fails
+        <input id="mirrorid" type="text" placeholder="https://osu.ppy.sh/beatmapsets/123456  or  123456" autocomplete="off">
+      </label>
+      <label style="flex:0 0 auto; justify-content:flex-end">
+        <button id="mirrorbtn" class="ghost" type="button" disabled>Download from mirror</button>
+      </label>
+    </div>
+    <div id="mirrorstatus" class="dim" style="margin-top:8px; white-space:pre-line; font-size:14px"></div>
+    <div class="row" style="margin-top:16px">
+      <label>Skin (.osk), optional. Without one, the default osu! look is used
+        <input id="skin" type="file" accept=".osk,.zip">
+      </label>
+      <label style="flex:0 0 auto; justify-content:flex-end">
+        <button id="useDefault" class="ghost" type="button">Use default skin</button>
+      </label>
+    </div>
+    <div id="msgs" class="msgs" style="margin-top:12px"></div>
+  </section>
+
+  <section class="panel">
+    <canvas id="stage" width="1280" height="720"></canvas>
+    <div class="controls">
+      <button id="play" class="ghost" disabled>Play</button>
+      <input id="seek" type="range" min="0" max="1" step="1" value="0" disabled>
+      <span id="clock" class="dim">0:00</span>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="opts">
+      <label>Resolution
+        <select id="res">
+          <option value="854x480">854 × 480</option>
+          <option value="1280x720" selected>1280 × 720</option>
+          <option value="1920x1080">1920 × 1080</option>
+        </select>
+      </label>
+      <label>Frame rate
+        <select id="fps">
+          <option value="30">30 fps</option>
+          <option value="60" selected>60 fps</option>
+        </select>
+      </label>
+      <label>Bitrate (Mbps)
+        <input id="mbps" type="number" min="1" max="80" step="1" value="12" style="width:90px">
+      </label>
+      <label class="check"><input id="usemusic" type="checkbox" checked disabled> Include music</label>
+      <label>Music volume (%)
+        <input id="volume" type="number" min="0" max="100" step="5" value="100" style="width:90px">
+      </label>
+      <label class="check"><input id="usehits" type="checkbox" checked> Include hitsounds</label>
+      <label>Hitsound volume (%)
+        <input id="hitvolume" type="number" min="0" max="100" step="5" value="70" style="width:90px">
+      </label>
+      <label class="check"><input id="showinfo" type="checkbox" checked> Show player / map text</label>
+      <label class="check"><input id="showhud" type="checkbox" checked> Show combo and accuracy</label>
+      <label class="check"><input id="showlight" type="checkbox" checked> Hit lighting</label>
+      <label class="check"><input id="showwidth" type="checkbox"> Show catch width line</label>
+    </div>
+    <div class="controls" style="margin-top:0">
+      <button id="export" disabled>Render MP4</button>
+      <button id="cancel" class="ghost" disabled>Cancel</button>
+      <span id="status" class="dim"></span>
+    </div>
+    <progress id="bar" max="1" value="0" style="margin-top:12px"></progress>
+    <div id="result"></div>
+  </section>
+</main>
+
+<script src="vendor/lzma-d-min.js"></script>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

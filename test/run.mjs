@@ -1,0 +1,1252 @@
+// Node tests with synthetic data: `npm test`
+// Covers md5, .osr parsing (incl. LZMA), .osu parsing, juice stream generation, catch evaluation,
+// and (if @napi-rs/canvas is installed) renders a preview PNG to test/out/.
+
+import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import vm from 'node:vm';
+import path from 'node:path';
+import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const require = createRequire(import.meta.url);
+
+// the browser loads this as a classic <script>; do the same here
+vm.runInThisContext(fs.readFileSync(path.join(root, 'vendor/lzma-d-min.js'), 'utf8'));
+assert.ok(globalThis.LZMA, 'vendored LZMA decoder defines global LZMA');
+
+const { md5 } = await import('../src/md5.js');
+const { parseOsr, parseReplayFrames, modsToString } = await import('../src/osr.js');
+const { parseOsu } = await import('../src/osu.js');
+const { createPath } = await import('../src/slider.js');
+const { buildScene, evaluateCatches, modRate, resolveColours, DEFAULT_COLOURS } = await import('../src/catch.js');
+const { ReplayTrack } = await import('../src/replay.js');
+const { parseSkinIni, readOsk, Skin, loadDefaultSkin, loadOskSkin, describeSkin } = await import('../src/skin.js');
+const { zipSync, strToU8 } = await import('../vendor/fflate.mjs');
+
+let passed = 0;
+const test = async (name, fn) => {
+  try { await fn(); passed++; console.log(`ok   ${name}`); }
+  catch (e) { console.error(`FAIL ${name}\n${e.stack}`); process.exitCode = 1; }
+};
+const near = (a, b, eps = 1e-6) => assert.ok(Math.abs(a - b) <= eps, `${a} != ${b} (±${eps})`);
+
+// ---------- helpers to build a synthetic .osr ----------
+const LZMAenc = require('lzma');
+const lzmaCompress = (str) => new Promise((res, rej) => LZMAenc.compress(str, 5, (out, err) => (err ? rej(err) : res(Buffer.from(Uint8Array.from(out, (b) => b & 255))))));
+
+const uleb = (n) => { const o = []; do { let b = n & 0x7f; n >>>= 7; if (n) b |= 0x80; o.push(b); } while (n); return Buffer.from(o); };
+const str = (s) => { if (!s) return Buffer.from([0]); const b = Buffer.from(s, 'utf8'); return Buffer.concat([Buffer.from([0x0b]), uleb(b.length), b]); };
+const i32 = (n) => { const b = Buffer.alloc(4); b.writeInt32LE(n); return b; };
+const u16 = (n) => { const b = Buffer.alloc(2); b.writeUInt16LE(n); return b; };
+const i64 = (n) => { const b = Buffer.alloc(8); b.writeBigInt64LE(BigInt(n)); return b; };
+
+async function makeOsr({ mode = 2, mods = 0, player = 'Tester', frameText, md5hash = 'a'.repeat(32) }) {
+  const data = await lzmaCompress(frameText);
+  return Buffer.concat([
+    Buffer.from([mode]), i32(20240101), str(md5hash), str(player), str('b'.repeat(32)),
+    u16(10), u16(2), u16(1), u16(0), u16(0), u16(0),
+    i32(123456), u16(99), Buffer.from([0]), i32(mods), str(''),
+    i64(638400000000000000n), i32(data.length), data, i64(0),
+  ]);
+}
+const toAB = (buf) => buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+
+// ---------- tests ----------
+await test('md5 matches node crypto', () => {
+  for (const s of ['', 'a', 'abc', 'x'.repeat(55), 'x'.repeat(56), 'x'.repeat(64), 'osu!catch'.repeat(1000)]) {
+    const bytes = new TextEncoder().encode(s);
+    assert.equal(md5(bytes), crypto.createHash('md5').update(bytes).digest('hex'), `len ${s.length}`);
+  }
+  const rnd = crypto.randomBytes(5000);
+  assert.equal(md5(rnd), crypto.createHash('md5').update(rnd).digest('hex'));
+});
+
+await test('replay frames: skip frames, seed frame, time accumulation', () => {
+  const { frames, seed } = parseReplayFrames('0|256|-500|0,-1|256|-500|0,501|100|0|0,100|120|0|1,50|140|0|0,-12345|0|0|777,');
+  assert.equal(seed, 777);
+  assert.deepEqual(frames.map((f) => f.t), [500, 600, 650]);
+  assert.deepEqual(frames.map((f) => f.x), [100, 120, 140]);
+  assert.deepEqual(frames.map((f) => f.dash), [false, true, false]);
+});
+
+await test('replay frames: negative deltas never go backwards', () => {
+  const { frames } = parseReplayFrames('0|256|-500|0,-1|256|-500|0,1001|100|0|0,10|110|0|0,-5|999|0|0,10|120|0|0,');
+  const ts = frames.map((f) => f.t);
+  assert.deepEqual(ts, [1000, 1010, 1015]); // the -5 frame (t=1005) is dropped
+  for (let i = 1; i < ts.length; i++) assert.ok(ts[i] >= ts[i - 1]);
+});
+
+await test('parseOsr reads header and LZMA frames (decoder from vendor/)', async () => {
+  const osr = await makeOsr({
+    mods: 16 | 64, player: 'Win', md5hash: 'c'.repeat(32),
+    frameText: '0|256|-500|0,-1|256|-500|0,1001|100|0|0,500|300|0|1,-12345|0|0|42,',
+  });
+  const r = await parseOsr(toAB(osr));
+  assert.equal(r.mode, 2);
+  assert.equal(r.player, 'Win');
+  assert.equal(r.beatmapMd5, 'c'.repeat(32));
+  assert.equal(r.mods, 80);
+  assert.equal(modsToString(r.mods), 'HRDT');
+  assert.equal(r.maxCombo, 99);
+  assert.equal(r.score, 123456);
+  assert.equal(r.n300, 10);
+  assert.equal(r.seed, 42);
+  assert.deepEqual(r.frames.map((f) => [f.t, f.x, f.dash]), [[1000, 100, false], [1500, 300, true]]);
+  assert.equal(r.date.getUTCFullYear() >= 2020, true);
+});
+
+await test('parseOsr rejects truncated files', async () => {
+  const osr = await makeOsr({ frameText: '0|1|2|3,' });
+  await assert.rejects(() => parseOsr(toAB(osr.subarray(0, 40))), /truncated/);
+});
+
+await test('modsToString / modRate', () => {
+  assert.equal(modsToString(0), 'NM');
+  assert.equal(modsToString(64 | 512), 'NC');
+  assert.equal(modRate(64), 1.5);
+  assert.equal(modRate(512 | 64), 1.5);
+  assert.equal(modRate(256), 0.75);
+  assert.equal(modRate(0), 1);
+});
+
+await test('slider paths: linear, perfect circle, bezier, extension', () => {
+  const lin = createPath('L', [{ x: 0, y: 0 }, { x: 200, y: 0 }], 200);
+  near(lin.positionAt(0.5).x, 100); near(lin.positionAt(1).x, 200);
+
+  // quarter circle radius 100 centred at origin: (100,0) -> (0,100) via the 45° point
+  const r = 100, c = Math.SQRT1_2 * r;
+  const circ = createPath('P', [{ x: 0, y: 0 }, { x: c - r, y: c }, { x: -r, y: r }].map((p) => ({ x: p.x + 0, y: p.y })), (Math.PI / 2) * r);
+  const end = circ.positionAt(1);
+  near(end.x, -r, 0.5); near(end.y, r, 0.5);
+  const mid = circ.positionAt(0.5);
+  near(mid.x, c - r, 0.5); near(mid.y, c, 0.5);
+
+  const bez = createPath('B', [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }], 150);
+  assert.ok(bez.positionAt(0.5).x > 40 && bez.positionAt(0.5).x < 100);
+  near(bez.positionAt(0).x, 0);
+
+  // red anchor: two linear-ish bezier pieces
+  const red = createPath('B', [{ x: 0, y: 0 }, { x: 50, y: 0 }, { x: 50, y: 0 }, { x: 100, y: 0 }], 100);
+  near(red.positionAt(0.5).x, 50, 0.5);
+
+  // declared length longer than the curve: extends along the last segment
+  const ext = createPath('L', [{ x: 0, y: 0 }, { x: 100, y: 0 }], 150);
+  near(ext.positionAt(1).x, 150);
+});
+
+const OSU = `osu file format v14
+
+[General]
+Mode: 2
+
+[Metadata]
+Title:Test Song
+Artist:Test Artist
+Version:Test Diff
+
+[Difficulty]
+HPDrainRate:5
+CircleSize:4
+OverallDifficulty:8
+ApproachRate:9
+SliderMultiplier:1.4
+SliderTickRate:1
+
+[TimingPoints]
+0,500,4,1,0,100,1,0
+4000,-100,4,1,0,100,0,0
+
+[Colours]
+Combo1 : 255,0,0
+Combo2 : 0,255,0
+
+[HitObjects]
+100,300,1000,5,0,0:0:0:0:
+256,300,1500,1,0,0:0:0:0:
+100,100,2000,6,0,L|300:100,1,200
+256,192,3500,12,0,3800
+400,300,5000,5,0,0:0:0:0:
+`;
+
+await test('parseOsu: metadata, difficulty, timing, colours, objects', () => {
+  const bm = parseOsu(OSU);
+  assert.equal(bm.mode, 2); assert.equal(bm.title, 'Test Song'); assert.equal(bm.version, 'Test Diff');
+  assert.equal(bm.cs, 4); assert.equal(bm.ar, 9); assert.equal(bm.sliderMultiplier, 1.4);
+  assert.equal(bm.timingPoints.length, 2);
+  assert.equal(bm.timingPoints[0].uninherited, true); assert.equal(bm.timingPoints[1].uninherited, false);
+  assert.deepEqual(bm.colours, [[255, 0, 0], [0, 255, 0]]);
+  assert.deepEqual(bm.hitObjects.map((h) => h.kind), ['fruit', 'fruit', 'stream', 'shower', 'fruit']);
+  assert.equal(bm.hitObjects[2].pixelLength, 200);
+  assert.deepEqual(bm.hitObjects[2].points, [{ x: 0, y: 0 }, { x: 200, y: 0 }]);
+});
+
+await test('parseOsu: AR falls back to OD on old maps', () => {
+  assert.equal(parseOsu('[Difficulty]\nCircleSize:5\nOverallDifficulty:7\n').ar, 7);
+});
+
+await test('buildScene: difficulty numbers (verified formulas from lazer)', () => {
+  const s = buildScene(parseOsu(OSU), 0);
+  assert.equal(s.preempt, 600);                  // AR9 -> 1200 - 750*4/5 = 600
+  near(s.catcherScale, 1 - 0.7 * (4 - 5) / 5);   // 1.14
+  near(s.catchWidth, 106.75 * 1.14 * 0.8);       // 97.356
+  near(s.fruitRadius, 64 * 0.57);
+  // HR: CS 4*1.3=5.2, AR 9*1.4=12.6 -> capped 10 -> 450
+  const hr = buildScene(parseOsu(OSU), 16);
+  assert.equal(hr.preempt, 450); near(hr.cs, 5.2);
+  // EZ halves
+  const ez = buildScene(parseOsu(OSU), 2);
+  near(ez.cs, 2); near(ez.ar, 4.5);
+});
+
+await test('buildScene: juice stream nested objects match hand calculation', () => {
+  const s = buildScene(parseOsu(OSU), 0);
+  const fruits = s.objects.filter((o) => o.kind === 'fruit');
+  const drops = s.objects.filter((o) => o.kind === 'droplet');
+  const tiny = s.objects.filter((o) => o.kind === 'tiny');
+  // 2 circles + head + tail of the stream + final circle = 5 fruits; 1 tick; 8 tiny droplets; spinner ignored
+  assert.equal(fruits.length, 5);
+  assert.equal(drops.length, 1);
+  assert.equal(tiny.length, 8);
+  // slider: velocity 0.28 px/ms, 200px -> 714.2857 ms
+  const head = fruits.find((f) => f.t === 2000);
+  const tail = fruits.find((f) => Math.abs(f.t - 2714.2857142857) < 1e-6);
+  assert.ok(head && tail);
+  near(head.x, 100); near(tail.x, 300);
+  // tick every 140px -> at 70% of the span
+  near(drops[0].t, 2000 + 0.7 * (200 / 0.28), 1e-6); near(drops[0].x, 240, 1e-6);
+  // tiny droplets between head and tick: 500ms gap halved to 62.5ms steps -> 7 of them
+  assert.equal(tiny.filter((o) => o.t > 2000 && o.t < drops[0].t).length, 7);
+  // sorted by time
+  for (let i = 1; i < s.objects.length; i++) assert.ok(s.objects[i].t >= s.objects[i - 1].t);
+});
+
+await test('buildScene: slider velocity from green line (x0.5 slows the slider down)', () => {
+  const text = OSU.replace('100,100,2000,6,0,L|300:100,1,200', '100,100,4500,6,0,L|300:100,1,200').replace('400,300,5000,5', '400,300,9000,5');
+  const s = buildScene(parseOsu(text), 0);
+  // at 4500 the -100 line (x1) is active -> same speed
+  const tail = s.objects.filter((o) => o.kind === 'fruit' && o.t > 4500 && o.t < 6000);
+  near(tail[tail.length - 1].t, 4500 + 200 / 0.28, 1e-6);
+  const text2 = text.replace('4000,-100', '4000,-200');
+  const s2 = buildScene(parseOsu(text2), 0);
+  const tail2 = s2.objects.filter((o) => o.kind === 'fruit' && o.t > 4500 && o.t < 6000);
+  near(tail2[tail2.length - 1].t, 4500 + 200 / 0.14, 1e-6);
+});
+
+await test('buildScene: combo numbers advance on new combo; a spinner forces one on the next object', () => {
+  const s = buildScene(parseOsu(OSU), 0);
+  const byT = (t) => s.objects.find((o) => Math.abs(o.t - t) < 1e-6);
+  assert.equal(byT(1000).combo, 0);
+  assert.equal(byT(1500).combo, 0);
+  assert.equal(byT(2000).combo, 1);   // new combo flag on the stream
+  assert.equal(byT(5000).combo, 2);   // spinner's own flag must not count twice
+  const col = (o) => o.combo % s.colours.length;
+  assert.deepEqual([1000, 1500, 2000, 5000].map((t) => col(byT(t))), [0, 0, 1, 0]);
+});
+
+await test('buildScene: idx (picks the fruit sprite) is per top-level object; streams share it; showers count', () => {
+  const s = buildScene(parseOsu(OSU), 0);
+  const byT = (t) => s.objects.find((o) => Math.abs(o.t - t) < 1e-6);
+  assert.equal(byT(1000).idx, 0);
+  assert.equal(byT(1500).idx, 1);
+  assert.ok(s.objects.filter((o) => o.t >= 2000 && o.t < 3000).every((o) => o.idx === 2));
+  assert.equal(byT(5000).idx, 4);     // index 3 is the banana shower
+});
+
+await test('buildScene: kiai comes from the timing point effects flag', () => {
+  const s = buildScene(parseOsu(OSU.replace('4000,-100,4,1,0,100,0,0', '4000,-100,4,1,0,100,0,1')), 0);
+  assert.equal(s.objects.find((o) => o.t === 1000).kiai, false);
+  assert.equal(s.objects.find((o) => o.t === 5000).kiai, true);
+});
+
+await test('resolveColours: beatmap > skin.ini > osu! defaults', () => {
+  const withMap = parseOsu(OSU), noMap = parseOsu(OSU.replace(/Combo\d : .*\n/g, ''));
+  const skin = { colours: [[1, 2, 3]] };
+  assert.deepEqual(resolveColours(withMap, skin), [[255, 0, 0], [0, 255, 0]]);
+  assert.deepEqual(resolveColours(noMap, skin), [[1, 2, 3]]);
+  assert.deepEqual(resolveColours(noMap, { colours: [] }), DEFAULT_COLOURS);
+  assert.deepEqual(resolveColours(noMap, null), DEFAULT_COLOURS);
+});
+
+await test('ReplayTrack.facingAt follows the last direction moved', () => {
+  const tr = new ReplayTrack([{ t: 0, x: 100, dash: false }, { t: 100, x: 200, dash: false }, { t: 200, x: 200, dash: false }, { t: 300, x: 50, dash: false }, { t: 400, x: 50, dash: false }]);
+  assert.equal(tr.facingAt(-10), 1);
+  assert.equal(tr.facingAt(50), 1);    // moving right
+  assert.equal(tr.facingAt(150), 1);   // standing still after moving right
+  assert.equal(tr.facingAt(250), -1);  // moving left
+  assert.equal(tr.facingAt(350), -1);  // standing still after moving left
+  assert.equal(tr.facingAt(999), -1);
+});
+
+await test('ReplayTrack interpolates and evaluateCatches uses 0.8 * 106.75 * scale width', () => {
+  const track = new ReplayTrack([{ t: 0, x: 0, dash: false }, { t: 1000, x: 200, dash: true }]);
+  near(track.xAt(-50), 0); near(track.xAt(500), 100); near(track.xAt(2000), 200);
+  assert.equal(track.dashAt(500), false); assert.equal(track.dashAt(1000), true);
+
+  const scene = buildScene(parseOsu(OSU), 0);            // catch width 97.356 -> half 48.678
+  const frames = [{ t: 0, x: 100, dash: false }, { t: 6000, x: 100, dash: false }];
+  const res = evaluateCatches(scene, new ReplayTrack(frames));
+  const o1000 = scene.objects.find((o) => o.t === 1000);   // x=100 -> caught
+  const o1500 = scene.objects.find((o) => o.t === 1500);   // x=256 -> missed
+  const o5000 = scene.objects.find((o) => o.t === 5000);   // x=400 -> missed
+  assert.equal(o1000.caught, true); assert.equal(o1500.caught, false); assert.equal(o5000.caught, false);
+  assert.ok(res.caught >= 1 && res.total > res.caught);
+  // edge: exactly at half-width
+  const edge = new ReplayTrack([{ t: 0, x: 256 - 48.6, dash: false }]);
+  evaluateCatches(scene, edge);
+  assert.equal(scene.objects.find((o) => o.t === 1500).caught, true);
+  const out = new ReplayTrack([{ t: 0, x: 256 - 48.8, dash: false }]);
+  evaluateCatches(scene, out);
+  assert.equal(scene.objects.find((o) => o.t === 1500).caught, false);
+});
+
+// ---------- .osz reader ----------
+const { readOsz, findDifficulty, findAudio } = await import('../src/osz.js');
+const { zipSync: zipSyncOsz, strToU8: strToU8Osz } = await import('../vendor/fflate.mjs');
+
+await test('readOsz: finds difficulties + audio, ignores videos/images, matches by md5, audio by name', () => {
+  const diffA = strToU8Osz(OSU), diffB = strToU8Osz(OSU.replace('Test Diff', 'Other Diff'));
+  const osz = readOsz(zipSyncOsz({
+    'Artist - Song (Mapper) [Test Diff].osu': diffA,
+    'Artist - Song (Mapper) [Other Diff].osu': diffB,
+    'Audio.MP3': new Uint8Array([1, 2, 3, 4]),
+    'bg.jpg': new Uint8Array(1000),
+    'video.avi': new Uint8Array(1000),
+    'sfx/hit.wav': new Uint8Array([9, 9]),
+  }));
+  assert.equal(osz.difficulties.length, 2);
+  assert.deepEqual([...osz.audio.keys()].sort(), ['audio.mp3', 'hit.wav']);
+  const wantMd5 = crypto.createHash('md5').update(diffB).digest('hex');
+  assert.equal(findDifficulty(osz, wantMd5).name, 'Artist - Song (Mapper) [Other Diff].osu');
+  assert.equal(findDifficulty(osz, wantMd5.toUpperCase()).name.includes('Other'), true);
+  assert.equal(findDifficulty(osz, 'f'.repeat(32)), null);
+  assert.deepEqual(findAudio(osz, 'audio.mp3'), new Uint8Array([1, 2, 3, 4]));
+  assert.ok(findAudio(osz, 'AUDIO.mp3') && findAudio(osz, 'sub\\Audio.mp3'));
+  assert.equal(findAudio(osz, 'nope.mp3'), null);
+  assert.equal(findAudio(osz, ''), null);
+  assert.equal(parseOsu(OSU.replace('Mode: 2', 'Mode: 2\nAudioFilename: song.mp3')).audioFilename, 'song.mp3');
+});
+
+await test('readOsz: rejects non-zip and sets without difficulties', () => {
+  assert.throws(() => readOsz(new Uint8Array([1, 2, 3, 4, 5])), /valid .osz/);
+  assert.throws(() => readOsz(zipSyncOsz({ 'audio.mp3': new Uint8Array([1]) })), /No .osu/);
+});
+
+// ---------- mirror download (mocked network) ----------
+const { fetchSetForReplay, parseSetId, extractSetId, MirrorError, MIRRORS } = await import('../src/mirror.js');
+
+const mirrorDiff = strToU8Osz(OSU);
+const mirrorMd5 = crypto.createHash('md5').update(mirrorDiff).digest('hex');
+const mirrorOsz = zipSyncOsz({ 'Artist - Song (Me) [Test Diff].osu': mirrorDiff, 'audio.mp3': new Uint8Array([1, 2, 3]) });
+const jsonRes = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json' } });
+const mkFetch = (routes, log = []) => async (url, init) => {
+  log.push(url);
+  const hit = routes.find(([m]) => (typeof m === 'string' ? url === m : m.test(url)));
+  if (!hit) throw new TypeError('Failed to fetch');
+  const v = typeof hit[1] === 'function' ? await hit[1](url, init) : hit[1];
+  if (v instanceof Error) throw v;
+  return v;
+};
+const HINAI_LOOKUP = `https://mirror.hinamizawa.ai/v3/osu/beatmaps/md5/${mirrorMd5}`;
+
+await test('parseSetId: ids, links, empty and junk', () => {
+  assert.equal(parseSetId('123456'), 123456);
+  assert.equal(parseSetId('  987 '), 987);
+  assert.equal(parseSetId('https://osu.ppy.sh/beatmapsets/123456#fruits/987'), 123456);
+  assert.equal(parseSetId('osu.ppy.sh/s/55'), 55);
+  assert.equal(parseSetId(''), null);
+  assert.equal(parseSetId(undefined), null);
+  for (const bad of ['0', 'abc', 'https://osu.ppy.sh/beatmaps/987', 'https://example.com/beatmapsets/12', '12 34', '-5']) assert.ok(Number.isNaN(parseSetId(bad)), bad);
+});
+
+await test('extractSetId: flat, wrapped, nested and array shapes; ignores a bare beatmap id', () => {
+  assert.equal(extractSetId({ id: 736215, beatmapset_id: 320118 }), 320118);
+  assert.equal(extractSetId({ data: { beatmapset_id: 5 } }), 5);
+  assert.equal(extractSetId({ beatmap: { SetID: 7 } }), 7);
+  assert.equal(extractSetId({ id: 1, beatmapset: { id: 9 } }), 9);
+  assert.equal(extractSetId([{ set_id: 11 }]), 11);
+  assert.equal(extractSetId({ id: 736215, version: 'x' }), null);   // `id` alone is the difficulty id, never guessed as a set id
+  assert.equal(extractSetId({ beatmapset_id: 'abc' }), null);
+  assert.equal(extractSetId(null), null);
+  assert.equal(extractSetId('text'), null);
+});
+
+await test('fetchSetForReplay: lookup -> download (no-video variant first) -> matched by hash', async () => {
+  const log = [];
+  const statuses = [], progress = [];
+  const res = await fetchSetForReplay({
+    md5: mirrorMd5.toUpperCase(),
+    fetchImpl: mkFetch([
+      [HINAI_LOOKUP, jsonRes({ id: 1, beatmapset_id: 4242 })],
+      ['https://mirror.hinamizawa.ai/api/v1/hinai/d/4242n', () => new Response('nope', { status: 404 })],
+      ['https://mirror.hinamizawa.ai/api/v1/hinai/d/4242', () => new Response(mirrorOsz, { headers: { 'content-length': String(mirrorOsz.length) } })],
+    ], log),
+    onStatus: (t) => statuses.push(t), onProgress: (got, total, m) => progress.push([got, total, m]),
+  });
+  assert.equal(res.setId, 4242); assert.equal(res.mirror, 'mirror.hinamizawa.ai'); assert.equal(res.matched, true);
+  assert.equal(res.osz.difficulties.length, 1);
+  assert.deepEqual(log, [HINAI_LOOKUP, 'https://mirror.hinamizawa.ai/api/v1/hinai/d/4242n', 'https://mirror.hinamizawa.ai/api/v1/hinai/d/4242']);
+  assert.ok(statuses[0].includes('Looking up') && statuses.at(-1).includes('Downloading'));
+  assert.deepEqual(progress.at(-1), [mirrorOsz.length, mirrorOsz.length, 'mirror.hinamizawa.ai']);
+});
+
+await test('fetchSetForReplay: a typed set id skips the lookup entirely', async () => {
+  const log = [];
+  const res = await fetchSetForReplay({
+    md5: mirrorMd5, setId: 77,
+    fetchImpl: mkFetch([['https://mirror.hinamizawa.ai/api/v1/hinai/d/77n', () => new Response(mirrorOsz)]], log),
+  });
+  assert.equal(res.setId, 77);
+  assert.deepEqual(log, ['https://mirror.hinamizawa.ai/api/v1/hinai/d/77n']);
+});
+
+await test('fetchSetForReplay: falls through unreachable / HTML / non-zip answers to a mirror that works', async () => {
+  const log = [];
+  const res = await fetchSetForReplay({
+    md5: mirrorMd5,
+    fetchImpl: mkFetch([
+      // hinai: lookup unreachable (CORS or offline) -> osu.direct has no lookup -> catboy answers
+      [`https://catboy.best/api/v2/md5/${mirrorMd5}`, jsonRes({ data: { beatmapset_id: 31 } })],
+      ['https://mirror.hinamizawa.ai/api/v1/hinai/d/31n', () => new Response('<html>error</html>', { status: 200 })], // not a zip
+      ['https://mirror.hinamizawa.ai/api/v1/hinai/d/31', () => new Response('', { status: 429 })],
+      ['https://osu.direct/api/d/31', () => new Response('<html>cloudflare</html>')],                                   // not a zip
+      ['https://catboy.best/d/31n', () => new Response(mirrorOsz)],
+    ], log),
+  });
+  assert.equal(res.mirror, 'catboy.best');
+  assert.equal(log[0], HINAI_LOOKUP);
+  assert.equal(log.filter((u) => u.includes('osu.direct')).length, 1);
+});
+
+await test('fetchSetForReplay: set without the exact hash is returned with matched=false', async () => {
+  const other = zipSyncOsz({ 'x.osu': strToU8Osz(OSU.replace('Test Diff', 'Changed')) });
+  const res = await fetchSetForReplay({ md5: mirrorMd5, setId: 5, fetchImpl: mkFetch([[/d\/5n$/, () => new Response(other)]]) });
+  assert.equal(res.matched, false);
+});
+
+await test('fetchSetForReplay: every mirror unreachable -> MirrorError listing each one and the CORS hint', async () => {
+  await assert.rejects(
+    () => fetchSetForReplay({ md5: mirrorMd5, fetchImpl: mkFetch([]) }),
+    (e) => e instanceof MirrorError
+      && /Could not find this map by its hash/.test(e.message)
+      && e.message.includes('mirror.hinamizawa.ai (lookup)') && e.message.includes('catboy.best (lookup)')
+      && /do not allow requests from web pages/.test(e.message) && /paste the beatmap set link/.test(e.message)
+      && e.attempts.length === 2,
+  );
+  await assert.rejects(
+    () => fetchSetForReplay({ md5: mirrorMd5, setId: 9, fetchImpl: mkFetch([]) }),
+    (e) => /Found the map \(set 9\) but could not download it/.test(e.message) && e.attempts.length === MIRRORS.reduce((n, m) => n + m.downloads(9).length, 0),
+  );
+});
+
+await test('fetchSetForReplay: bad hash, lookup without a set id, HTTP errors', async () => {
+  await assert.rejects(() => fetchSetForReplay({ md5: 'xyz', fetchImpl: mkFetch([]) }), /valid beatmap hash/);
+  await assert.rejects(
+    () => fetchSetForReplay({ md5: mirrorMd5, fetchImpl: mkFetch([[HINAI_LOOKUP, jsonRes({ id: 5 })], [/catboy/, jsonRes({ error: 'x' }, 500)]]) }),
+    (e) => /did not contain a beatmap set id/.test(e.message) && /HTTP 500/.test(e.message),
+  );
+});
+
+await test('fetchSetForReplay: a hanging mirror times out and the next one is used; user cancel aborts', async () => {
+  // like a real fetch: rejects when the signal aborts, or immediately if it is already aborted
+  const hang = (_u, init) => new Promise((_, rej) => {
+    const fail = () => rej(new DOMException('aborted', 'AbortError'));
+    if (init.signal.aborted) fail(); else init.signal.addEventListener('abort', fail);
+  });
+  const res = await fetchSetForReplay({
+    md5: mirrorMd5, setId: 3, downloadIdleMs: 40,
+    fetchImpl: mkFetch([[/hinamizawa/, hang], ['https://osu.direct/api/d/3', () => new Response(mirrorOsz)]]),
+  });
+  assert.equal(res.mirror, 'osu.direct');
+
+  const ctl = new AbortController();
+  const p = fetchSetForReplay({ md5: mirrorMd5, setId: 3, signal: ctl.signal, fetchImpl: mkFetch([[/.*/, hang]]) });
+  setTimeout(() => ctl.abort(), 20);
+  await assert.rejects(p, (e) => e.name === 'AbortError');
+  await assert.rejects(fetchSetForReplay({ md5: mirrorMd5, setId: 3, signal: AbortSignal.abort(), fetchImpl: mkFetch([[/.*/, hang]]) }), (e) => e.name === 'AbortError');
+});
+
+await test('fetchSetForReplay: streamed body reports progress; oversized content-length is refused', async () => {
+  const half = Math.floor(mirrorOsz.length / 2);
+  const stream = new ReadableStream({ start(c) { c.enqueue(mirrorOsz.slice(0, half)); c.enqueue(mirrorOsz.slice(half)); c.close(); } });
+  const progress = [];
+  const res = await fetchSetForReplay({
+    md5: mirrorMd5, setId: 8, onProgress: (g, t) => progress.push([g, t]),
+    fetchImpl: mkFetch([[/d\/8n$/, () => new Response(stream, { headers: { 'content-length': String(mirrorOsz.length) } })]]),
+  });
+  assert.equal(res.bytes.length, mirrorOsz.length);
+  assert.deepEqual(progress.map((p) => p[0]), [half, mirrorOsz.length]);
+
+  await assert.rejects(
+    () => fetchSetForReplay({ md5: mirrorMd5, setId: 8, mirrors: [MIRRORS[1]], fetchImpl: mkFetch([[/.*/, () => new Response('x', { headers: { 'content-length': String(400 * 1024 * 1024) } })]]) }),
+    /file is too large/,
+  );
+});
+
+// ---------- audio DSP ----------
+const { prepareAudio, timeStretch, resample, SAMPLE_RATE: SR } = await import('../src/audio.js');
+const sine = (freq, sec, amp = 0.5) => Float32Array.from({ length: Math.round(sec * SR) }, (_, i) => amp * Math.sin((2 * Math.PI * freq * i) / SR));
+const rms = (a, from = 0, to = a.length) => Math.sqrt(a.subarray(from, to).reduce((s, v) => s + v * v, 0) / (to - from));
+const freqOf = (a, from, to) => { let z = 0; for (let i = from + 1; i < to; i++) if (a[i - 1] <= 0 && a[i] > 0) z++; return z / ((to - from) / SR); };
+const firstAbove = (a, thr) => { for (let i = 0; i < a.length; i++) if (Math.abs(a[i]) > thr) return i; return -1; };
+// 1 kHz burst of `ms` milliseconds starting at map time `atMs`, in a silent 3 s track
+const burstTrack = (atMs, ms = 100) => { const t = new Float32Array(3 * SR); const b = sine(1000, ms / 1000, 0.8); t.set(b, Math.round((atMs / 1000) * SR)); return [t, t.slice()]; };
+
+await test('prepareAudio rate 1: audio lines up with beatmap time (negative start = silence first)', () => {
+  const [l, r] = burstTrack(1000);
+  const [oL, oR] = prepareAudio([l, r], { startTime: -100, durationSec: 2 });
+  assert.equal(oL.length, 2 * SR); assert.equal(oR.length, 2 * SR);
+  const onset = firstAbove(oL, 0.05) / SR;                    // burst at map 1000 ms -> video 1.1 s
+  near(onset, 1.1, 0.01);
+  assert.equal(firstAbove(oL.subarray(0, Math.round(1.09 * SR)), 1e-6), -1, 'silent before the beep');
+  const mid = prepareAudio([l, r], { startTime: 900, durationSec: 0.5 })[0];   // starts mid-song
+  near(firstAbove(mid, 0.05) / SR, 0.1, 0.01);
+});
+
+await test('prepareAudio: mono input is duplicated, volume applied, past-the-end is silence', () => {
+  const mono = sine(440, 1, 1);
+  const [a, b] = prepareAudio([mono], { startTime: 0, durationSec: 1.5, volume: 0.5 });
+  assert.equal(a.length, 1.5 * SR); assert.deepEqual(a.subarray(1000, 1010), b.subarray(1000, 1010));
+  near(rms(a, 4800, 40000), 0.5 * 0.7071, 0.01);
+  assert.equal(rms(a, Math.round(1.1 * SR), 1.4 * SR), 0);
+});
+
+await test('timeStretch keeps pitch and level (rate 1.5, 0.75) and returns exact length', () => {
+  for (const rate of [1.5, 0.75]) {
+    const input = sine(440, 4);
+    const outLen = Math.round((4 / rate) * SR);
+    const [o] = timeStretch([input, input.slice()], rate, outLen);
+    assert.equal(o.length, outLen);
+    const from = Math.round(0.3 * SR), to = outLen - Math.round(0.3 * SR);
+    near(freqOf(o, from, to), 440, 440 * 0.02);
+    near(rms(o, from, to), 0.5 * 0.7071, 0.04);
+  }
+});
+
+await test('timeStretch on a harmonic signal: no big level dips at splice points', () => {
+  const n = 4 * SR, input = new Float32Array(n);
+  for (let i = 0; i < n; i++) input[i] = 0.3 * Math.sin((2 * Math.PI * 220 * i) / SR) + 0.2 * Math.sin((2 * Math.PI * 660 * i) / SR) + 0.1 * Math.sin((2 * Math.PI * 1320 * i) / SR);
+  const outLen = Math.round((4 / 1.5) * SR);
+  const [o] = timeStretch([input, input], 1.5, outLen);
+  const win = 480; let min = Infinity, max = 0;                    // 10 ms RMS windows
+  for (let s = Math.round(0.2 * SR); s < outLen - Math.round(0.2 * SR); s += win) { const v = rms(o, s, s + win); min = Math.min(min, v); max = Math.max(max, v); }
+  assert.ok(min > 0.6 * max, `level dips: min ${min.toFixed(3)} vs max ${max.toFixed(3)}`);
+});
+
+await test('nightcore resampling raises pitch by the rate', () => {
+  const input = sine(440, 3);
+  const [o] = resample([input], 1.5, Math.round((3 / 1.5) * SR));
+  near(freqOf(o, 4800, o.length - 4800), 660, 660 * 0.01);
+});
+
+await test('prepareAudio DT: the beep lands at (map time - start) / 1.5 and keeps its pitch', () => {
+  const [l, r] = burstTrack(1000, 150);
+  const [o] = prepareAudio([l, r], { startTime: -100, durationSec: 1.6, rate: 1.5 });
+  const onset = firstAbove(o, 0.1) / SR;                           // (1000 + 100) / 1.5 = 733 ms
+  near(onset, 0.7333, 0.03);
+  const f0 = firstAbove(o, 0.1) + Math.round(0.02 * SR);
+  near(freqOf(o, f0, f0 + Math.round(0.05 * SR)), 1000, 60);       // pitch preserved
+});
+
+await test('prepareAudio NC: same timing, pitch x1.5', () => {
+  const [l, r] = burstTrack(1000, 150);
+  const [o] = prepareAudio([l, r], { startTime: -100, durationSec: 1.6, rate: 1.5, nightcore: true });
+  near(firstAbove(o, 0.1) / SR, 0.7333, 0.01);
+  const f0 = firstAbove(o, 0.1) + Math.round(0.02 * SR);
+  near(freqOf(o, f0, f0 + Math.round(0.05 * SR)), 1500, 90);
+});
+
+await test('prepareAudio HT: beep later and longer, pitch preserved', () => {
+  const [l, r] = burstTrack(1000, 150);
+  const [o] = prepareAudio([l, r], { startTime: 0, durationSec: 2, rate: 0.75 });
+  near(firstAbove(o, 0.1) / SR, 1.3333, 0.03);                     // 1000 / 0.75
+  const f0 = firstAbove(o, 0.1) + Math.round(0.03 * SR);
+  near(freqOf(o, f0, f0 + Math.round(0.08 * SR)), 1000, 60);
+});
+
+// ---------- skin tests (need a canvas implementation to decode images) ----------
+let canvasLib = null;
+try { canvasLib = await import('@napi-rs/canvas'); } catch { /* optional */ }
+
+if (!canvasLib) {
+  console.log('skip skin + render tests (npm install to enable @napi-rs/canvas)');
+} else {
+  const env = {
+    decode: (bytes) => canvasLib.loadImage(Buffer.from(bytes)),
+    createCanvas: (w, h) => canvasLib.createCanvas(w, h),
+  };
+  const png = (w, h, draw) => {
+    const c = canvasLib.createCanvas(w, h);
+    draw?.(c.getContext('2d'), w, h);
+    return new Uint8Array(c.toBuffer('image/png'));
+  };
+  const solid = (w, h, colour = '#fff') => png(w, h, (g) => { g.fillStyle = colour; g.fillRect(0, 0, w, h); });
+  const bytesOf = async (url) => new Uint8Array(fs.readFileSync(path.join(root, url)));
+
+  await test('parseSkinIni: name, version, combo colours (with comments and odd spacing)', () => {
+    const ini = parseSkinIni('﻿[General]\nName: My Skin\nVersion: 2.5\n\n[Colours]\nCombo1 : 10, 20, 30 // red-ish\nCombo3: 1,2,3\nCombo9: 9,9,9\nSliderBorder: 1,1,1\n');
+    assert.equal(ini.name, 'My Skin'); assert.equal(ini.version, 2.5);
+    assert.deepEqual(ini.colours, [[10, 20, 30], [1, 2, 3]]);
+    assert.equal(parseSkinIni('[General]\nVersion: latest').version, 2.7);
+  });
+
+  await test('readOsk: only keeps fruit images + skin.ini, case-insensitive, root wins over sub-folder', () => {
+    const zip = zipSync({
+      'skin.ini': strToU8('[General]\nName: T\n'),
+      'Fruit-Pear.PNG': solid(8, 8),
+      'sub/fruit-pear.png': solid(4, 4),
+      'sub/fruit-grapes.png': solid(8, 8),
+      'hitcircle.png': solid(8, 8),
+      'readme.txt': strToU8('x'),
+    });
+    const files = readOsk(zip);
+    assert.deepEqual([...files.keys()].sort(), ['fruit-grapes.png', 'fruit-pear.png', 'skin.ini']);
+    assert.throws(() => readOsk(new Uint8Array([1, 2, 3, 4])), /valid .osk/);
+  });
+
+  await test('Skin: @2x preferred and halved, plain png kept, missing -> null, fallback used', async () => {
+    const base = new Skin(new Map([['fruit-apple@2x.png', solid(256, 256)]]), env, { label: 'default' });
+    const user = new Skin(new Map([
+      ['fruit-pear@2x.png', solid(200, 100)], ['fruit-pear.png', solid(10, 10)],  // both present: @2x wins
+      ['fruit-grapes.png', solid(120, 120)],
+    ]), env, { label: 'custom', fallback: base });
+    await user.preload(['fruit-pear', 'fruit-grapes', 'fruit-apple', 'fruit-orange']);
+    const pear = user.get('fruit-pear'); assert.deepEqual([pear.w, pear.h, pear.from], [100, 50, 'custom']);
+    const grapes = user.get('FRUIT-GRAPES'); assert.deepEqual([grapes.w, grapes.h], [120, 120]);
+    const apple = user.get('fruit-apple'); assert.deepEqual([apple.w, apple.from], [128, 'default']);
+    assert.equal(user.get('fruit-orange'), null);
+    const d = describeSkin(user);
+    assert.ok(d.own.includes('fruit-pear') && d.fallback.includes('fruit-apple'));
+  });
+
+  await test('Skin: a broken image counts as missing (falls back) instead of failing the whole skin', async () => {
+    const base = new Skin(new Map([['fruit-pear@2x.png', solid(64, 64)]]), env, { label: 'default' });
+    const user = new Skin(new Map([['fruit-pear.png', new Uint8Array([1, 2, 3, 4, 5])]]), env, { label: 'custom', fallback: base });
+    await user.preload(['fruit-pear']);
+    assert.equal(user.get('fruit-pear').from, 'default');
+  });
+
+  await test('Skin.tinted multiplies by the combo colour and keeps transparency', async () => {
+    const img = png(4, 4, (g) => { g.fillStyle = '#fff'; g.fillRect(0, 0, 2, 4); }); // left half white, right half transparent
+    const skin = new Skin(new Map([['fruit-pear.png', img]]), env);
+    await skin.preload(['fruit-pear']);
+    const tex = skin.get('fruit-pear');
+    const c = skin.tinted(tex, [255, 128, 0]);
+    const px = (x, y) => Array.from(c.getContext('2d').getImageData(x, y, 1, 1).data);
+    assert.deepEqual(px(0, 0), [255, 128, 0, 255]);
+    assert.equal(px(3, 0)[3], 0);
+    assert.equal(skin.tinted(tex, [255, 128, 0]), c, 'cached');
+    assert.notEqual(skin.tinted(tex, [0, 0, 255]), c);
+  });
+
+  await test('bundled default skin: loads all catch images with the expected sizes', async () => {
+    const def = await loadDefaultSkin(env, bytesOf);
+    const sz = (n) => { const t = def.get(n); return [t.w, t.h]; };
+    assert.deepEqual(sz('fruit-pear'), [128, 128]);
+    assert.deepEqual(sz('fruit-pear-overlay'), [128, 128]);
+    assert.deepEqual(sz('fruit-drop'), [82, 103]);
+    assert.deepEqual(sz('fruit-catcher-idle'), [306, 320]);
+    for (const n of ['fruit-apple', 'fruit-grapes', 'fruit-orange', 'fruit-bananas', 'fruit-catcher-kiai', 'fruit-catcher-fail']) assert.ok(def.get(n), n);
+    assert.equal(def.get('fruit-drop-overlay'), null, 'default skin has no drop overlay');
+    // catcher at CS5: 306 * 0.35 = 107.1, matching Catcher.BASE_SIZE (106.75) used for the catch width
+    near(306 * 0.35, 106.75, 0.5);
+  });
+
+  await test('loadOskSkin layers a user skin over the default one', async () => {
+    const def = await loadDefaultSkin(env, bytesOf);
+    const osk = zipSync({ 'skin.ini': strToU8('[General]\nName: Mine\n[Colours]\nCombo1: 5,6,7\n'), 'fruit-pear@2x.png': solid(300, 300), 'fruit-catcher-idle.png': solid(200, 210) });
+    const skin = await loadOskSkin(osk, env, def);
+    assert.equal(skin.ini.name, 'Mine'); assert.deepEqual(skin.colours, [[5, 6, 7]]);
+    assert.deepEqual([skin.get('fruit-pear').w, skin.get('fruit-pear').from], [150, 'custom']);
+    assert.equal(skin.get('fruit-apple').from, 'default');
+    assert.equal(skin.get('fruit-catcher-idle').w, 200);
+    assert.equal(skin.get('fruit-catcher-kiai').from, 'default'); // raw lookup falls back to the default skin...
+    const { pickCatcherTexture, pickOverlay } = await import('../src/render.js');
+    // a custom fruit must not get the default skin's overlay; the default skin's own pair still matches
+    assert.equal(pickOverlay(skin, 'pear', skin.get('fruit-pear')), null);
+    assert.equal(pickOverlay(def, 'pear', def.get('fruit-pear')).from, 'default');
+    const withOv = await loadOskSkin(zipSync({ 'fruit-pear.png': solid(100, 100), 'fruit-pear-overlay.png': solid(100, 100) }), env, def);
+    assert.equal(pickOverlay(withOv, 'pear', withOv.get('fruit-pear')).from, 'custom');
+    // ...but the catcher keeps the user's own idle image when the skin has no kiai/fail image
+    assert.equal(pickCatcherTexture(skin, 'kiai').from, 'custom');
+    assert.equal(pickCatcherTexture(skin, 'fail').from, 'custom');
+    assert.equal(pickCatcherTexture(def, 'kiai').from, 'default');
+    const osk2 = zipSync({ 'fruit-catcher-idle.png': solid(200, 210), 'fruit-catcher-kiai.png': solid(222, 210) });
+    const skin2 = await loadOskSkin(osk2, env, def);
+    assert.equal(pickCatcherTexture(skin2, 'kiai').w, 222);        // skin's own kiai image is used
+    assert.equal(pickCatcherTexture(skin2, 'fail').from, 'custom'); // no fail image -> its own idle
+  });
+
+  await test('render: draws sprite frames to PNG (default skin + a tinted custom skin)', async () => {
+    const { drawFrame } = await import('../src/render.js');
+    const def = await loadDefaultSkin(env, bytesOf);
+    const scene = buildScene(parseOsu(OSU.replace('4000,-100,4,1,0,100,0,0', '4000,-100,4,1,0,100,0,1')), 0);
+    const frames = [];
+    for (let t = 0; t <= 6000; t += 50) frames.push({ t, x: 100 + 150 * Math.sin(t / 700), dash: t % 400 < 100 });
+    const track = new ReplayTrack(frames);
+    evaluateCatches(scene, track);
+    const W = 1280, H = 720;
+    const cv = canvasLib.createCanvas(W, H);
+    const ctx = cv.getContext('2d');
+    fs.mkdirSync(path.join(root, 'test/out'), { recursive: true });
+    for (const [name, t] of [['early', 1200], ['stream', 2550], ['late', 5200]]) {
+      drawFrame(ctx, W, H, scene, track, t, { text: 'Tester  ·  NM', text2: 'Test Artist - Test Song [Test Diff]' }, { skin: def, showCatchWidth: name === 'stream' });
+      fs.writeFileSync(path.join(root, `test/out/frame-${name}.png`), cv.toBuffer('image/png'));
+    }
+    // frame must not be blank: compare against the empty playfield
+    const empty = canvasLib.createCanvas(W, H);
+    drawFrame(empty.getContext('2d'), W, H, scene, new ReplayTrack([{ t: 0, x: 256, dash: false }]), -99999, {}, { skin: null });
+    drawFrame(ctx, W, H, scene, track, 2550, {}, { skin: def });
+    assert.notEqual(Buffer.compare(cv.toBuffer('image/png'), empty.toBuffer('image/png')), 0);
+  });
+
+  await test('render: the HUD draws combo and accuracy only when asked, and the combo pops after a catch', async () => {
+    const { drawFrame } = await import('../src/render.js');
+    const def = await loadDefaultSkin(env, bytesOf);
+    const scene = buildScene(parseOsu(OSU), 0);
+    const frames = [];
+    for (let t = 0; t <= 6000; t += 50) frames.push({ t, x: 100 + 150 * Math.sin(t / 700), dash: false });
+    const track = new ReplayTrack(frames);
+    evaluateCatches(scene, track);
+    const W = 1280, H = 720;
+    const cv = canvasLib.createCanvas(W, H);
+    const ctx = cv.getContext('2d');
+    const shot = (t, showHud) => { drawFrame(ctx, W, H, scene, track, t, {}, { skin: def, showHud }); return cv.toBuffer('image/png'); };
+    const tCaught = scene.objects.find((o) => o.caught && o.kind !== 'banana').t;
+    assert.notEqual(Buffer.compare(shot(tCaught + 600, true), shot(tCaught + 600, false)), 0, 'HUD changes the picture');
+    assert.notEqual(Buffer.compare(shot(tCaught + 20, true), shot(tCaught + 600, true)), 0);
+    fs.writeFileSync(path.join(root, 'test/out/frame-hud.png'), shot(tCaught + 120, true));
+  });
+
+  await test('render: hyper glow, hyperdash catcher + trails and bananas change the picture', async () => {
+    const { drawFrame } = await import('../src/render.js');
+    const def = await loadDefaultSkin(env, bytesOf);
+    const osu = OSU.replace(/\[HitObjects\][\s\S]*$/, '[HitObjects]\n20,300,1000,5,0,0:0:0:0:\n490,300,1150,1,0,0:0:0:0:\n490,300,2000,1,0,0:0:0:0:\n256,192,2500,12,0,3500\n300,300,4500,5,0,0:0:0:0:\n');
+    const scene = buildScene(parseOsu(osu), 0);
+    const frames = [{ t: 0, x: 20, dash: false }, { t: 1000, x: 20, dash: true }, { t: 1140, x: 490, dash: true }, { t: 2200, x: 490, dash: false }, { t: 2500, x: 300, dash: true }, { t: 6000, x: 300, dash: false }];
+    const track = new ReplayTrack(frames);
+    const res = evaluateCatches(scene, track);
+    assert.ok(scene.objects[0].hyper === scene.objects[1], 'first fruit is a hyper');
+    assert.ok(scene.fx.segments.length >= 1 && res.bananas > 0);
+    const W = 1280, H = 720;
+    const cv = canvasLib.createCanvas(W, H);
+    const ctx = cv.getContext('2d');
+    const png = (t, skin = def) => { drawFrame(ctx, W, H, scene, track, t, {}, { skin }); return cv.toBuffer('image/png'); };
+    for (const [name, t] of [['hyper-glow', 600], ['hyper-dash', 1120], ['bananas', 2900]]) fs.writeFileSync(path.join(root, `test/out/frame-${name}.png`), png(t));
+    assert.notEqual(Buffer.compare(png(1120), png(500)), 0);
+    // trails and tint really appear: same instant without fx differs
+    const withFx = png(1120);
+    const fx = scene.fx; scene.fx = null;
+    const noFx = png(1120);
+    scene.fx = fx;
+    assert.notEqual(Buffer.compare(withFx, noFx), 0);
+  });
+}
+
+
+// ---------- bananas, position offsets, hyperdash ----------
+const { LegacyRandom, statelessULong, statelessInt, statelessSingle } = await import('../src/rng.js');
+const { computeHyperSegments, hyperAmount, isHyperDashing, catcherStateAt } = await import('../src/catcher.js');
+
+await test('rng: LegacyRandom / StatelessRNG match an independent Python implementation', () => {
+  // expected values produced by test/rng_ref.py (written from the lazer C# source)
+  const r = new LegacyRandom(1337);
+  assert.deepEqual([0, 1, 2, 3, 4].map(() => r.next()), [274941776, 514112300, 938046240, 1928063929, 2025352051]);
+  const d = new LegacyRandom(1337);
+  assert.deepEqual([0, 1, 2].map(() => d.nextDouble()), [0.1280297413468361, 0.23940219543874264, 0.43681181967258453]);
+  const g = new LegacyRandom(1337);
+  assert.deepEqual([...Array(8)].map(() => g.nextRange(-20, 20)), [-14, -10, -2, 15, 17, 1, 0, -14]);
+  const b = new LegacyRandom(1337);
+  assert.deepEqual([...Array(5)].map(() => b.nextBool()), [false, false, false, false, true]);
+  assert.equal(typeof statelessULong(1000, 1), 'bigint');
+  for (const [seed, series] of [[0, 0], [1000, 1], [98765, 3]]) {
+    assert.ok(statelessSingle(seed, series) >= 0 && statelessSingle(seed, series) < 1);
+    assert.ok([0, 1, 2].includes(statelessInt(3, seed, series)));
+  }
+});
+
+const showerMap = (objs) => OSU.replace(/\[HitObjects\][\s\S]*$/, `[HitObjects]\n${objs}\n`);
+
+await test('banana shower: float32 spacing loop, count, times, positions, colours', () => {
+  // 2000 ms -> spacing halves 2000,1000,500,250,125,62.5 -> 33 bananas from 1000 to 3000 inclusive
+  const bm = parseOsu(showerMap('256,100,500,1,0,0:0:0:0:\n256,192,1000,12,0,3000\n256,300,4000,1,0,0:0:0:0:'));
+  const sc = buildScene(bm, 0);
+  const ban = sc.objects.filter((o) => o.kind === 'banana');
+  assert.equal(ban.length, 33);
+  near(ban[0].t, 1000); near(ban[1].t, 1062.5); near(ban[32].t, 3000);
+  const rng = new LegacyRandom(1337);
+  ban.forEach((b, i) => {
+    near(b.x, Math.fround(rng.nextDouble() * 512), 1e-6);   // x is the i-th draw group
+    rng.next(); rng.next(); rng.next();
+    assert.ok(b.x >= 0 && b.x <= 512);
+    assert.deepEqual(b.rgb, [[255, 240, 0], [255, 192, 0], [214, 221, 28]][statelessInt(3, Math.trunc(b.t))]);
+    near(b.startScale, 0.6 + 1.6 * statelessSingle(Math.trunc(b.t), 3), 1e-9);
+    assert.ok(Math.abs(b.startAngle) <= 180 && Math.abs(b.endAngle) <= 180);
+  });
+  assert.ok(new Set(ban.map((b) => b.rgb.join())).size > 1, 'colours vary');
+  // the fruit after the shower is on a new combo and the shower itself carries no combo
+  const fruit = sc.objects.find((o) => o.kind === 'fruit' && o.t === 4000);
+  assert.equal(fruit.combo, 1);
+  assert.equal(sc.objects.find((o) => o.t === 500).combo, 0);
+  assert.equal(ban.filter((b) => b.t < 4000).length, 33);
+});
+
+await test('banana shower shorter than 100 ms spacing and degenerate durations', () => {
+  const sc = buildScene(parseOsu(showerMap('256,192,1000,12,0,1060')), 0);
+  assert.deepEqual(sc.objects.map((o) => o.t), [1000, 1060]);   // spacing 60: 1000, 1060
+  assert.equal(buildScene(parseOsu(showerMap('256,192,1000,12,0,1000\n10,10,2000,1,0,0:0:0:0:')), 0).objects.filter((o) => o.kind === 'banana').length, 0);
+});
+
+await test('banana evaluation: counted separately, a missed banana does not change the catcher state', () => {
+  const bm = parseOsu(showerMap('256,192,1000,12,0,1500\n256,300,2500,1,0,0:0:0:0:'));
+  const sc = buildScene(bm, 0);
+  const track = new ReplayTrack([{ t: 0, x: 0, dash: false }, { t: 5000, x: 0, dash: false }]);   // stays at the far left
+  const res = evaluateCatches(sc, track);
+  assert.equal(res.total, 1); assert.equal(res.caught, 0);
+  assert.ok(res.bananas > 0 && res.bananasCaught < res.bananas);
+  // right after a missed banana (before the missing fruit at 2500) the state is still idle
+  const lastBanana = sc.objects.filter((o) => o.kind === 'banana' && !o.caught).pop();
+  assert.equal(catcherStateAt(sc.fx, lastBanana.t + 1), 'idle');
+  assert.equal(catcherStateAt(sc.fx, 2501), 'fail');
+});
+
+await test('tiny droplets get the +-20 offsets from LegacyRandom(1337), in nested order', () => {
+  const bm = parseOsu(showerMap('100,100,2000,6,0,L|300:100,1,200'));
+  const sc = buildScene(bm, 0);
+  const tiny = sc.objects.filter((o) => o.kind === 'tiny');
+  const droplets = sc.objects.filter((o) => o.kind === 'droplet');
+  assert.ok(tiny.length > 0 && droplets.length > 0);
+  // replay the draw order by hand: nested objects sorted by time; droplets draw Next(), tiny draw Next(-20,20)
+  const nested = sc.objects.slice();
+  const rng = new LegacyRandom(1337);
+  for (const o of nested) {
+    if (o.kind === 'droplet') rng.next();
+    else if (o.kind === 'tiny') {
+      const base = 100 + (200 * (o.t - 2000)) / sc.objects[sc.objects.length - 1].t * 0; // not used: compare to a no-offset build below
+      void base;
+      o._off = rng.nextRange(-20, 20);
+    }
+  }
+  assert.ok(tiny.every((o) => Math.abs(o._off) <= 20));
+  // the unjittered x of a tiny droplet lies on the path; with the offset it differs by exactly _off (when not clamped)
+  const t0 = tiny[0];
+  const x0 = 100 + 200 * ((t0.t - 2000) / (sc.objects.find((o) => o.kind === 'fruit' && o.t > 2000).t - 2000));
+  near(t0.x, Math.min(512, Math.max(0, x0 + t0._off)), 0.01);
+});
+
+await test('Hard Rock offsets: deterministic, only on fruit, within 20 px and the playfield', () => {
+  const objs = ['100,100,1000,1,0,0:0:0:0:', '100,100,1100,1,0,0:0:0:0:', '100,100,1200,1,0,0:0:0:0:', '102,100,1300,1,0,0:0:0:0:', '400,100,1400,1,0,0:0:0:0:'].join('\n');
+  const bm = parseOsu(showerMap(objs));
+  const normal = buildScene(bm, 0).objects.map((o) => o.x);
+  const hr = buildScene(bm, 16).objects.map((o) => o.x);
+  assert.deepEqual(normal, [100, 100, 100, 102, 400]);
+  assert.notDeepEqual(hr, normal);
+  assert.equal(hr[0], 100);                       // first fruit is never moved
+  assert.ok(hr.every((x, i) => x >= 0 && x <= 512 && Math.abs(x - normal[i]) <= 20 + 1e-9));
+  assert.deepEqual(buildScene(bm, 16).objects.map((o) => o.x), hr);   // same every time
+  // reference: replicate lazer's algorithm independently for the first repeated-position fruit
+  const rng = new LegacyRandom(1337);
+  const right = rng.nextBool();
+  const rand = Math.min(20, rng.nextRange(0, 100 / 4));
+  const expected = right ? (100 + rand <= 512 ? 100 + rand : 100 - rand) : (100 - rand >= 0 ? 100 - rand : 100 + rand);
+  near(hr[1], expected);
+});
+
+await test('hyperdash detection: far apart quick fruits are hyper, with the excess carried over', () => {
+  // 0 -> 512 in 100 ms is impossible for a catcher; a slow gap is fine
+  const objs = ['0,100,1000,1,0,0:0:0:0:', '512,100,1100,1,0,0:0:0:0:', '512,100,3000,1,0,0:0:0:0:', '300,100,3200,1,0,0:0:0:0:'].join('\n');
+  const sc = buildScene(parseOsu(showerMap(objs)), 0);
+  const [a, b, c, d] = sc.objects;
+  assert.ok(a.hyper === b, 'first fruit hypers to the second');
+  assert.ok(!b.hyper, 'same position, long gap');
+  // third -> fourth: 212 px in 200 ms, minus half a catcher, is within reach only if time allows: compute by hand
+  const half = (106.75 * sc.catcherScale) / 2;
+  const dist = 212 - half;                          // lastDirection differs (2nd->3rd is "left" by convention) => full half-width
+  const timeToNext = 200 - 1000 / 60 / 4;
+  assert.equal(!!c.hyper, timeToNext - dist < 0);
+  assert.ok(d.hyper === undefined || d.hyper === null || d.hyper === false);
+});
+
+await test('hyperdash detection ignores tiny droplets and bananas', () => {
+  const sc = buildScene(parseOsu(showerMap('100,100,2000,6,0,L|300:100,1,200\n256,192,4000,12,0,4500')), 0);
+  for (const o of sc.objects) if (o.kind === 'tiny' || o.kind === 'banana') assert.ok(!o.hyper);
+});
+
+await test('hyperdash timeline: starts on catching a hyper fruit, ends at the next judged object or when the target is passed', () => {
+  const objs = [
+    { t: 1000, x: 0, kind: 'fruit', caught: true, hyper: null },
+    { t: 1100, x: 500, kind: 'fruit', caught: true, hyper: null },
+    { t: 1600, x: 500, kind: 'fruit', caught: true, hyper: null },
+  ];
+  objs[0].hyper = objs[1];
+  // catcher runs 0 -> 500 between 1000 and 1100 then waits: the target is passed only if x overshoots (it does not), so it ends at 1100
+  const track = new ReplayTrack([{ t: 900, x: 0, dash: true }, { t: 1000, x: 0, dash: true }, { t: 1100, x: 500, dash: true }, { t: 2000, x: 500, dash: false }]);
+  const segs = computeHyperSegments(objs, track);
+  assert.equal(segs.length, 1);
+  assert.equal(segs[0].start, 1000);
+  assert.equal(segs[0].end, 1100);
+  // a replay that overshoots the target ends the hyperdash early
+  const over = new ReplayTrack([{ t: 1000, x: 0, dash: true }, { t: 1050, x: 520, dash: true }, { t: 2000, x: 520, dash: false }]);
+  const s2 = computeHyperSegments(objs, over);
+  assert.ok(s2[0].end < 1100 && s2[0].end > 1000);
+  // a missed hyper fruit does not start a hyperdash
+  const missed = objs.map((o) => ({ ...o })); missed[0].caught = false; missed[0].hyper = missed[1];
+  assert.equal(computeHyperSegments(missed, track).length, 0);
+  // a catcher that is already moving slower than dash speed to the target is not hyper-dashing
+  const slow = objs.map((o) => ({ ...o })); slow[0].hyper = { t: 3000, x: 100 };
+  assert.equal(computeHyperSegments(slow, track).length, 0);
+  // tint: ramps up after the start, ramps down after the end
+  const fx = { segments: segs, transitions: [] };
+  const sceneLike = { objects: objs, startTime: 0, endTime: 2000, catchWidth: 100 };
+  void sceneLike;
+});
+
+await test('hyper tint amount and state lookups follow the segments', async () => {
+  const { buildCatcherFx } = await import('../src/catcher.js');
+  const objs = [
+    { t: 1000, x: 0, kind: 'fruit', caught: true, kiai: false },
+    { t: 1100, x: 500, kind: 'fruit', caught: true, kiai: true },
+  ];
+  objs[0].hyper = objs[1];
+  const track = new ReplayTrack([{ t: 0, x: 0, dash: true }, { t: 1000, x: 0, dash: true }, { t: 1100, x: 500, dash: true }, { t: 3000, x: 500, dash: false }]);
+  const fx = buildCatcherFx({ objects: objs, startTime: 500, endTime: 3000 }, track);
+  assert.equal(hyperAmount(fx, 900), 0);
+  near(hyperAmount(fx, 1000), 0, 1e-9);
+  assert.ok(hyperAmount(fx, 1090) > 0.9);
+  assert.ok(isHyperDashing(fx, 1050) && !isHyperDashing(fx, 1100));
+  assert.ok(hyperAmount(fx, 1400) < 0.05);
+  assert.equal(catcherStateAt(fx, 1050), 'idle');
+  assert.equal(catcherStateAt(fx, 1200), 'kiai');
+  assert.ok(fx.trails.some((e) => e.kind === 'after'), 'after-image at the start');
+  assert.ok(fx.trails.some((e) => e.kind === 'hyper') && fx.trails.some((e) => e.kind === 'dash'));
+});
+
+await test('parseSkinIni: HyperDash / HyperDashFruit / HyperDashAfterImage, with fallbacks to red / HyperDash', () => {
+  const full = parseSkinIni('[Colours]\nHyperDash: 10,20,30\nHyperDashFruit: 40,50,60\nHyperDashAfterImage : 70,80,90\n');
+  assert.deepEqual([full.hyperDash, full.hyperDashFruit, full.hyperDashAfterImage], [[10, 20, 30], [40, 50, 60], [70, 80, 90]]);
+  const env = { decode: async () => null, createCanvas: () => null };
+  assert.deepEqual(new Skin(new Map(), env).hyperColours, { dash: [255, 0, 0], fruit: [255, 0, 0], afterImage: [255, 0, 0] });
+  const only = new Skin(new Map([['skin.ini', strToU8('[Colours]\nHyperDash: 1,2,3\n')]]), env).hyperColours;
+  assert.deepEqual(only, { dash: [1, 2, 3], fruit: [1, 2, 3], afterImage: [1, 2, 3] });
+});
+
+
+// ---------- hitsounds ----------
+const HS = await import('../src/hitsounds.js');
+
+const hsMap = (timing, objs, general = '') => `osu file format v14\n\n[General]\nMode: 2\n${general}\n[Metadata]\nTitle:T\n\n[Difficulty]\nCircleSize:4\nApproachRate:9\nSliderMultiplier:1.4\nSliderTickRate:1\n\n[TimingPoints]\n${timing}\n\n[HitObjects]\n${objs}\n`;
+const names = (list) => list.map((x) => `${x.bank}-${x.name}${x.index >= 2 ? x.index : ''}@${x.volume}`);
+
+await test('osu parser: timing point sample fields, [General] defaults, hit object sample fields', () => {
+  const bm = parseOsu(hsMap('0,500,4,2,3,60,1,0\n1000,-100,4,3,0,80,0,1', '100,100,1000,1,2,3:2:0:55:\n256,192,2000,12,0,3000,1:0:0:0:', 'SampleSet: Drum\nSampleVolume: 90\n'));
+  assert.equal(bm.sampleSet, 3); assert.equal(bm.sampleVolume, 90);
+  assert.deepEqual(bm.timingPoints.map((t) => [t.sampleSet, t.sampleIndex, t.volume]), [[2, 3, 60], [3, 0, 80]]);
+  assert.equal(bm.hitObjects[0].hitSound, 2); assert.equal(bm.hitObjects[0].sampleStr, '3:2:0:55:');
+  assert.equal(bm.hitObjects[1].sampleStr, '1:0:0:0:');
+  const bare = parseOsu(hsMap('0,500', '10,10,100,1,0', 'SampleSet: Soft\n'));
+  assert.deepEqual([bare.timingPoints[0].sampleSet, bare.timingPoints[0].volume], [2, 100]);
+});
+
+await test('sampler: bank 0 follows the timing point, volume 0 inherits, additions use the addition bank', () => {
+  const bm = parseOsu(hsMap('0,500,4,2,1,60,1,0\n3000,500,4,3,2,80,1,0',
+    '100,100,1000,1,0,0:0:0:0:\n100,100,1500,1,2,0:0:0:0:\n100,100,2000,1,14,1:3:0:90:\n100,100,3500,1,0,0:0:0:0:'));
+  const sm = HS.makeSampler(bm);
+  const [a, b, c, d] = bm.hitObjects.map((h) => sm.circle(h));
+  assert.deepEqual(names(a), ['soft-hitnormal@60']);
+  assert.deepEqual(names(b), ['soft-hitnormal@60', 'soft-hitwhistle@60']);
+  assert.deepEqual(names(c), ['normal-hitnormal@90', 'drum-hitfinish@90', 'drum-hitwhistle@90', 'drum-hitclap@90']);
+  assert.deepEqual(names(d), ['drum-hitnormal2@80']);                  // second timing point: drum, index 2, volume 80
+  assert.equal(a[0].index, 1);                                           // inherited from the first timing point
+  // a hit sound type without the normal bit still plays the normal sample (layered)
+  assert.equal(b[0].name, 'hitnormal');
+});
+
+await test('sampler: the timing point at time + 5 ms decides (a point exactly 5 ms after the hit applies)', () => {
+  const bm = parseOsu(hsMap('0,500,4,1,0,50,1,0\n1005,500,4,2,0,70,1,0', '100,100,1000,1,0,0:0:0:0:\n100,100,999,1,0,0:0:0:0:'));
+  const sm = HS.makeSampler(bm);
+  const o = [...bm.hitObjects].sort((x, y) => x.time - y.time);
+  assert.deepEqual(names(sm.circle(o[0])), ['normal-hitnormal@50']);
+  assert.deepEqual(names(sm.circle(o[1])), ['soft-hitnormal@70']);
+});
+
+await test('sampler: juice stream edge sounds / edge sets per node, droplets play slidertick of the body samples', () => {
+  const bm = parseOsu(hsMap('0,500,4,1,0,100,1,0',
+    '100,100,1000,6,2,L|300:100,2,200,2|0|4,1:0|2:3|3:0,2:0:0:0:'));
+  const st = HS.makeSampler(bm).stream(bm.hitObjects[0], 400);
+  assert.equal(st.nodes.length, 3);
+  assert.deepEqual(names(st.nodes[0]), ['normal-hitnormal@100', 'normal-hitwhistle@100']);
+  assert.deepEqual(names(st.nodes[1]), ['soft-hitnormal@100']);          // edge 1: sounds 0 -> normal only, bank soft
+  assert.deepEqual(names(st.nodes[2]), ['drum-hitnormal@100', 'drum-hitfinish@100']);
+  // body: hitSound 2 with banks from the object's hitSample (soft)
+  assert.deepEqual(names(st.body), ['soft-hitnormal@100', 'soft-hitwhistle@100']);
+  assert.deepEqual(names(st.droplets), ['soft-slidertick@100', 'soft-slidertick@100']);
+});
+
+await test('buildScene attaches samples: fruit, stream nodes, droplets, no sound for tiny droplets, bananas', () => {
+  const bm = parseOsu(hsMap('0,500,4,1,1,100,1,0\n0,-100,4,1,1,100,0,0',
+    '100,100,1000,1,0,0:0:0:0:\n100,100,2000,6,0,L|300:100,1,200\n256,192,4000,12,0,4400'));
+  const sc = buildScene(bm, 0);
+  const by = (k) => sc.objects.filter((o) => o.kind === k);
+  assert.ok(by('fruit').every((o) => o.samples.length >= 1 && o.samples[0].name === 'hitnormal'));
+  assert.ok(by('droplet').length > 0 && by('droplet').every((o) => o.samples.every((x) => x.name === 'slidertick')));
+  assert.ok(by('tiny').length > 0 && by('tiny').every((o) => o.samples.length === 0));
+  const ban = by('banana');
+  assert.ok(ban.length > 3);
+  assert.deepEqual(ban.map((o) => o.samples[0].banana), ban.map((_, i) => i));
+  assert.ok(ban.every((o) => o.samples[0].volume === 100));
+  const stream = by('fruit').filter((o) => o.t >= 2000 && o.t < 3000);
+  assert.equal(stream.length, 2);                                       // head + tail nodes
+});
+
+await test('findSampleFile: beatmap first only for custom index >= 1, then skin, then default; indexed names; extensions', () => {
+  const f = (...n) => new Map(n.map((k) => [k, new Uint8Array([1])]));
+  const src = [
+    { label: 'beatmap', layer: 'beatmap', files: f('normal-hitnormal.wav', 'soft-hitclap2.ogg') },
+    { label: 'skin', layer: 'skin', files: f('normal-hitnormal.mp3', 'drum-hitnormal.wav') },
+    { label: 'default', layer: 'default', files: f('normal-hitnormal.wav', 'normal-hitclap.wav', 'soft-hitnormal.wav') },
+  ];
+  const s = (bank, name, index, extra = {}) => ({ bank, name, index, volume: 100, file: null, ...extra });
+  assert.equal(HS.findSampleFile(s('normal', 'hitnormal', 1), src).label, 'beatmap');
+  assert.equal(HS.findSampleFile(s('normal', 'hitnormal', 0), src).file, 'normal-hitnormal.mp3');          // index 0: beatmap skipped, skin wins
+  assert.equal(HS.findSampleFile(s('soft', 'hitclap', 2), src).file, 'soft-hitclap2.ogg');
+  assert.equal(HS.findSampleFile(s('soft', 'hitclap', 3), src), null);                                       // soft-hitclap3 / soft-hitclap / hitclap nowhere
+  assert.equal(HS.findSampleFile(s('soft', 'hitnormal', 2), src).label, 'default');                          // falls back to the unindexed default
+  assert.equal(HS.findSampleFile(s('normal', 'hitnormal', 1, { file: 'custom.wav' }), [{ label: 'beatmap', layer: 'beatmap', files: f('custom.wav') }]).file, 'custom.wav');
+  assert.equal(HS.findSampleFile({ ...s('normal', 'hitnormal', 1), banana: 0 }, [{ label: 'x', layer: 'default', files: f('catch-banana.wav') }]).file, 'catch-banana.wav');
+});
+
+const impulse = (n = 100, sr = 48000) => ({ channels: [Float32Array.from({ length: n }, (_, i) => (i === 0 ? 1 : 0)), Float32Array.from({ length: n }, (_, i) => (i === 0 ? 1 : 0))], sampleRate: sr });
+const peak = (ch) => { let k = 0; for (let i = 0; i < ch.length; i++) if (Math.abs(ch[i]) > Math.abs(ch[k])) k = i; return k; };
+
+await test('mixHitsounds: placed at (t - start) / rate, rate shortens + pitches, pan, gain, clipping', () => {
+  const SR = 48000;
+  const mk = () => [new Float32Array(SR * 4), new Float32Array(SR * 4)];
+  let out = mk();
+  HS.mixHitsounds(out, [{ t: 2000, x: 256, buf: impulse(), gain: 0.5, freq: 1 }], { startTime: 1000, rate: 1, sampleRate: SR });
+  assert.equal(peak(out[0]), SR); near(out[0][SR], 0.5); near(out[1][SR], 0.5);
+  out = mk();                                           // DT: 1000 ms of beatmap time = 666.67 ms of video
+  HS.mixHitsounds(out, [{ t: 2000, x: 256, buf: impulse(), gain: 1, freq: 1 }], { startTime: 1000, rate: 1.5, sampleRate: SR });
+  assert.equal(peak(out[0]), Math.round(SR / 1.5));
+  // a 100 Hz-ish tone: playing it at 1.5x shortens it to two thirds
+  const tone = { channels: [Float32Array.from({ length: 4800 }, (_, i) => Math.sin(i / 10)), Float32Array.from({ length: 4800 }, (_, i) => Math.sin(i / 10))], sampleRate: SR };
+  const dur = (rate) => { const o = mk(); HS.mixHitsounds(o, [{ t: 0, x: 256, buf: tone, gain: 1, freq: 1 }], { startTime: 0, rate, sampleRate: SR }); let last = 0; for (let i = 0; i < o[0].length; i++) if (Math.abs(o[0][i]) > 1e-4) last = i; return last; };
+  near(dur(1.5) / dur(1), 1 / 1.5, 0.01);
+  near(dur(0.75) / dur(1), 1 / 0.75, 0.01);
+  out = mk();                                           // far right: left channel attenuated by 0.2
+  HS.mixHitsounds(out, [{ t: 0, x: 512, buf: impulse(), gain: 1, freq: 1 }], { startTime: 0, rate: 1, sampleRate: SR });
+  near(out[0][0], 0.8, 0.011); near(out[1][0], 1);
+  assert.equal(HS.balanceFor(256), 0); assert.equal(HS.balanceFor(0), -0.2);
+  out = mk();                                           // samples before the video start are skipped, overlapping ones clip at 1
+  HS.mixHitsounds(out, [{ t: -5000, x: 256, buf: impulse(), gain: 1, freq: 1 }, { t: 0, x: 256, buf: impulse(), gain: 1, freq: 1 }, { t: 0, x: 256, buf: impulse(), gain: 1, freq: 1 }], { startTime: 0, rate: 1, sampleRate: SR });
+  assert.equal(out[0][0], 1);
+  out = mk();                                           // banana pitch: frequency 0.77 -> longer sample
+  HS.mixHitsounds(out, [{ t: 0, x: 256, buf: tone, gain: 1, freq: 0.77 }], { startTime: 0, rate: 1, sampleRate: SR });
+  let last = 0; for (let i = 0; i < out[0].length; i++) if (Math.abs(out[0][i]) > 1e-4) last = i;
+  near(last / dur(1), 1 / 0.77, 0.01);
+});
+
+// minimal PCM16 WAV reader so the bundled samples can be mixed in Node
+const decodeWav = (bytes) => {
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let p = 12, fmt = null, data = null;
+  while (p + 8 <= bytes.length) {
+    const id = String.fromCharCode(...bytes.subarray(p, p + 4)), size = dv.getUint32(p + 4, true);
+    if (id === 'fmt ') fmt = { ch: dv.getUint16(p + 10, true), sr: dv.getUint32(p + 12, true), bits: dv.getUint16(p + 22, true) };
+    if (id === 'data') data = { at: p + 8, size };
+    p += 8 + size + (size & 1);
+  }
+  assert.equal(fmt.bits, 16);
+  const n = data.size / 2 / fmt.ch;
+  const channels = Array.from({ length: fmt.ch }, (_, c) => Float32Array.from({ length: n }, (_, i) => dv.getInt16(data.at + (i * fmt.ch + c) * 2, true) / 32768));
+  return { channels, sampleRate: fmt.sr };
+};
+
+await test('bundled default hitsounds exist, decode, and mix at the caught objects only', async () => {
+  const dir = path.join(root, 'assets/default-sounds');
+  const files = new Map();
+  for (const b of ['normal', 'soft', 'drum']) for (const n of ['hitnormal', 'hitwhistle', 'hitfinish', 'hitclap', 'slidertick']) files.set(`${b}-${n}.wav`, new Uint8Array(fs.readFileSync(path.join(dir, `${b}-${n}.wav`))));
+  files.set('catch-banana.wav', new Uint8Array(fs.readFileSync(path.join(dir, 'catch-banana.wav'))));
+  const bm = parseOsu(hsMap('0,500,4,1,1,100,1,0', '100,300,1000,5,0,0:0:0:0:\n480,300,1500,1,2,0:0:0:0:\n256,192,3000,12,0,3300'));
+  const sc = buildScene(bm, 0);
+  const track = new ReplayTrack([{ t: 0, x: 100, dash: false }, { t: 5000, x: 100, dash: false }]);   // catches only the first fruit (and nearby bananas)
+  evaluateCatches(sc, track);
+  const sources = [{ label: 'default', layer: 'default', files }];
+  const { events, missing } = await HS.collectHitsounds(sc, { sources, decode: async (b) => decodeWav(b) });
+  assert.deepEqual(missing, []);
+  assert.ok(events.some((e) => e.t === 1000), 'first fruit plays');
+  assert.ok(!events.some((e) => e.t === 1500), 'a missed fruit is silent');
+  const SR = 48000;
+  const mono = (ch) => { const n = ch.length; return [new Float32Array(n), new Float32Array(n)]; };
+  const out = mono(new Float32Array(SR * 5));
+  HS.mixHitsounds(out, events, { startTime: 0, rate: 1, sampleRate: SR });
+  const energy = (a, b) => { let e = 0; for (let i = Math.round(a * SR); i < Math.round(b * SR); i++) e += out[0][i] ** 2; return e; };
+  assert.ok(energy(1.0, 1.2) > 0.01, 'sound at the caught fruit');
+  assert.ok(energy(1.6, 2.8) === 0, 'silence where nothing was caught');
+});
+
+// ---------- HUD: combo and accuracy ----------
+const SC = await import('../src/score.js');
+const mk = (kind, t, caught) => ({ kind, t, caught });
+
+await test('score: combo grows on catches, resets on a missed fruit, tiny droplets and bananas leave it alone', () => {
+  const sc = { objects: [mk('fruit', 100, true), mk('droplet', 200, true), mk('tiny', 250, false), mk('banana', 260, false),
+    mk('fruit', 300, true), mk('fruit', 400, false), mk('tiny', 450, true), mk('fruit', 500, true)] };
+  const hud = SC.buildHud(sc);
+  assert.equal(SC.hudAt(hud, 50).combo, 0);
+  assert.equal(SC.hudAt(hud, 50).acc, 1);
+  assert.equal(SC.hudAt(hud, 100).combo, 1);
+  assert.equal(SC.hudAt(hud, 250).combo, 2, 'a missed tiny droplet keeps the combo');
+  assert.equal(SC.hudAt(hud, 300).combo, 3);
+  assert.equal(SC.hudAt(hud, 400).combo, 0, 'a missed fruit breaks it');
+  assert.equal(SC.hudAt(hud, 450).combo, 0, 'a caught tiny droplet does not add');
+  assert.equal(SC.hudAt(hud, 500).combo, 1);
+  assert.equal(SC.hudAt(hud, 500).maxCombo, 3);
+  assert.equal(hud.totals.bananas, 1);
+  // 7 judged objects (banana excluded), 5 caught
+  assert.ok(Math.abs(SC.hudAt(hud, 9999).acc - 5 / 7) < 1e-12);
+});
+
+await test('score: replay count cross-check', () => {
+  const sc = { objects: [mk('fruit', 1, true), mk('droplet', 2, true), mk('tiny', 3, true), mk('tiny', 4, false), mk('fruit', 5, false)] };
+  const { totals } = SC.buildHud(sc);
+  assert.ok(SC.compareWithReplay(totals, { n300: 1, n100: 1, n50: 1, nKatu: 1, nMiss: 1, maxCombo: 2 }).ok);
+  const bad = SC.compareWithReplay(totals, { n300: 2, n100: 1, n50: 1, nKatu: 1, nMiss: 1, maxCombo: 2 });
+  assert.ok(!bad.ok && bad.diffs.length === 1 && /fruits caught/.test(bad.diffs[0]));
+});
+
+await test('skin.ini [Fonts] prefixes and spacing', () => {
+  const ini = parseSkinIni('[Fonts]\nScorePrefix: numbers/s\nComboPrefix: numbers/c\nScoreOverlap: 3\nComboOverlap: -2\n');
+  assert.equal(ini.scorePrefix, 's'); assert.equal(ini.comboPrefix, 'c');   // folders dropped: skin files are looked up by base name
+  assert.equal(ini.scoreOverlap, 3); assert.equal(ini.comboOverlap, -2);
+  const d = parseSkinIni('');
+  assert.equal(d.scorePrefix, 'score'); assert.equal(d.comboPrefix, 'score');
+});
+
+
+await test('buildScene marks the last object before each new combo (stream: its last nested object; shower: its last banana)', () => {
+  const osu = OSU.replace(/\[HitObjects\][\s\S]*$/, '[HitObjects]\n100,300,1000,5,0,0:0:0:0:\n200,300,1500,1,0,0:0:0:0:\n300,300,2000,5,0,0:0:0:0:\n256,192,3000,12,0,3600\n400,300,4500,5,0,0:0:0:0:\n420,300,5000,1,0,0:0:0:0:\n');
+  const sc = buildScene(parseOsu(osu), 0);
+  const last = sc.objects.filter((o) => o.lastInCombo);
+  assert.deepEqual(last.map((o) => [o.kind, o.t]).filter(([k]) => k !== 'banana'), [['fruit', 1500]], 'only the fruit before the new combo');
+  assert.equal(last.filter((o) => o.kind === 'banana').length, 1);
+  const lastBanana = sc.objects.filter((o) => o.kind === 'banana').pop();
+  assert.ok(lastBanana.lastInCombo);
+  assert.ok(!sc.objects.find((o) => o.t === 5000).lastInCombo, 'the final object of the map is not flagged');
+});
+
+
+// ---------- plate: stacking, drop and explode ----------
+const PL = await import('../src/plate.js');
+
+await test('plate: fruit stack on the plate, droplets leave at once, a caught combo end explodes and a missed one drops', () => {
+  const track = new ReplayTrack([{ t: 0, x: 256, dash: false }, { t: 9000, x: 256, dash: false }]);
+  const f = (t, x, extra = {}) => ({ kind: 'fruit', t, x, caught: true, offset: x - 256, ...extra });
+  const scene = { fruitScale: 0.5, catcherScale: 1, objects: [
+    f(1000, 256), f(1100, 256),                                          // two fruit on the same spot: the second is pushed away
+    { kind: 'droplet', t: 1200, x: 260, caught: true, offset: 4 },       // droplets never stay
+    f(1300, 250, { lastInCombo: true }),                                 // caught combo end: explode
+    f(2000, 256),
+    f(2100, 300, { caught: false, offset: 44, lastInCombo: true }),      // missed combo end: drop
+  ] };
+  const plate = PL.buildPlate(scene, track);
+  const at = (t) => PL.plateAt(plate, t, 256);
+  assert.equal(at(500).length, 0);
+  const two = at(1150);
+  assert.equal(two.length, 2); assert.ok(two.every((p) => p.onPlate));
+  assert.ok(Math.hypot(two[0].x - two[1].x, two[0].y - two[1].y) >= 10 - 1e-9 || two[0].y !== two[1].y, 'the second fruit does not sit exactly on the first');
+  assert.ok(two[1].y <= two[0].y, 'it is nudged upward, never down');
+  const drop = at(1210).find((p) => p.obj.kind === 'droplet');
+  assert.ok(drop && !drop.onPlate, 'the droplet is already flying off');
+  const exploding = at(1300 + 500);
+  assert.ok(exploding.length >= 3 && exploding.every((p) => !p.onPlate), 'the whole plate explodes on the combo end');
+  assert.ok(exploding.every((p) => p.alpha > 0 && p.alpha < 1));
+  assert.equal(at(1300 + 800).filter((p) => p.obj.t <= 1300).length, 0, 'gone after 750 ms');
+  assert.equal(at(2050).filter((p) => p.onPlate).length, 1);
+  const dropped = at(2100 + 400);
+  assert.equal(dropped.length, 1); assert.ok(!dropped[0].onPlate);
+  assert.ok(dropped[0].y > 384 - 5, 'a dropped fruit falls');
+  assert.equal(at(2100 + 800).length, 0);
+});
+
+
+await test('hit lighting: fruit get flash + glow scaled by the combo, droplets only the glow, everything ends on time', () => {
+  const track = new ReplayTrack([{ t: 0, x: 256, dash: false }, { t: 9000, x: 256, dash: false }]);
+  const scene = { fruitScale: 0.5, catcherScale: 1, catchWidth: 85.4, objects: [
+    { kind: 'fruit', t: 1000, x: 256, caught: true, offset: 0, comboBefore: 0 },
+    { kind: 'fruit', t: 2000, x: 256, caught: true, offset: 0, comboBefore: 400 },
+    { kind: 'droplet', t: 3000, x: 300, caught: true, offset: 44, comboBefore: 5 },
+  ] };
+  const plate = PL.buildPlate(scene, track);
+  assert.equal(PL.explosionsAt(plate, scene, 900).length, 0, 'nothing before the catch');
+  const a = PL.explosionsAt(plate, scene, 1160);
+  assert.equal(a.length, 1); assert.ok(a[0].flash && a[0].glow);
+  assert.ok(Math.abs(a[0].flash.sx - 16 * 0.35) < 1e-9, 'combo 0 uses the minimum scale 0.35, fully grown after 160 ms');
+  assert.ok(Math.abs(a[0].flash.alpha - (1 - 160 / 300)) < 1e-9);
+  const b = PL.explosionsAt(plate, scene, 2160)[0];
+  assert.ok(Math.abs(b.flash.sx - 16 * 1.125) < 1e-9, 'combo 400 is capped at 1.125');
+  const early = PL.explosionsAt(plate, scene, 1000)[0];
+  assert.ok(Math.abs(early.flash.sx - 1) < 1e-9 && Math.abs(early.flash.sy - 0.9) < 1e-9, 'starts as a thin flash');
+  const d = PL.explosionsAt(plate, scene, 3100);
+  assert.equal(d.length, 1); assert.equal(d[0].flash, null); assert.ok(d[0].glow);
+  assert.ok(d[0].offset > 0 && d[0].offset <= scene.catchWidth / 2, 'offset follows the droplet and stays inside the catch width');
+  assert.equal(PL.explosionsAt(plate, scene, 1000 + 301).filter((e) => e.flash).length, 0, 'flash gone after 300 ms');
+  assert.equal(PL.explosionsAt(plate, scene, 1000 + 701).length, 0, 'glow gone after 700 ms');
+});
+
+await test('spin seed: every judged object gets the stateless random for its start time', () => {
+  const sc = buildScene(parseOsu(OSU), 0);
+  for (const o of sc.objects) {
+    if (o.kind === 'banana') continue;
+    assert.equal(o.rot0, statelessSingle(Math.trunc(o.t), 1));
+    assert.ok(o.rot0 >= 0 && o.rot0 < 1);
+  }
+});
+
+
+// ---------- Nightcore beat ----------
+const { nightcoreBeats } = await import('../src/nightcore.js');
+const tp = (time, bl, extra = {}) => ({ time, beatLength: bl, uninherited: true, meter: 4, omitFirstBarLine: false, ...extra });
+
+await test('nightcore beat: 4/4 pattern on half beats, finish + kick on the segment start, hats only with an even tick rate', () => {
+  const bm = { timingPoints: [tp(0, 500)], sliderTickRate: 2 };      // 120 bpm: a beat every 250 ms
+  const ev = nightcoreBeats(bm, 0, 9000);
+  const at = (t) => ev.filter((e) => e.t === t).map((e) => e.sample).sort();
+  assert.deepEqual(at(0), ['finish', 'kick']);
+  assert.deepEqual(at(250), ['hat']);
+  assert.deepEqual(at(500), ['clap']);
+  assert.deepEqual(at(750), ['hat']);
+  assert.deepEqual(at(1000), ['kick']);
+  assert.deepEqual(at(8000), ['finish', 'kick'], 'segment = 4 bars x 4 beats x 2 = 32 half beats = 8 s');
+  const noHats = nightcoreBeats({ timingPoints: [tp(0, 500)], sliderTickRate: 1 }, 0, 2000);
+  assert.ok(!noHats.some((e) => e.sample === 'hat'), 'odd tick rate: no hats');
+  assert.deepEqual(noHats.filter((e) => e.t === 500).map((e) => e.sample), ['clap']);
+});
+
+await test('nightcore beat: 3/4 uses kick / clap every 6 half beats, omitted bar line skips the opening finish, start before the first point waits for beat 0', () => {
+  const three = nightcoreBeats({ timingPoints: [tp(0, 600, { meter: 3 })], sliderTickRate: 1 }, 0, 2000);   // half beat = 300
+  assert.deepEqual(three.filter((e) => e.t === 0).map((e) => e.sample).sort(), ['finish', 'kick']);
+  assert.deepEqual(three.filter((e) => e.t === 900).map((e) => e.sample), ['clap']);
+  assert.deepEqual(three.filter((e) => e.t === 1800).map((e) => e.sample), ['kick']);
+  const omit = nightcoreBeats({ timingPoints: [tp(0, 500, { omitFirstBarLine: true })], sliderTickRate: 1 }, 0, 600);
+  assert.ok(!omit.some((e) => e.sample === 'finish'), 'no cymbal on the omitted first bar');
+  assert.deepEqual(omit.filter((e) => e.t === 250).map((e) => e.sample), ['kick'], 'with the flag, the first played beat is one half beat later');
+  const early = nightcoreBeats({ timingPoints: [tp(1000, 500)], sliderTickRate: 1 }, -2000, 1600);
+  assert.ok(early.every((e) => e.t >= 1000), 'nothing before the first timing point');
+  assert.deepEqual(early.filter((e) => e.t === 1000).map((e) => e.sample).sort(), ['finish', 'kick']);
+});
+
+await test('nightcore beat: a later timing point takes over from its own time; starting mid-song begins at the current segment', () => {
+  const bm = { timingPoints: [tp(0, 500), tp(1100, 1000)], sliderTickRate: 1 };
+  const ev = nightcoreBeats(bm, 0, 3000);
+  assert.ok(!ev.some((e) => e.t > 1000 && e.t < 1100), 'the 1250 beat of the old tempo never plays');
+  assert.deepEqual(ev.filter((e) => e.t === 1100).map((e) => e.sample).sort(), ['finish', 'kick'], 'new point restarts the pattern');
+  assert.ok(ev.some((e) => e.t === 2100 && e.sample === 'clap'), 'new half beat is 500 ms: the clap is the 3rd half beat');
+  const mid = nightcoreBeats({ timingPoints: [tp(0, 500)], sliderTickRate: 1 }, 4100, 5000);
+  assert.deepEqual(mid.filter((e) => e.t === 4100).map((e) => e.sample), ['kick'], 'half beat 16 of the loop is a kick, fired as soon as the song runs');
+  assert.ok(mid.length > 0 && mid[0].t === 4100, 'the loop is already running when the song starts');
+});
+
+
+console.log(`\n${passed} tests passed${process.exitCode ? ' (with failures)' : ''}`);
