@@ -125,7 +125,7 @@ export class Skin {
   get hyperColours() {
     const RED = [255, 0, 0];
     const dash = this.ini.hyperDash || RED;
-    return { dash, fruit: this.ini.hyperDashFruit || dash, afterImage: this.ini.hyperDashAfterImage || dash, afterImageAlpha: this.ini.hyperDashAfterImageAlpha };
+    return { dash, fruit: this.ini.hyperDashFruit || dash, afterImage: this.ini.hyperDashAfterImage || dash, afterImageAlpha: this.ini.hyperDashAfterImageAlpha ?? 1 };
   }
 
   /** Names of fruit elements (without extension) this skin itself provides. */

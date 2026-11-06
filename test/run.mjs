@@ -988,9 +988,9 @@ await test('parseSkinIni: HyperDash / HyperDashFruit / HyperDashAfterImage, with
   const full = parseSkinIni('[Colours]\nHyperDash: 10,20,30\nHyperDashFruit: 40,50,60\nHyperDashAfterImage : 70,80,90\n');
   assert.deepEqual([full.hyperDash, full.hyperDashFruit, full.hyperDashAfterImage], [[10, 20, 30], [40, 50, 60], [70, 80, 90]]);
   const env = { decode: async () => null, createCanvas: () => null };
-  assert.deepEqual(new Skin(new Map(), env).hyperColours, { dash: [255, 0, 0], fruit: [255, 0, 0], afterImage: [255, 0, 0] });
+  assert.deepEqual(new Skin(new Map(), env).hyperColours, { dash: [255, 0, 0], fruit: [255, 0, 0], afterImage: [255, 0, 0], afterImageAlpha: 1 });
   const only = new Skin(new Map([['skin.ini', strToU8('[Colours]\nHyperDash: 1,2,3\n')]]), env).hyperColours;
-  assert.deepEqual(only, { dash: [1, 2, 3], fruit: [1, 2, 3], afterImage: [1, 2, 3] });
+  assert.deepEqual(only, { dash: [1, 2, 3], fruit: [1, 2, 3], afterImage: [1, 2, 3], afterImageAlpha: 1 });
 });
 
 
