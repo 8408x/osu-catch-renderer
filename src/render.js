@@ -7,16 +7,17 @@
 //   - droplets use 0.8x and tiny droplets 0.4x of that; sprites are capped at 160 px
 //   - catcher sprite = texture size x 0.35 x catcher scale, hung from the plate line 16 px down
 
-import { FIELD_W, FIELD_H } from './catch.js?v=20261107w';
-import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261107w';
-import { hudAt, scoreShownAt } from './score.js?v=20261107w';
-import { plateAt, explosionsAt } from './plate.js?v=20261107w';
-import { drawArgonHud } from './argon.js?v=20261107w';
-import { healthAt } from './health.js?v=20261107w';
-import { livePp } from './pp.js?v=20261107w';
-import { keysAt } from './keys.js?v=20261107w';
-import { drawModIcons, drawModBadges } from './mods.js?v=20261107w';
-import { drawFlashlight } from './flashlight.js?v=20261107w';
+import { FIELD_W, FIELD_H } from './catch.js?v=20261107x';
+import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261107x';
+import { hudAt, scoreShownAt } from './score.js?v=20261107x';
+import { plateAt, explosionsAt } from './plate.js?v=20261107x';
+import { drawArgonHud } from './argon.js?v=20261107x';
+import { healthAt } from './health.js?v=20261107x';
+import { livePp } from './pp.js?v=20261107x';
+import { keysAt } from './keys.js?v=20261107x';
+import { ORDER, rectOf, WIDGETS } from './layout.js?v=20261107x';
+import { drawModIcons, drawModBadges } from './mods.js?v=20261107x';
+import { drawFlashlight } from './flashlight.js?v=20261107x';
 
 const ZONE = 120;  // room below the field for the catcher, in field units
 const PAD = 12;
@@ -331,28 +332,9 @@ function drawOverlay(ctx, W, H, scene, t, { bg, keys, tosu, skin }) {
     ctx.shadowBlur = 0;
     drawStableKeys(ctx, W, H, skin, keys, t, H / 768);
   } else if (keys) {
-    const ks = keysAt(keys, t);
     const size = 56 * u, gap = 10 * u, kx = W - size - 8 * u;
     const top = H * 0.5 - (4 * size + 3 * gap) / 2 + 36 * u;
-    const specs = [
-      { k: ks.left, fill: '#ffe14d' }, { k: ks.right, fill: '#ffe14d' }, { k: ks.dash, fill: '#ff7ab8' }, { k: null, fill: '#8a8d96' },
-    ];
-    ctx.shadowBlur = 0;
-    ctx.textAlign = 'center';
-    specs.forEach((sp, i) => {
-      const y = top + i * (size + gap);
-      if (!sp.k) { ctx.fillStyle = 'rgba(138,141,150,0.9)'; roundRectPath(ctx, kx, y, size, size, 7 * u); ctx.fill(); return; }
-      if (sp.k.down) {
-        ctx.fillStyle = sp.fill; roundRectPath(ctx, kx, y, size, size, 7 * u); ctx.fill();
-        ctx.fillStyle = '#111';
-      } else {
-        ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 2 * u;
-        roundRectPath(ctx, kx, y, size, size, 7 * u); ctx.stroke();
-        ctx.fillStyle = '#fff';
-      }
-      ctx.font = `600 ${22 * u}px ${MONO}`;
-      ctx.fillText(String(sp.k.count), kx + size / 2, y + size / 2 + 8 * u);
-    });
+    drawKeyColumn(ctx, keysAt(keys, t), kx, top, size, gap, u, true);
     ctx.textAlign = 'left';
   }
   ctx.shadowBlur = 0;
@@ -590,8 +572,134 @@ function sbBuffer(ctx, makeCanvas, W, H, bgDim) {
   return b;
 }
 
+
+/** The left / right / dash boxes (and, with `spare`, an empty fourth), stacked down from (kx, top). */
+function drawKeyColumn(ctx, ks, kx, top, size, gap, u, spare) {
+  const specs = [{ k: ks.left, fill: '#ffe14d' }, { k: ks.right, fill: '#ffe14d' }, { k: ks.dash, fill: '#ff7ab8' }];
+  if (spare) specs.push({ k: null, fill: '#8a8d96' });
+  ctx.save();
+  ctx.shadowBlur = 0;
+  ctx.textAlign = 'center';
+  specs.forEach((sp, i) => {
+    const y = top + i * (size + gap);
+    if (!sp.k) { ctx.fillStyle = 'rgba(138,141,150,0.9)'; roundRectPath(ctx, kx, y, size, size, 7 * u); ctx.fill(); return; }
+    if (sp.k.down) {
+      ctx.fillStyle = sp.fill; roundRectPath(ctx, kx, y, size, size, 7 * u); ctx.fill();
+      ctx.fillStyle = '#111';
+    } else {
+      ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 2 * u;
+      roundRectPath(ctx, kx, y, size, size, 7 * u); ctx.stroke();
+      ctx.fillStyle = '#fff';
+    }
+    ctx.font = `600 ${22 * u}px ${MONO}`;
+    ctx.fillText(String(sp.k.count), kx + size / 2, y + size / 2 + 8 * u);
+  });
+  ctx.restore();
+}
+
+/** The Custom style: every widget the layout turns on, at its own place and size. */
+function drawCustom(ctx, W, H, scene, t, { layout, tosu, keys, skin, bg, guides }) {
+  const u = H / 1080;
+  const v = scene.hud ? hudAt(scene.hud, t) : null;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = 1;
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = 'left';
+  ctx.shadowColor = 'rgba(0,0,0,0.65)';
+  ctx.shadowBlur = 6 * u;
+  const rect = (id) => (layout[id].on ? rectOf(id, layout, W, H) : null);
+
+  // the tosu overlays (map details, pp, accuracy, combo); without them the fixed canvas copy stands in
+  const tosuOk = tosu ? tosu.draw(ctx, W, H, scene, t, (name) => rect(name)) : false;
+  if (!tosuOk) drawOverlay(ctx, W, H, scene, t, { bg, keys: null, tosu: null, skin });
+
+  ctx.shadowBlur = 0;
+  ctx.shadowColor = 'transparent';
+
+  if (rect('keys') && keys) {
+    const [x, y, w] = rect('keys');
+    const size = w, gap = (10 / 56) * size;
+    if (skin?.get('inputoverlay-key')) drawStableKeys(ctx, W, H, skin, keys, t, H / 768);
+    else drawKeyColumn(ctx, keysAt(keys, t), x, y, size, gap, u, false);
+  }
+
+  if (rect('hits') && v) {
+    const [x, y, w, h] = rect('hits');
+    const cells = [['fruits', v.n300 ?? 0, '#7ee0a0'], ['drops', v.n100 ?? 0, '#6fc3ff'], ['tiny', v.n50 ?? 0, '#c8a2ff'], ['miss', v.nMiss ?? 0, '#ff7b8f']];
+    ctx.fillStyle = 'rgba(10,12,18,0.55)';
+    roundRectPath(ctx, x, y, w, h, h * 0.2); ctx.fill();
+    const cw = w / cells.length;
+    ctx.textAlign = 'center';
+    cells.forEach(([label, n, colour], i) => {
+      const cx = x + cw * (i + 0.5);
+      ctx.fillStyle = '#fff';
+      ctx.font = `700 ${h * 0.42}px ${MONO}`;
+      ctx.fillText(String(n), cx, y + h * 0.56);
+      ctx.fillStyle = colour;
+      ctx.fillRect(cx - cw * 0.24, y + h * 0.7, cw * 0.48, Math.max(2, h * 0.05));
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      ctx.font = `500 ${h * 0.15}px ${MONO}`;
+      ctx.fillText(label, cx, y + h * 0.92);
+    });
+    ctx.textAlign = 'left';
+  }
+
+  if (rect('progress')) {
+    const [x, y, w, h] = rect('progress');
+    const first = scene.objects[0]?.t ?? 0, last = scene.objects[scene.objects.length - 1]?.t ?? 1;
+    const p = Math.min(1, Math.max(0, (t - first) / Math.max(1, last - first)));
+    const barH = Math.max(3, h * 0.2), by = y + h - barH;
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    roundRectPath(ctx, x, by, w, barH, barH / 2); ctx.fill();
+    ctx.fillStyle = '#fff';
+    roundRectPath(ctx, x, by, Math.max(barH, w * p), barH, barH / 2); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = `600 ${h * 0.5}px ${MONO}`;
+    ctx.textAlign = 'left';
+    ctx.fillText(mmss(Math.max(0, t - first)), x, y + h * 0.5);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.fillText(mmss(last - first), x + w, y + h * 0.5);
+    ctx.textAlign = 'left';
+  }
+
+  if (guides) drawGuides(ctx, W, H, layout, guides, u);   // preview only: outlines while arranging
+  ctx.shadowBlur = 0;
+  ctx.shadowColor = 'transparent';
+}
+
+function drawGuides(ctx, W, H, layout, guides, u) {
+  ctx.save();
+  ctx.shadowBlur = 0;
+  ctx.lineWidth = Math.max(1, 2 * u);
+  for (const id of ORDER) {
+    if (!layout[id].on) continue;
+    const [x, y, w, h] = rectOf(id, layout, W, H);
+    const sel = id === guides.selected, hot = id === guides.hover;
+    if (!guides.all && !sel && !hot) continue;
+    ctx.setLineDash(sel ? [] : [6 * u, 5 * u]);
+    ctx.strokeStyle = sel ? '#ff6b8a' : hot ? '#ffffff' : 'rgba(255,255,255,0.35)';
+    ctx.strokeRect(x, y, w, h);
+    if (sel || hot) {
+      ctx.setLineDash([]);
+      ctx.font = `600 ${13 * Math.max(0.8, u)}px system-ui, sans-serif`;
+      const label = WIDGETS[id].label, tw = ctx.measureText(label).width + 12 * u;
+      ctx.fillStyle = sel ? '#ff6b8a' : '#fff';
+      ctx.fillRect(x, Math.max(0, y - 20 * u), tw, 20 * u);
+      ctx.fillStyle = '#111';
+      ctx.fillText(label, x + 6 * u, Math.max(0, y - 20 * u) + 14 * u);
+    }
+  }
+  ctx.setLineDash([]);
+  ctx.strokeStyle = 'rgba(255,107,138,0.8)';
+  ctx.lineWidth = Math.max(1, u);
+  if (guides.x != null) { ctx.beginPath(); ctx.moveTo(guides.x * W, 0); ctx.lineTo(guides.x * W, H); ctx.stroke(); }
+  if (guides.y != null) { ctx.beginPath(); ctx.moveTo(0, guides.y * H); ctx.lineTo(W, guides.y * H); ctx.stroke(); }
+  ctx.restore();
+}
+
 export function drawFrame(ctx, W, H, scene, track, t, opts = {}) {
-  const { skin, showCatchWidth = false, showHud = false, hitLighting = false, style = 'overlay', bg = null, bgDim = 0.8, keys = null, argon = null, tosu = null, sb = null, makeCanvas = null } = opts;
+  const { skin, showCatchWidth = false, showHud = false, hitLighting = false, style = 'overlay', bg = null, bgDim = 0.8, keys = null, argon = null, tosu = null, sb = null, makeCanvas = null, layout: customLayout = null, guides = null } = opts;
   const overlay = true;                                    // both HUD styles use the full-height playfield
   const { s, ox, oy } = layout(W, H, overlay);
 
@@ -681,6 +789,7 @@ export function drawFrame(ctx, W, H, scene, track, t, opts = {}) {
 
   if (showHud && style === 'argon') drawArgonHud(ctx, W, H, scene, t, argon, { keys });
   else if (showHud && style === 'stable' && skin) drawStableHud(ctx, W, H, scene, t, skin, keys);
+  else if (showHud && customLayout && (style === 'custom' || style === 'overlay')) drawCustom(ctx, W, H, scene, t, { layout: customLayout, tosu, keys, skin, bg, guides });
   else if (showHud) drawOverlay(ctx, W, H, scene, t, { bg, keys, tosu, skin });
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);

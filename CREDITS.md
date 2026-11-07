@@ -12,6 +12,8 @@ Thanks to the tosu team (KotRik and Cherry) for tosu and for hosting the collect
 | Map title, accuracy and combo (CPOL style) | AccuracyPP, ArtistTitleDifficulty, Combo ("SC_OverlayElements") | unknown |
 | pp counter | InGame3 | Dartandr (https://github.com/Dartandr) |
 
+The hit counts and progress bar widgets in the Custom style are drawn by this site, in simple styles of its own. The key presses widget keeps the site's own earlier key boxes.
+
 ## Planned styles, by type
 
 **Full gameplay HUDs:** ANON OVERLAY (ANON TOKYO, https://github.com/FukutoTojido, CC BY-ND 4.0), EvosOverlay and SonataOverlay (Paraliyzed_evo, https://github.com/Paraliyzedevo, GPL-3.0), Luscent Remake and osuLike Overlay (Dartandr), paradox (mofuries, https://github.com/mofuries), SimpleOverlay (HosizoraN, https://github.com/shinomimi), Souei-Overlay (-Souei), VictimCrasherOverlay (VictimCrasher, https://github.com/VictimCrasher).

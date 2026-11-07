@@ -1,25 +1,26 @@
-import './ui.js?v=20261107w';
-import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261107w';
-import { parseOsu } from './osu.js?v=20261107w';
-import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261107w';
-import { compareWithReplay } from './score.js?v=20261107w';
-import { nightcoreBeats } from './nightcore.js?v=20261107w';
-import { ReplayTrack } from './replay.js?v=20261107w';
-import { drawFrame, loadOverlayFonts } from './render.js?v=20261107w';
-import { loadArgonFonts } from './argon.js?v=20261107w';
-import { TosuOverlays } from './tosu.js?v=20261107w';
-import { exportMp4, webCodecsAvailable } from './encode.js?v=20261107w';
-import { VERSION } from './version.js?v=20261107w';
-import { md5 } from './md5.js?v=20261107w';
-import { resolveRange } from './range.js?v=20261107w';
-import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261107w';
-import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261107w';
-import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261107w';
-import { BackgroundVideo } from './bgvideo.js?v=20261107w';
-import { buildKeys } from './keys.js?v=20261107w';
-import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261107w';
-import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261107w';
-import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261107w';
+import './ui.js?v=20261107x';
+import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261107x';
+import { parseOsu } from './osu.js?v=20261107x';
+import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261107x';
+import { compareWithReplay } from './score.js?v=20261107x';
+import { nightcoreBeats } from './nightcore.js?v=20261107x';
+import { ReplayTrack } from './replay.js?v=20261107x';
+import { drawFrame, loadOverlayFonts } from './render.js?v=20261107x';
+import { loadArgonFonts } from './argon.js?v=20261107x';
+import { TosuOverlays } from './tosu.js?v=20261107x';
+import { exportMp4, webCodecsAvailable } from './encode.js?v=20261107x';
+import { VERSION } from './version.js?v=20261107x';
+import { md5 } from './md5.js?v=20261107x';
+import { resolveRange } from './range.js?v=20261107x';
+import { initLayoutEditor } from './layoutui.js?v=20261107x';
+import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261107x';
+import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261107x';
+import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261107x';
+import { BackgroundVideo } from './bgvideo.js?v=20261107x';
+import { buildKeys } from './keys.js?v=20261107x';
+import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261107x';
+import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261107x';
+import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261107x';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('stage');
@@ -53,6 +54,15 @@ let playFrom = 0;
 let playClock = 0;
 let abort = null;
 let resultUrl = null;
+
+// The Custom style's widget layout and its Layout tab (drag widgets on the preview).
+const editor = initLayoutEditor({
+  canvas,
+  pane: $('pane-layout'),
+  editable: () => !!state.scene && !exporting && ['custom', 'overlay'].includes($('hudstyle').value) && $('showhud').checked,
+  redraw: () => drawAt(state.t),
+});
+for (const id of ['hudstyle', 'showhud']) $(id).addEventListener('change', () => editor.refresh());
 
 // ---------- messages ----------
 function showMessages(list) {
@@ -112,6 +122,8 @@ function drawAt(t, fromExport = false) {
     bgDim: Math.min(100, Math.max(0, Number($('bgdim').value) || 0)) / 100,
     keys: state.keys,
     makeCanvas: (w, h) => skinEnv.createCanvas(w, h),
+    layout: editor.layout,
+    guides: exporting || fromExport ? null : editor.guides(),
   });
 }
 
@@ -841,7 +853,7 @@ async function renderCurrent(job = null) {
     canvas,
     drawAt: async (t) => {
       if (state.bgv && $('showbg').checked && $('showvideo').checked && state.bgv.active(t)) await state.bgv.seek(t);
-      if (state.tosu && $('hudstyle').value === 'overlay' && $('showhud').checked) { try { await state.tosu.prepare(sc, t); } catch { /* drawn by the canvas fallback */ } }
+      if (state.tosu && ['custom', 'overlay'].includes($('hudstyle').value) && $('showhud').checked) { try { await state.tosu.prepare(sc, t); } catch { /* drawn by the canvas fallback */ } }
       drawAt(t, true);
     },
     startTime: range.from,

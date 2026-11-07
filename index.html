@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="app-version" content="20261107w">
+  <meta name="app-version" content="20261107x">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>osu!catch Replay Renderer</title>
   <style>
@@ -87,7 +87,7 @@
 
     /* ---- inspector ---- */
     .side { display:flex; flex-direction:column; min-height:0; background:var(--surface); border-left:1px solid var(--line); }
-    .tabs { display:grid; grid-template-columns:repeat(4,1fr); border-bottom:1px solid var(--line); }
+    .tabs { display:grid; grid-template-columns:repeat(5,1fr); border-bottom:1px solid var(--line); }
     .tab { border:0; border-radius:0; background:transparent; color:var(--dim); padding:13px 4px 11px; font-weight:600; border-bottom:2px solid transparent; }
     .tab:hover:not(:disabled) { background:transparent; color:var(--text); }
     .tab[aria-selected="true"] { color:var(--text); border-bottom-color:var(--accent); }
@@ -111,6 +111,11 @@
     .toggle { display:flex; align-items:center; gap:9px; padding:8px 10px; background:var(--bg); border:1px solid var(--line); border-radius:8px; color:var(--text); font-size:13px; cursor:pointer; }
     .toggle:has(input:disabled) { opacity:.4; cursor:not-allowed; }
     .toggle input { accent-color:var(--accent); width:15px; height:15px; margin:0; }
+    .widgetlist { display:flex; flex-direction:column; gap:4px; }
+    .widgetrow { display:flex; align-items:center; gap:8px; padding:3px 6px; border:1px solid var(--line); border-radius:8px; background:var(--bg); }
+    .widgetrow.sel { border-color:var(--accent); }
+    .widgetrow input { accent-color:var(--accent); width:15px; height:15px; margin:0; }
+    .widgetrow button { flex:1; text-align:left; border:0; background:transparent; padding:5px 4px; font-weight:500; }
     .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
     details { margin:2px 0 14px; border:1px solid var(--line); border-radius:10px; background:var(--bg); }
     details summary { padding:9px 12px; cursor:pointer; color:var(--dim); font-size:13px; font-weight:600; }
@@ -187,6 +192,7 @@
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" id="tab-files" aria-controls="pane-files" aria-selected="true">Files</button>
       <button class="tab" role="tab" id="tab-look" aria-controls="pane-look" aria-selected="false">Look</button>
+      <button class="tab" role="tab" id="tab-layout" aria-controls="pane-layout" aria-selected="false">Layout</button>
       <button class="tab" role="tab" id="tab-sound" aria-controls="pane-sound" aria-selected="false">Sound</button>
       <button class="tab" role="tab" id="tab-render" aria-controls="pane-render" aria-selected="false">Render</button>
     </div>
@@ -240,7 +246,7 @@
           <h3>Overlay</h3>
           <label class="field"><span>Style</span>
             <select id="hudstyle">
-              <option value="overlay" selected>CPOL (tosu overlays: title, timer, acc/pp, combo)</option>
+              <option value="custom" selected>Custom (movable widgets, set up in the Layout tab)</option>
               <option value="stable">osu!stable HUD (score, HP bar, combo, accuracy, progress pie)</option>
               <option value="argon">osu!lazer HUD (score, HP bar, accuracy, pp, combo)</option>
             </select>
@@ -278,6 +284,8 @@
           <p id="prevnote" class="note"></p>
         </div>
       </div>
+
+      <div class="pane" id="pane-layout" role="tabpanel" aria-labelledby="tab-layout" hidden></div>
 
       <div class="pane" id="pane-sound" role="tabpanel" aria-labelledby="tab-sound" hidden>
         <div class="group">
@@ -346,6 +354,6 @@
 <div class="dropveil" id="dropveil"><div>Drop files to load them<small>.osr replay · .osz map set · .osu · .osk skin · image · song</small></div></div>
 
 <script src="vendor/lzma-d-min.js"></script>
-<script type="module" src="src/main.js?v=20261107w"></script>
+<script type="module" src="src/main.js?v=20261107x"></script>
 </body>
 </html>

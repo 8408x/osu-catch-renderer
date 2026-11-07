@@ -183,3 +183,9 @@ The storyboard is drawn at 360p (up to 720p when the background dim is under 50%
 ## Getting the map
 
 Picking a replay starts a download of its map straight away (found by the replay's beatmap hash). If that cannot find it, paste the beatmap set link or ID in the Beatmap box and press Download beatmap. For maps that are not uploaded or are custom, open "Unuploaded or custom map?" and add the .osz, or the song plus the .osu. Choosing your own files cancels a lookup that is still running.
+
+## Custom style and the Layout tab
+
+The Custom style replaces the old fixed CPOL look. It has seven widgets: map details, pp counter, accuracy and rank, and combo (the same tosu overlays CPOL used), plus key presses, hit counts (fruits, droplets, tiny droplets, misses) and a progress bar. Each one can be shown or hidden, dragged anywhere on the preview, and resized from the Layout tab. Edges and the centre lines snap while dragging (hold Alt to turn that off), and the arrow keys nudge the selected widget. Positions are saved as fractions of the frame, so a layout looks the same at 480p and 1080p, and they are remembered in this browser. The default layout is the old CPOL arrangement. Dragging is for the preview only; the outlines never appear in the video.
+
+The layout model is in `src/layout.js` and the editor in `src/layoutui.js`.
