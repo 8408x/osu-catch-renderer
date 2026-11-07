@@ -1,26 +1,26 @@
-import './ui.js?v=20261108u';
-import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261108u';
-import { parseOsu } from './osu.js?v=20261108u';
-import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261108u';
-import { compareWithReplay } from './score.js?v=20261108u';
-import { nightcoreBeats } from './nightcore.js?v=20261108u';
-import { ReplayTrack } from './replay.js?v=20261108u';
-import { drawFrame, loadOverlayFonts } from './render.js?v=20261108u';
-import { loadArgonFonts } from './argon.js?v=20261108u';
-import { TosuOverlays } from './tosu.js?v=20261108u';
-import { exportMp4, webCodecsAvailable } from './encode.js?v=20261108u';
-import { VERSION } from './version.js?v=20261108u';
-import { md5 } from './md5.js?v=20261108u';
-import { resolveRange } from './range.js?v=20261108u';
-import { initLayoutEditor } from './layoutui.js?v=20261108u';
-import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261108u';
-import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261108u';
-import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261108u';
-import { BackgroundVideo } from './bgvideo.js?v=20261108u';
-import { buildKeys } from './keys.js?v=20261108u';
-import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261108u';
-import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261108u';
-import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261108u';
+import './ui.js?v=20261108v';
+import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261108v';
+import { parseOsu } from './osu.js?v=20261108v';
+import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261108v';
+import { compareWithReplay } from './score.js?v=20261108v';
+import { nightcoreBeats } from './nightcore.js?v=20261108v';
+import { ReplayTrack } from './replay.js?v=20261108v';
+import { drawFrame, loadOverlayFonts } from './render.js?v=20261108v';
+import { loadArgonFonts } from './argon.js?v=20261108v';
+import { TosuOverlays } from './tosu.js?v=20261108v';
+import { exportMp4, webCodecsAvailable } from './encode.js?v=20261108v';
+import { VERSION } from './version.js?v=20261108v';
+import { md5 } from './md5.js?v=20261108v';
+import { resolveRange } from './range.js?v=20261108v';
+import { initLayoutEditor } from './layoutui.js?v=20261108v';
+import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261108v';
+import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261108v';
+import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261108v';
+import { BackgroundVideo } from './bgvideo.js?v=20261108v';
+import { buildKeys } from './keys.js?v=20261108v';
+import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261108v';
+import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261108v';
+import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261108v';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('stage');
@@ -262,12 +262,12 @@ function refresh() {
   $('play').disabled = exporting || !sc;
   $('export').disabled = exporting || !sc || !webCodecsAvailable();
   $('exportall').disabled = exporting || !sc || !webCodecsAvailable();
-  updateRangeNote();
   if (sc) {
     $('seek').min = String(Math.floor(sc.startTime));
     $('seek').max = String(Math.ceil(sc.endTime));
     $('seek').value = String(Math.floor(state.t));
   }
+  updateRangeNote();
   drawAt(state.t);
   updateClock();
   loadBackground();
@@ -783,6 +783,7 @@ const exportRange = (sc) => resolveRange($('rangefrom').value, $('rangeto').valu
 
 function updateRangeNote() {
   const sc = state.scene, el = $('rangenote');
+  syncRangeUi();
   if (!sc) { el.textContent = ''; return; }
   const r = exportRange(sc);
   if (r.error) { el.textContent = r.error; return; }
@@ -790,6 +791,52 @@ function updateRangeNote() {
   el.textContent = r.whole ? '' : `Will render ${fmtTime(r.from - sc.startTime)} to ${fmtTime(r.to - sc.startTime)} of the map (${secs.toFixed(1)} s of video).`;
 }
 
+/** Place the two timeline handles and the pink band to match the range boxes. */
+function syncRangeUi() {
+  const sc = state.scene, seek = $('seek');
+  for (const id of ['handlefrom', 'handleto', 'rangeband']) $(id).hidden = !sc;
+  if (!sc) return;
+  const r = exportRange(sc), ok = !r.error;
+  const lo = Number(seek.min), hi = Number(seek.max) || lo + 1;
+  const frac = (t) => Math.min(1, Math.max(0, (t - lo) / (hi - lo)));
+  const f0 = ok ? frac(r.from) : 0, f1 = ok ? frac(r.to) : 1;
+  const at = (f) => `calc(8px + (100% - 16px) * ${f})`;       // the slider thumb is about 16 px wide
+  $('handlefrom').style.left = at(f0); $('handleto').style.left = at(f1);
+  $('handlefrom').classList.toggle('set', ok && r.from !== sc.startTime);
+  $('handleto').classList.toggle('set', ok && r.to !== sc.endTime);
+  const band = $('rangeband');
+  band.style.left = at(f0); band.style.width = `calc((100% - 16px) * ${f1 - f0})`;
+  band.style.opacity = ok && !r.whole ? '1' : '0';
+}
+const fmtTenths = (ms) => { const s = Math.max(0, ms / 1000); return `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, '0')}`; };
+for (const kind of ['from', 'to']) {
+  const h = $('handle' + kind);
+  const timeAt = (e) => {
+    const rect = $('seek').getBoundingClientRect(), lo = Number($('seek').min), hi = Number($('seek').max);
+    const f = Math.min(1, Math.max(0, (e.clientX - rect.left - 8) / Math.max(1, rect.width - 16)));
+    return lo + f * (hi - lo);
+  };
+  const put = (t) => {
+    const sc = state.scene; if (!sc) return;
+    const other = exportRange(sc);
+    const keep = other.error ? { from: sc.startTime, to: sc.endTime } : other;
+    t = Math.min(sc.endTime, Math.max(sc.startTime, t));
+    if (kind === 'from') t = Math.min(t, keep.to - 500); else t = Math.max(t, keep.from + 500);
+    const box = $('range' + kind);
+    const atEnd = kind === 'from' ? t - sc.startTime < 150 : sc.endTime - t < 150;
+    box.value = atEnd ? '' : fmtTenths(t - sc.startTime);
+    updateRangeNote();
+  };
+  h.addEventListener('pointerdown', (e) => { if (exporting) return; h.setPointerCapture(e.pointerId); h.dataset.drag = '1'; e.preventDefault(); });
+  h.addEventListener('pointermove', (e) => { if (h.dataset.drag) put(timeAt(e)); });
+  h.addEventListener('pointerup', () => { delete h.dataset.drag; });
+  h.addEventListener('dblclick', () => { if (!exporting) { $('range' + kind).value = ''; updateRangeNote(); } });
+  h.addEventListener('keydown', (e) => {
+    const sc = state.scene; if (!sc || exporting || !['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+    const r = exportRange(sc); const cur = r.error ? (kind === 'from' ? sc.startTime : sc.endTime) : r[kind];
+    put(cur + (e.key === 'ArrowRight' ? 1 : -1) * (e.shiftKey ? 5000 : 500)); e.preventDefault();
+  });
+}
 for (const id of ['rangefrom', 'rangeto']) $(id).addEventListener('input', updateRangeNote);
 $('rangefromnow').addEventListener('click', () => { if (state.scene) { $('rangefrom').value = fmtTime(state.t - state.scene.startTime); updateRangeNote(); } });
 $('rangetonow').addEventListener('click', () => { if (state.scene) { $('rangeto').value = fmtTime(state.t - state.scene.startTime); updateRangeNote(); } });

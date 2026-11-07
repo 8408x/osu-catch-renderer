@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="app-version" content="20261108u">
+  <meta name="app-version" content="20261108v">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>osu!catch Replay Renderer</title>
   <style>
@@ -72,7 +72,13 @@
     canvas { width:min(100cqw, calc(100cqh * 16 / 9)); height:auto; aspect-ratio:16/9; display:block; border-radius:10px; background:#07080c; box-shadow:0 12px 40px #0008; }
     .transport { display:flex; align-items:center; gap:12px; padding:8px 12px; background:var(--surface); border:1px solid var(--line); border-radius:12px; }
     .transport button { min-width:72px; }
-    #seek { flex:1; accent-color:var(--accent); }
+    .seekwrap { flex:1; position:relative; display:flex; align-items:center; height:30px; }
+    #seek { width:100%; accent-color:var(--accent); position:relative; z-index:1; }
+    .rangeband { position:absolute; top:50%; height:6px; margin-top:-3px; border-radius:3px; background:#ff9db388; pointer-events:none; z-index:1; }
+    .transport .rangehandle { position:absolute; top:1px; width:10px; height:28px; min-width:0; padding:0; margin-left:-5px; border:0; border-radius:4px; background:#ff9db3; opacity:.55; cursor:ew-resize; z-index:2; touch-action:none; }
+    .transport .rangehandle::after { content:''; position:absolute; top:6px; left:3px; width:4px; height:16px; border-left:1px solid #0006; border-right:1px solid #0006; box-sizing:border-box; }
+    .rangehandle.set, .rangehandle:hover, .rangehandle:focus-visible { opacity:1; }
+    .rangehandle[hidden] { display:none; }
     #clock { color:var(--dim); font-variant-numeric:tabular-nums; min-width:92px; text-align:right; }
     .hint { color:var(--faint); font-size:12px; white-space:nowrap; }
 
@@ -196,7 +202,12 @@
     <div class="resultview" id="resultview" hidden><div id="result"></div></div>
     <div class="transport" id="transport">
       <button id="play" class="ghost" disabled>Play</button>
-      <input id="seek" type="range" min="0" max="1" step="1" value="0" disabled aria-label="Position">
+      <div class="seekwrap" id="seekwrap">
+        <input id="seek" type="range" min="0" max="1" step="1" value="0" disabled aria-label="Position">
+        <div class="rangeband" id="rangeband" hidden></div>
+        <button type="button" class="rangehandle" id="handlefrom" hidden aria-label="Render from here" title="Start of the render. Drag me; double-click to reset."></button>
+        <button type="button" class="rangehandle to" id="handleto" hidden aria-label="Render up to here" title="End of the render. Drag me; double-click to reset."></button>
+      </div>
       <span id="clock">0:00</span>
       <span class="hint">Space = play / pause</span>
     </div>
@@ -348,6 +359,7 @@
         </div>
         <div class="group">
           <h3>Render only part of the map</h3>
+          <p class="note" style="margin:0 0 8px">Drag the pink handles on the timeline under the preview, or type the times.</p>
           <div class="grid2">
             <label class="field"><span>From (m:ss)</span>
               <input id="rangefrom" type="text" placeholder="start" autocomplete="off">
@@ -374,6 +386,6 @@
 <div class="dropveil" id="dropveil"><div>Drop files to load them<small>.osr replay · .osz map set · .osu · .osk skin · image · song</small></div></div>
 
 <script src="vendor/lzma-d-min.js"></script>
-<script type="module" src="src/main.js?v=20261108u"></script>
+<script type="module" src="src/main.js?v=20261108v"></script>
 </body>
 </html>
