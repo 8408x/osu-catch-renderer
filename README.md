@@ -150,3 +150,9 @@ GitHub Pages lets browsers cache the JavaScript modules for ten minutes. Every `
 - Mods are listed under the accuracy in the stable HUD (the skin's `selection-mod-*` icons if present, otherwise badges) and as badges under the pp counter in the lazer HUD. NC replaces DT and PF replaces SD.
 - **Flashlight (FL)** blacks out everything outside a soft circle around the catcher (`CatchModFlashlight`): radius 203 playfield units, x0.885 from 100 combo, x0.77 from 200, x1.54 during breaks, gliding between sizes at about 1.15 x the default per second.
 - Relax, Autoplay and Cinema replays render normally (the cursor path is in the replay); they just have no special visuals. Lazer-only mods are not in stable `.osr` flags and are not read.
+
+## Storyboards
+
+A map's storyboard (the `.osb` in the `.osz` plus the storyboard lines of the difficulty) is drawn between the background and the playfield, and the Overlay layer on top of the fruit. Supported: Sprite and Animation objects, the Background / Pass / Foreground / Overlay layers, the commands F, S, V, R, M, MX, MY, C and P (flip H/V and additive A), all 35 easings, and Loop groups. The *Storyboard* checkbox turns it off. The background dim also darkens the storyboard (as in the game), so lower it to see the storyboard clearly.
+
+Not supported yet: Trigger (T) groups (HitSound / Passing / Failing), the Fail layer, storyboard sound samples, `@2x` images, and 4:3 clipping of non-widescreen storyboards. Storyboard images are read from the `.osz` (up to 1500 of them), so a storyboard needs the `.osz` rather than a lone `.osu`.

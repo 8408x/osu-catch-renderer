@@ -7,16 +7,16 @@
 //   - droplets use 0.8x and tiny droplets 0.4x of that; sprites are capped at 160 px
 //   - catcher sprite = texture size x 0.35 x catcher scale, hung from the plate line 16 px down
 
-import { FIELD_W, FIELD_H } from './catch.js?v=20261107l';
-import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261107l';
-import { hudAt, scoreShownAt } from './score.js?v=20261107l';
-import { plateAt, explosionsAt } from './plate.js?v=20261107l';
-import { drawArgonHud } from './argon.js?v=20261107l';
-import { healthAt } from './health.js?v=20261107l';
-import { livePp } from './pp.js?v=20261107l';
-import { keysAt } from './keys.js?v=20261107l';
-import { drawModIcons, drawModBadges } from './mods.js?v=20261107l';
-import { drawFlashlight } from './flashlight.js?v=20261107l';
+import { FIELD_W, FIELD_H } from './catch.js?v=20261107m';
+import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261107m';
+import { hudAt, scoreShownAt } from './score.js?v=20261107m';
+import { plateAt, explosionsAt } from './plate.js?v=20261107m';
+import { drawArgonHud } from './argon.js?v=20261107m';
+import { healthAt } from './health.js?v=20261107m';
+import { livePp } from './pp.js?v=20261107m';
+import { keysAt } from './keys.js?v=20261107m';
+import { drawModIcons, drawModBadges } from './mods.js?v=20261107m';
+import { drawFlashlight } from './flashlight.js?v=20261107m';
 
 const ZONE = 120;  // room below the field for the catcher, in field units
 const PAD = 12;
@@ -576,7 +576,7 @@ function drawHitLighting(ctx, skin, scene, t, catcherX) {
  * @param {{skin: import('./skin.js').Skin, showCatchWidth?: boolean}} opts
  */
 export function drawFrame(ctx, W, H, scene, track, t, opts = {}) {
-  const { skin, showCatchWidth = false, showHud = false, hitLighting = false, style = 'overlay', bg = null, bgDim = 0.8, keys = null, argon = null, tosu = null } = opts;
+  const { skin, showCatchWidth = false, showHud = false, hitLighting = false, style = 'overlay', bg = null, bgDim = 0.8, keys = null, argon = null, tosu = null, sb = null } = opts;
   const overlay = true;                                    // both HUD styles use the full-height playfield
   const { s, ox, oy } = layout(W, H, overlay);
 
@@ -588,7 +588,14 @@ export function drawFrame(ctx, W, H, scene, track, t, opts = {}) {
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, W, H);
 
-  if (bg) drawBackground(ctx, W, H, bg, bgDim);
+  if (bg) drawBackground(ctx, W, H, bg, sb ? 0 : bgDim);
+  if (sb) {                                                // the storyboard's Background / Pass / Foreground layers, then the dim over all of it
+    sb.drawUnder(ctx, W, H, t);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = `rgba(0,0,0,${Math.min(1, Math.max(0, bgDim))})`;
+    ctx.fillRect(0, 0, W, H);
+  }
   ctx.setTransform(s, 0, 0, s, ox, oy);
 
   const objs = scene.objects;
@@ -630,6 +637,9 @@ export function drawFrame(ctx, W, H, scene, track, t, opts = {}) {
     if (hitLighting) drawHitLighting(ctx, skin, scene, t, catcherX);
     if ((scene.mods ?? 0) & 1024) drawFlashlight(ctx, scene, t, catcherX, FIELD_H);   // the Flashlight mod
   }
+
+  if (sb) sb.drawOver(ctx, W, H, t);                       // the Overlay layer sits above the fruit
+  ctx.setTransform(s, 0, 0, s, ox, oy);
 
   if (showCatchWidth) {
     ctx.strokeStyle = '#ff4d6d';

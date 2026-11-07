@@ -804,6 +804,54 @@ if (!canvasLib) {
     assert.notDeepEqual([...ctx.getImageData(5, 5, 1, 1).data].slice(0, 3), [0, 0, 0], 'no mod: not black');
   });
 
+  await test('storyboard: parses sprites, animations, loops; easings and commands evaluate; the frame draws tinted, additive sprites', async () => {
+    const { parseStoryboard, spriteState, Storyboard, EASINGS, assetKey } = await import('../src/storyboard.js');
+    const osb = [
+      '[Events]', '//Storyboard Layer 0 (Background)',
+      'Sprite,Foreground,Centre,"sb\\a.png",320,240',
+      ' F,0,1000,2000,0,1',
+      ' S,0,1000,2000,0.5,1.5',
+      ' C,0,1000,,255,0,0',
+      ' P,0,1000,3000,A',
+      ' L,3000,3',
+      '  F,0,0,100,1,0',
+      ' T,HitSound,0,100',
+      '  F,0,0,100,1,0',
+      'Animation,Overlay,TopLeft,"sb\\f.png",0,0,4,100,LoopOnce',
+      ' MX,0,0,1000,0,100',
+      'Sprite,Foreground,Centre,"none.png",0,0',
+      '',
+    ].join('\r\n');
+    const data = parseStoryboard([osb]);
+    assert.equal(data.sprites.length, 2, 'the command-less sprite is dropped');
+    const [a, f] = data.sprites;
+    near(a.lifeStart, 1000, 1e-9); near(a.lifeEnd, 3300, 1e-9);
+    assert.equal(spriteState(a, 900), null);
+    near(spriteState(a, 1500).alpha, 0.5, 1e-9);
+    near(spriteState(a, 1500).sx, 1.0, 1e-9);
+    assert.deepEqual([spriteState(a, 1500).r, spriteState(a, 1500).g], [255, 0]);
+    assert.ok(spriteState(a, 1500).additive && !spriteState(a, 3100).additive, 'parameter A holds from 1000 to 3000 only');
+    near(spriteState(a, 3050).alpha, 0.5, 1e-9);                           // loop iteration 1: fade 1 -> 0 over 100 ms
+    near(spriteState(a, 3150).alpha, 0.5, 1e-9);                           // iteration 2 restarts
+    assert.equal(spriteState(a, 3400), null);
+    assert.equal(f.layer, 4);
+    assert.deepEqual(Storyboard.neededFiles(data).filter((k) => k.startsWith('sb/f')), ['sb/f0.png', 'sb/f1.png', 'sb/f2.png', 'sb/f3.png']);
+    assert.equal(assetKey('SB\\Sub\\X.PNG'), 'sb/sub/x.png');
+    for (const [i, e] of EASINGS.entries()) { near(e(0), i === 24 || i === 28 ? 0 : e(0), 1e-9); assert.ok(Number.isFinite(e(0.37)), `easing ${i} finite`); }
+    near(EASINGS[0](0.25), 0.25, 1e-9); near(EASINGS[4](0.5), 0.75, 1e-9); near(EASINGS[17](0.5), 0.5, 1e-9); near(EASINGS[33](1), 1, 1e-9);
+    // drawing: a red sprite lands where the 640x480 space says
+    const img = canvasLib.createCanvas(40, 40); const ig = img.getContext('2d'); ig.fillStyle = '#fff'; ig.fillRect(0, 0, 40, 40);
+    const sbd = parseStoryboard(['[Events]\nSprite,Foreground,Centre,"w.png",320,240\n F,0,0,1000,0,1\n C,0,0,,255,0,0\n S,0,0,,2'].map((x) => x));
+    const sb = new Storyboard(sbd, new Map([['w.png', img]]), (w, h) => canvasLib.createCanvas(w, h));
+    const cv = canvasLib.createCanvas(640, 480), ctx = cv.getContext('2d');
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 640, 480);
+    sb.drawUnder(ctx, 640, 480, 500);
+    const px = (x, y) => [...ctx.getImageData(x, y, 1, 1).data];
+    near(px(320, 240)[0], 127.5, 2); assert.deepEqual(px(320, 240).slice(1, 3), [0, 0]);   // red at half fade
+    assert.deepEqual(px(320 + 45, 240).slice(0, 3), [0, 0, 0], 'outside the 80x80 sprite');
+    assert.deepEqual(px(320 + 35, 240).slice(1, 3), [0, 0], 'inside it: no green or blue (tinted red)');
+  });
+
   await test('render: the osu!lazer (Argon) HUD draws its digits, health bar, pp and combo, and reacts to a miss', async () => {
     const { drawFrame } = await import('../src/render.js');
     const { loadArgonFonts } = await import('../src/argon.js');

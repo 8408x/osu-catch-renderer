@@ -1,22 +1,23 @@
-import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261107l';
-import { parseOsu } from './osu.js?v=20261107l';
-import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261107l';
-import { compareWithReplay } from './score.js?v=20261107l';
-import { nightcoreBeats } from './nightcore.js?v=20261107l';
-import { ReplayTrack } from './replay.js?v=20261107l';
-import { drawFrame, loadOverlayFonts } from './render.js?v=20261107l';
-import { loadArgonFonts } from './argon.js?v=20261107l';
-import { TosuOverlays } from './tosu.js?v=20261107l';
-import { exportMp4, webCodecsAvailable } from './encode.js?v=20261107l';
-import { VERSION } from './version.js?v=20261107l';
-import { md5 } from './md5.js?v=20261107l';
-import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261107l';
-import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261107l';
-import { BackgroundVideo } from './bgvideo.js?v=20261107l';
-import { buildKeys } from './keys.js?v=20261107l';
-import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261107l';
-import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261107l';
-import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261107l';
+import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261107m';
+import { parseOsu } from './osu.js?v=20261107m';
+import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261107m';
+import { compareWithReplay } from './score.js?v=20261107m';
+import { nightcoreBeats } from './nightcore.js?v=20261107m';
+import { ReplayTrack } from './replay.js?v=20261107m';
+import { drawFrame, loadOverlayFonts } from './render.js?v=20261107m';
+import { loadArgonFonts } from './argon.js?v=20261107m';
+import { TosuOverlays } from './tosu.js?v=20261107m';
+import { exportMp4, webCodecsAvailable } from './encode.js?v=20261107m';
+import { VERSION } from './version.js?v=20261107m';
+import { md5 } from './md5.js?v=20261107m';
+import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261107m';
+import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261107m';
+import { parseStoryboard, Storyboard } from './storyboard.js?v=20261107m';
+import { BackgroundVideo } from './bgvideo.js?v=20261107m';
+import { buildKeys } from './keys.js?v=20261107m';
+import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261107m';
+import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261107m';
+import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261107m';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('stage');
@@ -29,7 +30,8 @@ const state = {
   defaultSkin: null, skin: null, skinMsgs: [],
   previewAudio: null,   // { scene, key, buffer } soundtrack of the preview, rebuilt when settings change
   defaultSounds: null,  // Map(file name -> bytes) of the bundled hitsounds, loaded on the first export
-  osz: null,        // { difficulties, audio, images, name } from a loaded .osz
+  osz: null,        // { difficulties, audio, images, files, osb, name } from a loaded .osz
+  sb: null, sbKey: '',  // the parsed storyboard (see storyboard.js) and what it was built from
   bgFile: null,     // { name, bytes } when a background image was chosen by hand
   tosu: null,       // the real tosu overlays (CPOL look), rendered through SVG foreignObject
   argon: null,      // digit images of the osu!lazer (Argon) HUD
@@ -104,6 +106,7 @@ function drawAt(t, fromExport = false) {
     argon: state.argon,
     tosu: state.tosu,
     bg: backgroundFor(t),
+    sb: $('showsb').checked && $('showbg').checked ? state.sb : null,
     bgDim: Math.min(100, Math.max(0, Number($('bgdim').value) || 0)) / 100,
     keys: state.keys,
   });
@@ -231,6 +234,7 @@ function refresh() {
   updateClock();
   loadBackground();
   loadBackgroundVideo();
+  loadStoryboard();
 }
 
 /** Decode the background (picked file, else the .osz's own image for this difficulty) and redraw when it is ready. */
@@ -277,6 +281,43 @@ async function loadBackgroundVideo() {
   setVideoNote(`Background video: ${v.file} (${bgv.duration.toFixed(0)} s, starts at ${(v.offset / 1000).toFixed(1)} s)`);
   drawAt(state.t);
 }
+
+/** Parse the .osb and the difficulty's own storyboard lines, decode the images they use, and redraw when ready. */
+async function loadStoryboard() {
+  const osz = state.osz, bytes = state.osuBytes;
+  const key = osz && bytes ? `${osz.name}|${bytes.length}|${osz.osb?.length ?? 0}` : '';
+  if (key === state.sbKey) return;
+  state.sbKey = key;
+  state.sb = null;
+  $('showsb').disabled = true;
+  setSbNote('');
+  if (!key) return;
+  const dec = new TextDecoder();
+  const texts = [osz.osb ? dec.decode(osz.osb) : '', dec.decode(bytes)];
+  let data;
+  try { data = parseStoryboard(texts, { widescreen: /^WidescreenStoryboard:\s*1/m.test(texts[1]) }); } catch (e) { setSbNote(`The storyboard could not be read: ${e.message}`); return; }
+  if (!data.sprites.length) return;
+  const files = Storyboard.neededFiles(data);
+  const have = files.filter((f) => osz.files.has(f));
+  setSbNote(`Loading the storyboard (${data.sprites.length} sprites, ${have.length} images)…`);
+  const images = new Map();
+  let next = 0;
+  const worker = async () => {
+    while (next < have.length) {
+      const f = have[next++];
+      try { images.set(f, await createImageBitmap(new Blob([osz.files.get(f)]))); } catch { /* an unreadable image: its sprites are skipped */ }
+      if (state.sbKey !== key) return;
+    }
+  };
+  await Promise.all(Array.from({ length: 6 }, worker));
+  if (state.sbKey !== key) return;
+  state.sb = new Storyboard(data, images, skinEnv.createCanvas);
+  $('showsb').disabled = false;
+  const missing = files.length - images.size;
+  setSbNote(`Storyboard: ${data.sprites.length} sprites, ${images.size} images${missing ? ` (${missing} missing from the .osz)` : ''}. The background dim also darkens it, so lower the dim to see it clearly.`);
+  drawAt(state.t);
+}
+function setSbNote(text) { const el = $('sbnote'); if (el) el.textContent = text; }
 
 function setVideoNote(text) { const el = $('videonote'); if (el) el.textContent = text; }
 
@@ -526,7 +567,7 @@ $('useDefault').addEventListener('click', () => {
 $('showwidth').addEventListener('change', () => drawAt(state.t));
 $('showhud').addEventListener('change', () => drawAt(state.t));
 $('showlight').addEventListener('change', () => drawAt(state.t));
-for (const id of ['hudstyle', 'showbg', 'bgdim', 'showvideo']) $(id).addEventListener('input', () => drawAt(state.t));
+for (const id of ['hudstyle', 'showbg', 'bgdim', 'showvideo', 'showsb']) $(id).addEventListener('input', () => drawAt(state.t));
 
 $('bgfile').addEventListener('change', async (e) => {
   const file = e.target.files[0];
@@ -633,6 +674,7 @@ function setBusy(busy) {
   $('cancel').disabled = !busy;
   for (const id of ['osr', 'osu', 'audio', 'skin', 'useDefault', 'res', 'fps', 'mbps', 'volume', 'usehits', 'hitvolume', 'showwidth', 'showhud', 'showlight', 'hudstyle', 'showbg', 'bgdim', 'bgfile', 'play', 'seek']) $(id).disabled = busy;
   $('showvideo').disabled = busy || !state.bgv;
+  $('showsb').disabled = busy || !state.sb;
   $('usemusic').disabled = busy || !currentMusic()?.bytes;
   $('mirrorbtn').disabled = busy || !state.replay;
   $('mirrorid').disabled = busy;
