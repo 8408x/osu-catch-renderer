@@ -211,30 +211,127 @@ export function spriteState(s, t) {
 }
 
 // ---------- drawing ----------
+const TINT_CACHE_BYTES = 192 * 1024 * 1024;     // pre-tinted copies kept before the least recently used are dropped
+const SMALL_TINT_PX = 128 * 128;                // small sprites get 16 tint levels per channel, large ones 256 (see tintKey)
+
+/** Pre-tinted copies of images keyed by (image, quantised colour), least recently used dropped first. */
+class TintCache {
+  constructor(createCanvas) { this.createCanvas = createCanvas; this.entries = new Map(); this.ids = new WeakMap(); this.nextId = 0; this.bytes = 0; }
+
+  get(bm, r, g, b) {
+    let R, G, B;
+    if (bm.width * bm.height <= SMALL_TINT_PX) { R = Math.round((r / 255) * 15) * 17; G = Math.round((g / 255) * 15) * 17; B = Math.round((b / 255) * 15) * 17; }   // tiny particles tween through many colours: few levels turn that into cache hits
+    else { R = Math.round(r); G = Math.round(g); B = Math.round(b); }
+    if (R >= 255 && G >= 255 && B >= 255) return bm;
+    let id = this.ids.get(bm);
+    if (id === undefined) { id = this.nextId++; this.ids.set(bm, id); }
+    const key = `${id}:${R}:${G}:${B}`;
+    const hit = this.entries.get(key);
+    if (hit) { this.entries.delete(key); this.entries.set(key, hit); return hit.canvas; }
+    const w = bm.width, h = bm.height;
+    const canvas = this.createCanvas(w, h), g2 = canvas.getContext('2d');
+    g2.drawImage(bm, 0, 0);
+    g2.globalCompositeOperation = 'multiply';
+    g2.fillStyle = `rgb(${R},${G},${B})`;
+    g2.fillRect(0, 0, w, h);
+    g2.globalCompositeOperation = 'destination-in';
+    g2.drawImage(bm, 0, 0);
+    const bytes = w * h * 4;
+    this.entries.set(key, { canvas, bytes });
+    this.bytes += bytes;
+    for (const [k, e] of this.entries) {                       // Map keeps insertion order: the first keys are the oldest
+      if (this.bytes <= TINT_CACHE_BYTES || this.entries.size <= 1) break;
+      this.entries.delete(k);
+      this.bytes -= e.bytes;
+    }
+    return canvas;
+  }
+}
+
+/**
+ * Largest scale each image is drawn at (over every sprite using it), so the decoder can shrink images
+ * that never appear at full size. @returns {Map<string, number>} assetKey -> scale (>= 0.01)
+ */
+function fileScales(data) {
+  const out = new Map();
+  for (const s of data.sprites) {
+    let k = 0;
+    for (const c of s.by.S ?? []) k = Math.max(k, Math.abs(c.a[0]), Math.abs(c.b[0]));
+    for (const c of s.by.V ?? []) k = Math.max(k, Math.abs(c.a[0]), Math.abs(c.a[1]), Math.abs(c.b[0]), Math.abs(c.b[1]));
+    if (!s.by.S && !s.by.V) k = 1;
+    k = Math.max(k, 0.01);
+    for (const f of spriteFiles(s)) out.set(f, Math.max(out.get(f) ?? 0, k));
+  }
+  return out;
+}
+
+function spriteFiles(s) {
+  if (!s.anim) return [assetKey(s.file)];
+  const m = s.file.match(/^(.*?)(\.[^.\\/]+)?$/);
+  return Array.from({ length: s.anim.count }, (_, i) => assetKey(`${m[1]}${i}${m[2] ?? ''}`));
+}
+
+/** Pixel size of a PNG or JPEG from its header, without decoding it; null for anything else. */
+export function imageSize(bytes) {
+  if (bytes.length >= 24 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
+    const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    return { width: dv.getUint32(16), height: dv.getUint32(20) };
+  }
+  if (bytes.length >= 4 && bytes[0] === 0xff && bytes[1] === 0xd8) {
+    const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    let i = 2;
+    while (i + 9 < bytes.length) {
+      if (bytes[i] !== 0xff) { i++; continue; }
+      const m = bytes[i + 1];
+      if (m === 0xd8 || m === 0x01 || (m >= 0xd0 && m <= 0xd7) || m === 0xff) { i += m === 0xff ? 1 : 2; continue; }
+      if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) return { width: dv.getUint16(i + 7), height: dv.getUint16(i + 5) };
+      i += 2 + dv.getUint16(i + 2);
+    }
+  }
+  return null;
+}
+
 export class Storyboard {
   /**
    * @param {{sprites: object[], widescreen: boolean}} data from parseStoryboard
-   * @param {Map<string, any>} images assetKey -> decoded image
+   * @param {Map<string, any>} images assetKey -> decoded image: a bitmap/canvas, or {bitmap, nw, nh} when the bitmap was decoded smaller than the file (nw x nh is the file's size)
    * @param {(w:number,h:number)=>any} createCanvas
    */
   constructor(data, images, createCanvas) {
     this.sprites = data.sprites;
     this.widescreen = data.widescreen;
     this.images = images;
-    this.createCanvas = createCanvas;
-    this.scratch = null;
+    this.tints = new TintCache(createCanvas);
     this.byLayer = LAYERS.map((_, i) => this.sprites.filter((s) => (s.layer === 4 ? 4 : Math.min(3, s.layer)) === i || (i === 3 && s.layer > 4)));
   }
 
   /** Every file the storyboard may draw (animation frames expanded). */
   static neededFiles(data) {
     const out = new Set();
-    for (const s of data.sprites) {
-      if (!s.anim) { out.add(assetKey(s.file)); continue; }
-      const m = s.file.match(/^(.*?)(\.[^.\\/]+)?$/);
-      for (let i = 0; i < s.anim.count; i++) out.add(assetKey(`${m[1]}${i}${m[2] ?? ''}`));
-    }
+    for (const s of data.sprites) for (const f of spriteFiles(s)) out.add(f);
     return [...out];
+  }
+
+  /**
+   * Decode size per file: no wider than it can appear on a canvas `height` px high (the storyboard is 480 high),
+   * and, if all of it is still above `budgetBytes`, everything scaled down further (but not below half).
+   * @param {Map<string, {width:number, height:number}>} sizes native file sizes
+   * @returns {Map<string, {width:number, height:number}>} bitmap size to decode each file at
+   */
+  static decodePlan(data, sizes, { height = 1080, budgetBytes = 256 * 1024 * 1024 } = {}) {
+    const k = height / 480, scales = fileScales(data), plan = new Map();
+    let total = 0;
+    for (const [f, sz] of sizes) {
+      const f2 = Math.min(1, ((scales.get(f) ?? 1) * k));      // drawn at most this fraction of its native size
+      const w = Math.max(1, Math.ceil(sz.width * f2)), h = Math.max(1, Math.ceil(sz.height * f2));
+      plan.set(f, { width: w, height: h });
+      total += w * h * 4;
+    }
+    if (total > budgetBytes && budgetBytes > 0) {
+      const k2 = Math.max(0.5, Math.sqrt(budgetBytes / total));
+      for (const [f, p] of plan) plan.set(f, { width: Math.max(1, Math.ceil(p.width * k2)), height: Math.max(1, Math.ceil(p.height * k2)) });
+    }
+    return plan;
   }
 
   imageOf(s, t) {
@@ -256,43 +353,31 @@ export class Storyboard {
     const k = H / 480;
     const ox = (W - 640 * k) / 2;                                // the 640 wide storyboard area centred; widescreen draws wider than it
     ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    let alpha = 1, op = 'source-over';
     for (const s of list) {
+      if (t < s.lifeStart || t > s.lifeEnd) continue;
       const st = spriteState(s, t);
       if (!st) continue;
       const img = this.imageOf(s, t);
       if (!img) continue;
-      const iw = img.width, ih = img.height;
-      ctx.globalAlpha = st.alpha;
-      ctx.globalCompositeOperation = st.additive ? 'lighter' : 'source-over';
+      const bm = img.bitmap ?? img;
+      const iw = img.nw ?? bm.width, ih = img.nh ?? bm.height;
       const cx = ox + st.x * k, cy = st.y * k;
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.translate(cx, cy);
-      if (st.rot) ctx.rotate(st.rot);
-      ctx.scale(st.sx * (st.flipH ? -1 : 1) * k, st.sy * (st.flipV ? -1 : 1) * k);
+      // skip sprites whose bounding circle misses the frame
+      const reach = Math.hypot(iw * Math.abs(st.sx), ih * Math.abs(st.sy)) * k;
+      if (cx + reach < 0 || cx - reach > W || cy + reach < 0 || cy - reach > H) continue;
+      if (st.alpha !== alpha) { alpha = st.alpha; ctx.globalAlpha = alpha; }
+      const o = st.additive ? 'lighter' : 'source-over';
+      if (o !== op) { op = o; ctx.globalCompositeOperation = op; }
+      const fx = st.sx * (st.flipH ? -1 : 1) * k, fy = st.sy * (st.flipV ? -1 : 1) * k;
+      const cos = Math.cos(st.rot), sin = Math.sin(st.rot);
+      ctx.setTransform(fx * cos, fx * sin, -fy * sin, fy * cos, cx, cy);
       const dx = -iw * s.origin[0], dy = -ih * s.origin[1];
-      const tinted = st.r < 254.5 || st.g < 254.5 || st.b < 254.5;
-      if (tinted) ctx.drawImage(this.tint(img, st), 0, 0, iw, ih, dx, dy, iw, ih);
-      else ctx.drawImage(img, dx, dy);
+      const src = st.r < 254.5 || st.g < 254.5 || st.b < 254.5 ? this.tints.get(bm, st.r, st.g, st.b) : bm;
+      ctx.drawImage(src, 0, 0, bm.width, bm.height, dx, dy, iw, ih);
     }
     ctx.restore();
-  }
-
-  /** The image multiplied by the sprite's colour, through one reusable scratch canvas. */
-  tint(img, st) {
-    const w = img.width, h = img.height;
-    if (!this.scratch || this.scratch.width < w || this.scratch.height < h) this.scratch = this.createCanvas(Math.max(w, this.scratch?.width ?? 0), Math.max(h, this.scratch?.height ?? 0));
-    const c = this.scratch, g = c.getContext('2d');
-    g.globalCompositeOperation = 'source-over';
-    g.globalAlpha = 1;
-    g.clearRect(0, 0, c.width, c.height);
-    g.drawImage(img, 0, 0);
-    g.globalCompositeOperation = 'multiply';
-    g.fillStyle = `rgb(${Math.round(st.r)},${Math.round(st.g)},${Math.round(st.b)})`;
-    g.fillRect(0, 0, w, h);
-    g.globalCompositeOperation = 'destination-in';
-    g.drawImage(img, 0, 0);
-    g.globalCompositeOperation = 'source-over';
-    return c;                                                       // may be larger than the image: the caller draws its top-left iw x ih
   }
 }

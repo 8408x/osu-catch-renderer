@@ -1,23 +1,23 @@
-import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261107n';
-import { parseOsu } from './osu.js?v=20261107n';
-import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261107n';
-import { compareWithReplay } from './score.js?v=20261107n';
-import { nightcoreBeats } from './nightcore.js?v=20261107n';
-import { ReplayTrack } from './replay.js?v=20261107n';
-import { drawFrame, loadOverlayFonts } from './render.js?v=20261107n';
-import { loadArgonFonts } from './argon.js?v=20261107n';
-import { TosuOverlays } from './tosu.js?v=20261107n';
-import { exportMp4, webCodecsAvailable } from './encode.js?v=20261107n';
-import { VERSION } from './version.js?v=20261107n';
-import { md5 } from './md5.js?v=20261107n';
-import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261107n';
-import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261107n';
-import { parseStoryboard, Storyboard } from './storyboard.js?v=20261107n';
-import { BackgroundVideo } from './bgvideo.js?v=20261107n';
-import { buildKeys } from './keys.js?v=20261107n';
-import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261107n';
-import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261107n';
-import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261107n';
+import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261107o';
+import { parseOsu } from './osu.js?v=20261107o';
+import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261107o';
+import { compareWithReplay } from './score.js?v=20261107o';
+import { nightcoreBeats } from './nightcore.js?v=20261107o';
+import { ReplayTrack } from './replay.js?v=20261107o';
+import { drawFrame, loadOverlayFonts } from './render.js?v=20261107o';
+import { loadArgonFonts } from './argon.js?v=20261107o';
+import { TosuOverlays } from './tosu.js?v=20261107o';
+import { exportMp4, webCodecsAvailable } from './encode.js?v=20261107o';
+import { VERSION } from './version.js?v=20261107o';
+import { md5 } from './md5.js?v=20261107o';
+import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261107o';
+import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261107o';
+import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261107o';
+import { BackgroundVideo } from './bgvideo.js?v=20261107o';
+import { buildKeys } from './keys.js?v=20261107o';
+import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261107o';
+import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261107o';
+import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261107o';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('stage');
@@ -300,17 +300,32 @@ async function loadStoryboard() {
   const files = Storyboard.neededFiles(data);
   const have = files.filter((f) => osz.files.has(f));
   setSbNote(`Loading the storyboard (${data.sprites.length} sprites, ${have.length} images)…`);
+  // decode every image no larger than it can appear (1080p at most) and within a memory budget
+  const sizes = new Map();
+  for (const f of have) { const sz = imageSize(osz.files.get(f)); if (sz) sizes.set(f, sz); }
+  const plan = Storyboard.decodePlan(data, sizes, { height: 1080 });
   const images = new Map();
   let next = 0;
   const worker = async () => {
     while (next < have.length) {
       const f = have[next++];
-      try { images.set(f, await createImageBitmap(new Blob([osz.files.get(f)]))); } catch { /* an unreadable image: its sprites are skipped */ }
+      try {
+        const blob = new Blob([osz.files.get(f)]), sz = sizes.get(f), want = plan.get(f);
+        if (sz && want && want.width < sz.width * 0.8) {
+          const bitmap = await createImageBitmap(blob, { resizeWidth: want.width, resizeHeight: want.height, resizeQuality: 'high' });
+          images.set(f, { bitmap, nw: sz.width, nh: sz.height });
+        } else images.set(f, await createImageBitmap(blob));
+      } catch { /* an unreadable image: its sprites are skipped */ }
       if (state.sbKey !== key) return;
     }
   };
   await Promise.all(Array.from({ length: 6 }, worker));
   if (state.sbKey !== key) return;
+  // draw each image once so the browser uploads it to the GPU now, not as a stutter when its sprite first appears
+  try {
+    const warm = skinEnv.createCanvas(4, 4).getContext('2d');
+    for (const img of images.values()) warm.drawImage(img.bitmap ?? img, 0, 0, 4, 4);
+  } catch { /* warming up is only an optimisation */ }
   state.sb = new Storyboard(data, images, skinEnv.createCanvas);
   $('showsb').disabled = false;
   const missing = files.length - images.size;

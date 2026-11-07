@@ -852,6 +852,27 @@ if (!canvasLib) {
     assert.deepEqual(px(320 + 35, 240).slice(1, 3), [0, 0], 'inside it: no green or blue (tinted red)');
   });
 
+  await test('storyboard: header image sizes, decode plan, and the tint cache', async () => {
+    const { parseStoryboard, Storyboard, imageSize } = await import('../src/storyboard.js');
+    const c = canvasLib.createCanvas(33, 17); c.getContext('2d').fillRect(0, 0, 33, 17);
+    assert.deepEqual(imageSize(new Uint8Array(c.toBuffer('image/png'))), { width: 33, height: 17 });
+    assert.deepEqual(imageSize(new Uint8Array(c.toBuffer('image/jpeg'))), { width: 33, height: 17 });
+    assert.equal(imageSize(new Uint8Array([1, 2, 3])), null);
+    const data = parseStoryboard(['[Events]\nSprite,Foreground,Centre,"big.png",0,0\n S,0,0,1000,0.1,0.25\nSprite,Foreground,Centre,"full.png",0,0\n F,0,0,1000,0,1']);
+    const sizes = new Map([['big.png', { width: 1920, height: 1080 }], ['full.png', { width: 100, height: 100 }]]);
+    const plan = Storyboard.decodePlan(data, sizes, { height: 480 });                  // k = 1: drawn at most 0.25 of native
+    assert.deepEqual(plan.get('big.png'), { width: 480, height: 270 });
+    assert.deepEqual(plan.get('full.png'), { width: 100, height: 100 });
+    const tight = Storyboard.decodePlan(data, sizes, { height: 480, budgetBytes: 1 });  // over budget: shrunk, but never below half
+    assert.deepEqual(tight.get('big.png'), { width: 240, height: 135 });
+    // the tint cache returns the same pre-tinted canvas while the colour stays put
+    const img = canvasLib.createCanvas(40, 40); img.getContext('2d').fillRect(0, 0, 40, 40);
+    const sb = new Storyboard(parseStoryboard(['[Events]\nSprite,Foreground,Centre,"w.png",320,240\n F,0,0,100000,1\n C,0,0,,255,0,0']), new Map([['w.png', img]]), (w, h) => canvasLib.createCanvas(w, h));
+    const a = sb.tints.get(img, 255, 0, 0), b = sb.tints.get(img, 255, 0, 0);
+    assert.equal(a, b); assert.equal(sb.tints.entries.size, 1);
+    assert.equal(sb.tints.get(img, 255, 255, 255), img, 'white needs no tint');
+  });
+
   await test('storyboard: replaces the still background image entirely', async () => {
     const { drawFrame } = await import('../src/render.js');
     const { parseStoryboard, Storyboard } = await import('../src/storyboard.js');
