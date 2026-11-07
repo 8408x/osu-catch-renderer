@@ -124,7 +124,7 @@ export const WIDGETS = {
     label: 'Progress bar', at: [(1920 - 720) / 2, 14], on: false,
     styles: [
       { id: 'argon', label: 'osu!lazer (Argon)', credit: 'osu!lazer (Argon skin) by ppy and contributors', author: 'ppy', system: 'argon', w: 700 * V, h: 38 * V },
-      { id: 'stable', label: 'osu!stable (pie)', credit: 'osu!stable default HUD by peppy', author: 'peppy', system: 'stable', w: 30, h: 30 },
+      { id: 'stable', label: 'osu!stable (pie)', credit: 'osu!stable default HUD by peppy', author: 'peppy', system: 'stable', w: 33 * V, h: 33 * V },
       { id: 'simple', label: 'SimpleOverlay / Souei-Overlay', credit: 'SimpleOverlay by HosizoraN; Souei-Overlay by -Souei', author: 'HosizoraN', w: 900, h: 20 },
       { id: 'paradox', label: 'paradox', credit: 'paradox by mofuries', author: 'mofuries', w: 390, h: 96 },
     ],
@@ -229,7 +229,7 @@ export const PRESETS = [
     ['health', 'argon', 0, 28], ['score', 'argon', 98, 76], ['acc', 'argon', 1697, 30], ['pp', 'argon', 1786, 103],
     ['combo', 'argon', 56, 910], ['progress', 'argon', 468, 1012], ['keys', 'argon', 1664, 858]]) },
   { id: 'stable', name: 'osu!stable', build: () => fromRows([
-    ['health', 'stable', 12, 9], ['score', 'stable', 1570, 1.5], ['acc', 'stable', 1720, 76], ['progress', 'stable', 1670, 77],
+    ['health', 'stable', 12, 9], ['score', 'stable', 1570, 1.5], ['acc', 'stable', 1720, 76], ['progress', 'stable', 1650, 71],
     ['combo', 'stable', 14, 982], ['keys', 'stable', 1859, 460]]) },
   { id: 'simpleoverlay', name: 'SimpleOverlay (HosizoraN)', build: () => fromRows([
     ['progress', 'simple', 20, 4], ['score', 'simple', 790, 14], ['acc', 'simple', 820, 82], ['pp', 'simpleoverlay', 8, 270],

@@ -7,18 +7,18 @@
 //   - droplets use 0.8x and tiny droplets 0.4x of that; sprites are capped at 160 px
 //   - catcher sprite = texture size x 0.35 x catcher scale, hung from the plate line 16 px down
 
-import { FIELD_W, FIELD_H } from './catch.js?v=20261108v';
-import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261108v';
-import { hudAt, scoreShownAt } from './score.js?v=20261108v';
-import { plateAt, explosionsAt } from './plate.js?v=20261108v';
-import { drawArgonHud, drawArgonPart } from './argon.js?v=20261108v';
-import { healthAt } from './health.js?v=20261108v';
-import { livePp } from './pp.js?v=20261108v';
-import { keysAt } from './keys.js?v=20261108v';
-import { ORDER, rectOf, fullRectOf, WIDGETS, styleInfo } from './layout.js?v=20261108v';
-import { lookFor, styleData } from './styles.js?v=20261108v';
-import { drawModIcons, drawModBadges } from './mods.js?v=20261108v';
-import { drawFlashlight } from './flashlight.js?v=20261108v';
+import { FIELD_W, FIELD_H } from './catch.js?v=20261108w';
+import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261108w';
+import { hudAt, scoreShownAt } from './score.js?v=20261108w';
+import { plateAt, explosionsAt } from './plate.js?v=20261108w';
+import { drawArgonHud, drawArgonPart } from './argon.js?v=20261108w';
+import { healthAt } from './health.js?v=20261108w';
+import { livePp } from './pp.js?v=20261108w';
+import { keysAt } from './keys.js?v=20261108w';
+import { ORDER, rectOf, fullRectOf, WIDGETS, styleInfo } from './layout.js?v=20261108w';
+import { lookFor, styleData } from './styles.js?v=20261108w';
+import { drawModIcons, drawModBadges } from './mods.js?v=20261108w';
+import { drawFlashlight } from './flashlight.js?v=20261108w';
 
 const ZONE = 120;  // room below the field for the catcher, in field units
 const PAD = 12;
@@ -412,6 +412,7 @@ function drawGlyphs(ctx, skin, prefix, text, x, y, k, { anchor = 'left', fromTop
     cx += widths[i];
   });
   ctx.restore();
+  return total;
 }
 
 /** Stable's HP bar: a flat dark track with a thin light border, a fill that is white (amber, then red when low) and a round marker at its end. */
@@ -437,7 +438,7 @@ function drawHealthBar(ctx, hp, x, y, w, h) {
 /** The song progress pie stable draws left of the accuracy. */
 function drawProgressPie(ctx, cx, cy, r, p) {
   ctx.save();
-  ctx.lineWidth = Math.max(1, r / 6);
+  ctx.lineWidth = Math.max(1, r / 7.75);
   ctx.strokeStyle = 'rgba(255,255,255,0.9)';
   ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
   if (p > 0) {
@@ -517,8 +518,8 @@ function drawStableHud(ctx, W, H, scene, t, skin, keys) {
     { anchor: 'right', fromTop: true, fixed: true, overlap: scoreOverlap });
 
   // accuracy, right under the score (LegacyAccuracyCounter: scale 0.6 * 0.96, margin 9 / 17)
-  drawGlyphs(ctx, skin, scorePrefix, `${(v.acc * 100).toFixed(2)}%`, W - 17 * u, scoreH + 9 * u, 0.6 * 0.96 * u,
-    { anchor: 'right', fromTop: true, fixed: true, overlap: scoreOverlap });
+  const accW = drawGlyphs(ctx, skin, scorePrefix, `${(v.acc * 100).toFixed(2)}%`, W - 17 * u, scoreH + 9 * u, 0.6 * 0.96 * u,
+    { anchor: 'right', fromTop: true, fixed: true, overlap: scoreOverlap }) ?? 150 * u;
 
   // mods: the skin's own icons, else small badges, under the accuracy
   if (scene.mods) {
@@ -530,7 +531,7 @@ function drawStableHud(ctx, W, H, scene, t, skin, keys) {
   const objs = scene.objects;
   if (objs.length) {
     const a = objs[0].t, b = objs[objs.length - 1].t;
-    drawProgressPie(ctx, W - 17 * u - 150 * u, scoreH + 9 * u + 12 * u, 9 * u, Math.min(1, Math.max(0, (t - a) / Math.max(1, b - a))));
+    drawProgressPie(ctx, W - 17 * u - (accW || 150 * u) - 10 * u - 16.5 * u, scoreH + 9 * u + (zero ? 0.6 * 0.96 * zero.h * u : 24 * u) / 2, 15.5 * u, Math.min(1, Math.max(0, (t - a) / Math.max(1, b - a))));
   }
 
   // health bar, top left
@@ -653,7 +654,7 @@ function drawStableLook(ctx, id, st, scene, t, skin, keys) {
     ctx.restore();
   } else if (id === 'progress') {
     const objs = scene.objects;
-    if (objs.length) drawProgressPie(ctx, st.w / 2, st.h / 2, 9 * u, Math.min(1, Math.max(0, (t - objs[0].t) / Math.max(1, objs[objs.length - 1].t - objs[0].t))));
+    if (objs.length) drawProgressPie(ctx, st.w / 2, st.h / 2, 15.5 * u, Math.min(1, Math.max(0, (t - objs[0].t) / Math.max(1, objs[objs.length - 1].t - objs[0].t))));
   } else if (id === 'keys' && keys) {
     const key = skin.get('inputoverlay-key'), kw = (key?.w ?? 43) * u, kh = (key?.h ?? 46) * u;
     drawStableKeys(ctx, kw, kh / (2 * 0.4556), skin, keys, t, u);

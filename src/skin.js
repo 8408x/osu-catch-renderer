@@ -8,7 +8,7 @@
 //   - skin.ini [Colours] Combo1..Combo8 are used when the beatmap defines no combo colours.
 
 import { unzipSync } from '../vendor/fflate.mjs';
-import { MOD_SKIN_NAMES } from './mods.js?v=20261108v';
+import { MOD_SKIN_NAMES } from './mods.js?v=20261108w';
 
 export const DEFAULT_SKIN_FILES = [
   'fruit-apple', 'fruit-apple-overlay', 'fruit-grapes', 'fruit-grapes-overlay',
