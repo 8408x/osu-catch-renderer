@@ -1,23 +1,23 @@
-import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261107o';
-import { parseOsu } from './osu.js?v=20261107o';
-import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261107o';
-import { compareWithReplay } from './score.js?v=20261107o';
-import { nightcoreBeats } from './nightcore.js?v=20261107o';
-import { ReplayTrack } from './replay.js?v=20261107o';
-import { drawFrame, loadOverlayFonts } from './render.js?v=20261107o';
-import { loadArgonFonts } from './argon.js?v=20261107o';
-import { TosuOverlays } from './tosu.js?v=20261107o';
-import { exportMp4, webCodecsAvailable } from './encode.js?v=20261107o';
-import { VERSION } from './version.js?v=20261107o';
-import { md5 } from './md5.js?v=20261107o';
-import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261107o';
-import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261107o';
-import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261107o';
-import { BackgroundVideo } from './bgvideo.js?v=20261107o';
-import { buildKeys } from './keys.js?v=20261107o';
-import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261107o';
-import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261107o';
-import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261107o';
+import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261107p';
+import { parseOsu } from './osu.js?v=20261107p';
+import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261107p';
+import { compareWithReplay } from './score.js?v=20261107p';
+import { nightcoreBeats } from './nightcore.js?v=20261107p';
+import { ReplayTrack } from './replay.js?v=20261107p';
+import { drawFrame, loadOverlayFonts } from './render.js?v=20261107p';
+import { loadArgonFonts } from './argon.js?v=20261107p';
+import { TosuOverlays } from './tosu.js?v=20261107p';
+import { exportMp4, webCodecsAvailable } from './encode.js?v=20261107p';
+import { VERSION } from './version.js?v=20261107p';
+import { md5 } from './md5.js?v=20261107p';
+import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261107p';
+import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261107p';
+import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261107p';
+import { BackgroundVideo } from './bgvideo.js?v=20261107p';
+import { buildKeys } from './keys.js?v=20261107p';
+import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261107p';
+import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261107p';
+import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261107p';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('stage');
@@ -112,10 +112,29 @@ function drawAt(t, fromExport = false) {
   });
 }
 
-function setSize() {
+// The preview canvas can be smaller than the video: the video is always rendered at its full size (see the export
+// handler), while the preview only needs to look right on screen. 'auto' caps the preview at 720p and steps down
+// further, one level at a time, if playback keeps dropping frames.
+const AUTO_CAPS = [720, 540, 360];
+let autoCap = AUTO_CAPS[0];
+function previewCap() {
+  const v = $('prevres').value;
+  return v === 'full' ? Infinity : v === 'auto' ? autoCap : Number(v);
+}
+function previewSize() {
   const { w, h } = size();
+  const cap = previewCap();
+  if (h <= cap) return { w, h };
+  const k = cap / h;
+  return { w: Math.max(2, Math.round((w * k) / 2) * 2), h: Math.max(2, Math.round((h * k) / 2) * 2) };
+}
+function setSize() {
+  const { w, h } = previewSize();
   canvas.width = w;
   canvas.height = h;
+  const { w: vw, h: vh } = size();
+  const note = $('prevnote');
+  if (note) note.textContent = w === vw ? '' : `Preview drawn at ${w} × ${h} to stay smooth; the video is rendered at ${vw} × ${vh}.`;
   drawAt(state.t);
 }
 
@@ -627,15 +646,26 @@ function stopPreview() {
   $('play').textContent = 'Play';
 }
 
+let lastTick = 0, slowAcc = 0, slowN = 0, lastUi = 0;
 function tick(now) {
   if (!playing) return;
   const sc = state.scene;
   const elapsedMs = previewSource ? (audioCtx.currentTime - audioT0) * 1000 : now - playClock;
   state.t = playFrom + elapsedMs * sc.rate;
   if (state.t >= sc.endTime) { state.t = sc.endTime; stopPreview(); }
-  $('seek').value = String(Math.floor(state.t));
   drawAt(state.t);
-  updateClock();
+  if (now - lastUi > 100 || !playing) { lastUi = now; $('seek').value = String(Math.floor(state.t)); updateClock(); }   // the slider and clock need no 60 Hz updates
+  // auto preview quality: a window of 45 frames averaging over 25 ms (under 40 fps) drops the preview one resolution step
+  if (lastTick && now - lastTick < 250) { slowAcc += now - lastTick; slowN++; }
+  lastTick = now;
+  if (slowN >= 45) {
+    const avg = slowAcc / slowN;
+    slowAcc = 0; slowN = 0;
+    if (avg > 25 && $('prevres').value === 'auto') {
+      const next = AUTO_CAPS[AUTO_CAPS.indexOf(autoCap) + 1];
+      if (next && next < size().h) { autoCap = next; setSize(); }
+    }
+  }
   if (playing) requestAnimationFrame(tick);
 }
 
@@ -670,6 +700,7 @@ $('play').addEventListener('click', async () => {
     previewSource.start(0, Math.max(0, (state.t - sc.startTime) / sc.rate / 1000));
   }
   playClock = performance.now();
+  lastTick = 0; slowAcc = 0; slowN = 0;
   requestAnimationFrame(tick);
 });
 
@@ -680,14 +711,15 @@ $('seek').addEventListener('input', () => {
   updateClock();
 });
 
-$('res').addEventListener('change', setSize);
+$('res').addEventListener('change', () => { autoCap = AUTO_CAPS[0]; setSize(); });
+$('prevres').addEventListener('change', () => { autoCap = AUTO_CAPS[0]; setSize(); });
 
 // ---------- export ----------
 function setBusy(busy) {
   exporting = busy;
   $('export').disabled = busy || !state.scene;
   $('cancel').disabled = !busy;
-  for (const id of ['osr', 'osu', 'audio', 'skin', 'useDefault', 'res', 'fps', 'mbps', 'volume', 'usehits', 'hitvolume', 'showwidth', 'showhud', 'showlight', 'hudstyle', 'showbg', 'bgdim', 'bgfile', 'play', 'seek']) $(id).disabled = busy;
+  for (const id of ['osr', 'osu', 'audio', 'skin', 'useDefault', 'res', 'fps', 'mbps', 'volume', 'usehits', 'hitvolume', 'showwidth', 'showhud', 'showlight', 'hudstyle', 'showbg', 'bgdim', 'bgfile', 'play', 'seek', 'prevres']) $(id).disabled = busy;
   $('showvideo').disabled = busy || !state.bgv;
   $('showsb').disabled = busy || !state.sb;
   $('usemusic').disabled = busy || !currentMusic()?.bytes;
@@ -718,6 +750,9 @@ $('export').addEventListener('click', async () => {
   const hitVolume = Math.min(100, Math.max(0, Number($('hitvolume').value))) / 100;
 
   try {
+    const full = size();                                    // the video is always drawn at its real size, whatever the preview uses
+    canvas.width = full.w;
+    canvas.height = full.h;
     const res = await exportMp4({
       canvas,
       drawAt: async (t) => {
@@ -777,7 +812,7 @@ $('export').addEventListener('click', async () => {
     setBusy(false);
     $('bar').value = 0;
     abort = null;
-    drawAt(state.t); // restore the preview frame
+    setSize(); // back to the preview size, and redraw the preview frame
   }
 });
 

@@ -873,6 +873,17 @@ if (!canvasLib) {
     assert.equal(sb.tints.get(img, 255, 255, 255), img, 'white needs no tint');
   });
 
+  await test('storyboard: the occlusion test knows when a sprite covers the whole frame', async () => {
+    const { coversFrame } = await import('../src/storyboard.js');
+    // 100x100 frame, sprite 200x200 px centred on it: covers; shifted far off: does not; rotated 45 degrees (diagonal 283): still covers
+    assert.equal(coversFrame(100, 100, 50, 50, 1, 1, 1, 0, -100, -100, 200, 200), true);
+    assert.equal(coversFrame(100, 100, 350, 50, 1, 1, 1, 0, -100, -100, 200, 200), false);
+    const c = Math.SQRT1_2;
+    assert.equal(coversFrame(100, 100, 50, 50, 1, 1, c, c, -100, -100, 200, 200), true);
+    assert.equal(coversFrame(100, 100, 50, 50, 0.4, 0.4, c, c, -100, -100, 200, 200), false, 'scaled down to 80 px: no longer covers');
+    assert.equal(coversFrame(100, 100, 50, 50, -1, 1, 1, 0, -100, -100, 200, 200), true, 'a flip changes nothing for a centred sprite');
+  });
+
   await test('storyboard: replaces the still background image entirely', async () => {
     const { drawFrame } = await import('../src/render.js');
     const { parseStoryboard, Storyboard } = await import('../src/storyboard.js');

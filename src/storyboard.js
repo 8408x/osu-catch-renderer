@@ -164,6 +164,7 @@ function prepare(s) {
   }
   for (const k of Object.keys(by)) by[k].sort((p, q) => p.start - q.start);
   s.by = by;
+  s.opaque = /\.jpe?g$/i.test(s.file);                       // JPEG has no alpha: a sprite of one hides what is beneath it
   s.lifeStart = lo;
   s.lifeEnd = hi;
   // a sprite whose last command is a never-ending parameter / fade stays visible to the end of the map
@@ -302,6 +303,7 @@ export class Storyboard {
     this.widescreen = data.widescreen;
     this.images = images;
     this.tints = new TintCache(createCanvas);
+    this.items = [];                                             // reused every frame
     this.byLayer = LAYERS.map((_, i) => this.sprites.filter((s) => (s.layer === 4 ? 4 : Math.min(3, s.layer)) === i || (i === 3 && s.layer > 4)));
   }
 
@@ -343,41 +345,65 @@ export class Storyboard {
   }
 
   /** Draw the Background, Pass and Foreground layers (beneath the playfield). */
-  drawUnder(ctx, W, H, t) { for (const li of [0, 2, 3]) this.drawLayer(ctx, W, H, t, li); }
+  drawUnder(ctx, W, H, t) { this.paint(ctx, W, H, t, [0, 2, 3]); }
   /** Draw the Overlay layer (above the playfield). */
-  drawOver(ctx, W, H, t) { this.drawLayer(ctx, W, H, t, 4); }
+  drawOver(ctx, W, H, t) { this.paint(ctx, W, H, t, [4]); }
 
-  drawLayer(ctx, W, H, t, li) {
-    const list = this.byLayer[li];
-    if (!list.length) return;
+  /**
+   * Draw the given layers back to front. Sprites that cannot be seen are not drawn: almost transparent ones,
+   * ones off the frame, and everything beneath the last opaque (JPEG, alpha 1, normal blend) sprite that covers the frame.
+   */
+  paint(ctx, W, H, t, layers) {
     const k = H / 480;
     const ox = (W - 640 * k) / 2;                                // the 640 wide storyboard area centred; widescreen draws wider than it
+    const items = this.items;
+    items.length = 0;
+    for (const li of layers) {
+      for (const s of this.byLayer[li]) {
+        if (t < s.lifeStart || t > s.lifeEnd) continue;
+        const st = spriteState(s, t);
+        if (!st || st.alpha < 0.004) continue;
+        const img = this.imageOf(s, t);
+        if (!img) continue;
+        const bm = img.bitmap ?? img;
+        const iw = img.nw ?? bm.width, ih = img.nh ?? bm.height;
+        const cx = ox + st.x * k, cy = st.y * k;
+        const reach = Math.hypot(iw * Math.abs(st.sx), ih * Math.abs(st.sy)) * k;   // skip sprites whose bounding circle misses the frame
+        if (cx + reach < 0 || cx - reach > W || cy + reach < 0 || cy - reach > H) continue;
+        const fx = st.sx * (st.flipH ? -1 : 1) * k, fy = st.sy * (st.flipV ? -1 : 1) * k;
+        if (fx === 0 || fy === 0) continue;
+        const cos = Math.cos(st.rot), sin = Math.sin(st.rot);
+        const dx = -iw * s.origin[0], dy = -ih * s.origin[1];
+        items.push({ st, bm, iw, ih, cx, cy, fx, fy, cos, sin, dx, dy, opaque: s.opaque && st.alpha >= 0.995 && !st.additive && coversFrame(W, H, cx, cy, fx, fy, cos, sin, dx, dy, iw, ih) });
+      }
+    }
+    let from = 0;
+    for (let i = items.length - 1; i > 0; i--) if (items[i].opaque) { from = i; break; }
+    if (from >= items.length) return;
     ctx.save();
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
     let alpha = 1, op = 'source-over';
-    for (const s of list) {
-      if (t < s.lifeStart || t > s.lifeEnd) continue;
-      const st = spriteState(s, t);
-      if (!st) continue;
-      const img = this.imageOf(s, t);
-      if (!img) continue;
-      const bm = img.bitmap ?? img;
-      const iw = img.nw ?? bm.width, ih = img.nh ?? bm.height;
-      const cx = ox + st.x * k, cy = st.y * k;
-      // skip sprites whose bounding circle misses the frame
-      const reach = Math.hypot(iw * Math.abs(st.sx), ih * Math.abs(st.sy)) * k;
-      if (cx + reach < 0 || cx - reach > W || cy + reach < 0 || cy - reach > H) continue;
+    for (let i = from; i < items.length; i++) {
+      const it = items[i], st = it.st;
       if (st.alpha !== alpha) { alpha = st.alpha; ctx.globalAlpha = alpha; }
       const o = st.additive ? 'lighter' : 'source-over';
       if (o !== op) { op = o; ctx.globalCompositeOperation = op; }
-      const fx = st.sx * (st.flipH ? -1 : 1) * k, fy = st.sy * (st.flipV ? -1 : 1) * k;
-      const cos = Math.cos(st.rot), sin = Math.sin(st.rot);
-      ctx.setTransform(fx * cos, fx * sin, -fy * sin, fy * cos, cx, cy);
-      const dx = -iw * s.origin[0], dy = -ih * s.origin[1];
-      const src = st.r < 254.5 || st.g < 254.5 || st.b < 254.5 ? this.tints.get(bm, st.r, st.g, st.b) : bm;
-      ctx.drawImage(src, 0, 0, bm.width, bm.height, dx, dy, iw, ih);
+      ctx.setTransform(it.fx * it.cos, it.fx * it.sin, -it.fy * it.sin, it.fy * it.cos, it.cx, it.cy);
+      const src = st.r < 254.5 || st.g < 254.5 || st.b < 254.5 ? this.tints.get(it.bm, st.r, st.g, st.b) : it.bm;
+      ctx.drawImage(src, 0, 0, it.bm.width, it.bm.height, it.dx, it.dy, it.iw, it.ih);
     }
     ctx.restore();
+    items.length = 0;                                            // do not keep the sprites' state alive between frames
   }
+}
+
+/** Whether a sprite's (rotated, scaled) texture box contains all four corners of the W x H frame. */
+export function coversFrame(W, H, cx, cy, fx, fy, cos, sin, dx, dy, iw, ih) {
+  for (let i = 0; i < 4; i++) {
+    const px = (i & 1 ? W : 0) - cx, py = (i & 2 ? H : 0) - cy;
+    const lx = (cos * px + sin * py) / fx, ly = (-sin * px + cos * py) / fy;     // the corner in the sprite's own pixel space
+    if (lx < dx || lx > dx + iw || ly < dy || ly > dy + ih) return false;
+  }
+  return true;
 }
