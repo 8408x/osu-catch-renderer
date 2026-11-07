@@ -1716,7 +1716,7 @@ await test('custom styles: every non-tosu look exists, draws in its own box, and
 
 await test('layout presets and files: built-ins are valid and on screen, files round-trip, junk is rejected', async () => {
   const L = await import('../src/layout.js');
-  assert.deepEqual(L.PRESETS.map((p) => p.id), ['cpol', 'lazer', 'stable', 'simpleoverlay', 'souei', 'victim']);
+  assert.deepEqual(L.PRESETS.map((p) => p.id), ['cpol', 'lazer', 'stable', 'simpleoverlay', 'souei', 'paradox', 'victim']);
   for (const p of L.PRESETS) {
     const l = p.build();
     assert.deepEqual(L.normalizeLayout(l), l, `${p.id} is already normalized`);

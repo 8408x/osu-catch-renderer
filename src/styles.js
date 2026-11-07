@@ -2,11 +2,11 @@
 // (credited in layout.js and CREDITS.md) in this site's own code; no overlay code or images are copied. A draw function
 // works in the style's natural size (see layout.js): the caller translates and scales the canvas to fit.
 
-import { tosuTokens } from './tosu.js?v=20261108r';
-import { hudAt } from './score.js?v=20261108r';
-import { healthAt } from './health.js?v=20261108r';
-import { livePp, ppAtAccuracy } from './pp.js?v=20261108r';
-import { keysAt } from './keys.js?v=20261108r';
+import { tosuTokens } from './tosu.js?v=20261108s';
+import { hudAt } from './score.js?v=20261108s';
+import { healthAt } from './health.js?v=20261108s';
+import { livePp, ppAtAccuracy } from './pp.js?v=20261108s';
+import { keysAt } from './keys.js?v=20261108s';
 
 const SANS = '"Exo 2", "Torus", "Segoe UI", system-ui, -apple-system, sans-serif';
 const MONO = '"Roboto Mono", ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace';
@@ -136,6 +136,23 @@ function blob(ctx, W, H, corner) {
 
 const LOOKS = {
   title: {
+    // paradox by mofuries: a round cover, artist and title, the difficulty with its length, and a row of stat chips
+    paradox(ctx, d, W, H) {
+      ctx.save(); ctx.beginPath(); ctx.arc(52, 52, 50, 0, Math.PI * 2); ctx.clip();
+      cover(ctx, d.bg, 2, 2, 100, 100, 0, 0.25);
+      ctx.restore();
+      text(ctx, d.artist, 118, 34, { size: 22, weight: 300, fill: 'rgba(255,255,255,0.85)', maxW: W - 130 });
+      text(ctx, d.title, 118, 72, { size: 33, weight: 500, maxW: W - 130 });
+      ctx.fillStyle = 'rgba(28,24,48,0.85)'; rr(ctx, 118, 84, 168, 28, 14); ctx.fill();
+      text(ctx, `${d.diff} (${clock(d.length)})`, 130, 105, { size: 18, weight: 500, shadow: false, maxW: 148 });
+      text(ctx, `// ${d.mapper}`, 300, 105, { size: 20, weight: 400, maxW: W - 310 });
+      [['CS', fmt1(d.cs)], ['AR', fmt1(d.ar)], ['★', d.stars.toFixed(2)], ['OD', fmt1(d.od)], ['HP', fmt1(d.hp)]].forEach(([label, v], i) => {
+        const x = 6 + i * 108, star = label === '★', w = star ? 150 : 100;
+        const xx = i > 2 ? x + 50 : x;
+        ctx.fillStyle = star ? '#2a39e0' : 'rgba(34,30,56,0.85)'; rr(ctx, xx, 126, w - (star ? 0 : 6), 36, 9); ctx.fill();
+        text(ctx, `${label} ${v}`, xx + (w - (star ? 0 : 6)) / 2, 152, { size: 22, weight: star ? 700 : 400, align: 'center', shadow: false });
+      });
+    },
     // VictimCrasherOverlay: the top-left patch with the player's name
     victim(ctx, d, W, H) {
       blob(ctx, W, H, 'tl');
@@ -341,6 +358,19 @@ const LOOKS = {
   },
 
   acc: {
+    // paradox by mofuries: the top-right panel with the grade ring, score, accuracy and pp, and the hit counts
+    paradox(ctx, d, W, H) {
+      ctx.save(); rr(ctx, 0, 0, W, H, 12); ctx.clip();
+      cover(ctx, d.bg, 0, 0, W, H, 0, 0.6);
+      ctx.restore();
+      ring(ctx, 56, H / 2, 38, d.progress, '#8b7dff');
+      ctx.fillStyle = '#17b8c4'; rr(ctx, 36, H / 2 - 17, 40, 34, 17); ctx.fill();
+      text(ctx, (d.tok.grade || 'S').replace(/H$/, ''), 56, H / 2 + 9, { size: 26, weight: 800, align: 'center', shadow: false });
+      text(ctx, grouped(d.v.score).replace(/ /g, '.'), 112, 44, { size: 36, weight: 600, maxW: 270 });
+      text(ctx, `${d.tok.acc}%`, 112, 88, { size: 30, weight: 500 });
+      text(ctx, `${Math.round(d.pp)}PP`, 270, 88, { size: 30, weight: 500, maxW: 120 });
+      [[`100: ${d.v.n100}`, 410, 36], [`50: ${d.v.n50}`, 410, 78], [`miss: ${d.v.nMiss}`, 410, 100]].forEach(([t2, x, y], i) => text(ctx, t2, x, y, { size: i === 2 ? 20 : 24, weight: 400, fill: i === 2 ? '#ff6b6b' : '#fff', shadow: false }));
+    },
     // SimpleOverlay by HosizoraN: the accuracy, centred
     simple(ctx, d, W, H) {
       text(ctx, `${d.tok.acc}%`, W / 2, H * 0.78, { size: 38, weight: 600, align: 'center', maxW: W - 8 });
@@ -430,6 +460,10 @@ const LOOKS = {
   },
 
   combo: {
+    // paradox by mofuries: a very large combo, bottom-left
+    paradox(ctx, d, W, H) {
+      text(ctx, `${d.v.combo}x`, 4, H - 6, { size: 84, weight: 700, maxW: W - 8 });
+    },
     // SimpleOverlay by HosizoraN and Souei-Overlay: a big bold "33x"
     simple(ctx, d, W, H) {
       text(ctx, `${d.v.combo}x`, 4, H - 8, { size: 62, weight: 800, maxW: W - 8 });
@@ -464,6 +498,13 @@ const LOOKS = {
   },
 
   progress: {
+    // paradox by mofuries: a thin line over the BPM
+    paradox(ctx, d, W, H) {
+      ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(0, 4, W, 4);
+      ctx.fillStyle = '#9a7bff'; ctx.fillRect(0, 4, W * d.progress, 4);
+      text(ctx, String(Math.round(d.bpm)), W / 2, 62, { size: 44, weight: 500, align: 'center' });
+      text(ctx, 'BPM', W / 2, 88, { size: 18, weight: 400, fill: 'rgba(255,255,255,0.8)', align: 'center' });
+    },
     // SimpleOverlay by HosizoraN and Souei-Overlay: a thin white bar that fills, with a dot at the end
     simple(ctx, d, W, H) {
       ctx.fillStyle = 'rgba(255,255,255,0.18)'; rr(ctx, 0, H / 2 - 2.5, W, 5, 2.5); ctx.fill();

@@ -32,6 +32,7 @@ These looks are recreated natively on the canvas, as this site's own code, from 
 | Hit counts | HitCounts | unknown |
 | Key presses | KeyOverlay | HosizoraN |
 | Full HUD (preset) | SimpleOverlay | HosizoraN (https://github.com/shinomimi) |
+| Full HUD (preset) | paradox | mofuries (https://github.com/mofuries) |
 | Full HUD (preset) | Souei-Overlay | -Souei |
 | Full HUD (preset) | VictimCrasherOverlay | VictimCrasher (https://github.com/VictimCrasher) |
 | Accuracy, combo, score, health bar, progress, key counter, pp | osu!lazer (Argon) | ppy and the osu! contributors (https://github.com/ppy/osu, MIT). Layout and sizes follow ArgonSkin; the digit images are from the Argon skin. |

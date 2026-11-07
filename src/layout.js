@@ -8,6 +8,7 @@ export const AUTHORS = {
   uwuclxdy: { github: 'https://github.com/uwuclxdy' },
   zeronic: { github: 'https://github.com/just-zeronic' },
   HosizoraN: { github: 'https://github.com/HosizoraN' },
+  mofuries: { github: 'https://github.com/mofuries' },
   VictimCrasher: { github: 'https://github.com/VictimCrasher' },
   rosekki: { github: 'https://github.com/jossomori' },
   Inlayo: { github: 'https://github.com/Inlayo' },
@@ -37,6 +38,7 @@ export const WIDGETS = {
       { id: 'recomfortaa', label: 'reComfortaa', credit: 'reComfortaa by Dartandr', author: 'Dartandr', w: 900, h: 130 },
       { id: 'mapdisplay', label: 'Map Display', credit: 'Map Display by unknown', w: 1040, h: 86 },
       { id: 'victim', label: 'VictimCrasherOverlay', credit: 'VictimCrasherOverlay by VictimCrasher', author: 'VictimCrasher', w: 400, h: 110 },
+      { id: 'paradox', label: 'paradox', credit: 'paradox by mofuries', author: 'mofuries', w: 700, h: 170 },
     ],
   },
   pp: {
@@ -68,6 +70,7 @@ export const WIDGETS = {
       { id: 'simple', label: 'SimpleOverlay', credit: 'SimpleOverlay by HosizoraN', author: 'HosizoraN', w: 280, h: 56 },
       { id: 'souei', label: 'Souei-Overlay', credit: 'Souei-Overlay by -Souei', w: 250, h: 56 },
       { id: 'victim', label: 'VictimCrasherOverlay', credit: 'VictimCrasherOverlay by VictimCrasher', author: 'VictimCrasher', w: 340, h: 118 },
+      { id: 'paradox', label: 'paradox', credit: 'paradox by mofuries', author: 'mofuries', w: 540, h: 112 },
     ],
   },
   combo: {
@@ -78,6 +81,7 @@ export const WIDGETS = {
       { id: 'stable', label: 'osu!stable', credit: 'osu!stable default HUD by peppy', author: 'peppy', system: 'stable', w: 320, h: 84 },
       { id: 'simple', label: 'SimpleOverlay / Souei-Overlay', credit: 'SimpleOverlay by HosizoraN; Souei-Overlay by -Souei', author: 'HosizoraN', w: 230, h: 76 },
       { id: 'victim', label: 'VictimCrasherOverlay', credit: 'VictimCrasherOverlay by VictimCrasher', author: 'VictimCrasher', w: 230, h: 130 },
+      { id: 'paradox', label: 'paradox', credit: 'paradox by mofuries', author: 'mofuries', w: 320, h: 100 },
     ],
   },
   score: {
@@ -122,6 +126,7 @@ export const WIDGETS = {
       { id: 'argon', label: 'osu!lazer (Argon)', credit: 'osu!lazer (Argon skin) by ppy and contributors', author: 'ppy', system: 'argon', w: 700 * V, h: 38 * V },
       { id: 'stable', label: 'osu!stable (pie)', credit: 'osu!stable default HUD by peppy', author: 'peppy', system: 'stable', w: 30, h: 30 },
       { id: 'simple', label: 'SimpleOverlay / Souei-Overlay', credit: 'SimpleOverlay by HosizoraN; Souei-Overlay by -Souei', author: 'HosizoraN', w: 900, h: 20 },
+      { id: 'paradox', label: 'paradox', credit: 'paradox by mofuries', author: 'mofuries', w: 390, h: 96 },
     ],
   },
 };
@@ -232,6 +237,8 @@ export const PRESETS = [
   { id: 'souei', name: 'Souei-Overlay', build: () => fromRows([
     ['progress', 'simple', 20, 6], ['score', 'souei', 1630, 8], ['acc', 'souei', 1660, 66], ['hits', 'soueicounts', 10, 950],
     ['combo', 'simple', 10, 862], ['pp', 'soueipp', 865, 1030], ['keys', 'bars', 1738, 400]]) },
+  { id: 'paradox', name: 'paradox (mofuries)', build: () => fromRows([
+    ['title', 'paradox', 8, 8], ['progress', 'paradox', 765, 4], ['acc', 'paradox', 1372, 8], ['combo', 'paradox', 8, 975], ['keys', 'bars', 1738, 400]]) },
   { id: 'victim', name: 'VictimCrasherOverlay', build: () => fromRows([
     ['health', 'victim', 0, 0], ['title', 'victim', 0, 0], ['acc', 'victim', 1580, 0], ['combo', 'victim', 0, 950],
     ['pp', 'victim', 1620, 790], ['hits', 'victim', 1640, 820], ['keys', 'stable', 1859, 460]]) },
