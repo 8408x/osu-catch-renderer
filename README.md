@@ -19,7 +19,7 @@ Open http://localhost:8000 in Chrome or Edge. (ES modules and WebCodecs need htt
 
    With an .osz (picked or downloaded), the difficulty you played is found automatically by matching the replay's beatmap hash, and the song is taken from the set.
 3. Optional: pick your skin (.osk). Anything your skin does not provide uses osu!'s default image.
-4. Check the preview, then press Render MP4. Untick "Include music" or change the volume if you like.
+4. Check the preview, then press Render MP4 (top right). Untick "Include music" or change the volume if you like.
 
 ## Tests
 
@@ -165,3 +165,7 @@ Preview speed: the *Preview quality* setting only changes the size of the on-scr
 
 - **Render from … to …** (under the settings) renders only that part of the map. Times are m:ss counted from the map's first object, like the preview clock; leave a box empty for the start or the end. *Use preview time* copies the preview position into a box, *Whole map* clears both. The music, hitsounds and HUD all follow the range.
 - **Several replays:** pick more than one `.osr` file in the replay box (hold Ctrl or Shift). A *Previewing* menu chooses which one you see, and *Render all N replays* makes one MP4 per replay with the current settings and range. If the loaded `.osz` holds several difficulties, each replay is matched to its own. Replays with no matching difficulty are skipped and listed when the run finishes. Cancel stops the batch and keeps the videos already finished.
+
+## The page layout
+
+The page is a single-screen studio: the preview and its transport bar fill the left, and a settings panel with four tabs (Files, Look, Sound, Render) sits on the right, so nothing needs scrolling to change a setting. Render MP4, Render all, Cancel and the progress line live in the top bar. Messages and finished videos open in trays over the preview (the Messages and Renders buttons), and an error opens the tray by itself. Chips under the stage summarise the loaded replay, map, music and skin. You can drop files anywhere on the page and each goes to the right picker. Space plays and pauses. Resolution, frame rate, bitrate, overlay style, preview quality and the dim and volume sliders are remembered between visits. On a phone the preview stays pinned at the top while the settings scroll beneath it. The page chrome is in `src/ui.js`; it never touches rendering.
