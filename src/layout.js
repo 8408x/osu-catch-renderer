@@ -10,8 +10,8 @@ export const AUTHORS = {
   HosizoraN: { github: 'https://github.com/HosizoraN' },
   Inlayo: { github: 'https://github.com/Inlayo' },
   Belikhun: { github: 'https://github.com/Belikhun' },
-  ppy: { github: 'https://github.com/ppy/osu', twitter: 'https://x.com/ppy', discord: 'https://discord.gg/ppy' },
-  peppy: { github: 'https://github.com/peppy', twitter: 'https://x.com/ppy' },
+  ppy: { github: 'https://github.com/ppy/osu', twitter: 'https://x.com/osugame', discord: 'https://discord.gg/ppy' },
+  peppy: { github: 'https://github.com/peppy' },
 };
 
 const K = 1.222;
