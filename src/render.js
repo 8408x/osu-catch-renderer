@@ -7,18 +7,18 @@
 //   - droplets use 0.8x and tiny droplets 0.4x of that; sprites are capped at 160 px
 //   - catcher sprite = texture size x 0.35 x catcher scale, hung from the plate line 16 px down
 
-import { FIELD_W, FIELD_H } from './catch.js?v=20261108l';
-import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261108l';
-import { hudAt, scoreShownAt } from './score.js?v=20261108l';
-import { plateAt, explosionsAt } from './plate.js?v=20261108l';
-import { drawArgonHud, drawArgonPart } from './argon.js?v=20261108l';
-import { healthAt } from './health.js?v=20261108l';
-import { livePp } from './pp.js?v=20261108l';
-import { keysAt } from './keys.js?v=20261108l';
-import { ORDER, rectOf, fullRectOf, WIDGETS, styleInfo } from './layout.js?v=20261108l';
-import { lookFor, styleData } from './styles.js?v=20261108l';
-import { drawModIcons, drawModBadges } from './mods.js?v=20261108l';
-import { drawFlashlight } from './flashlight.js?v=20261108l';
+import { FIELD_W, FIELD_H } from './catch.js?v=20261108m';
+import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261108m';
+import { hudAt, scoreShownAt } from './score.js?v=20261108m';
+import { plateAt, explosionsAt } from './plate.js?v=20261108m';
+import { drawArgonHud, drawArgonPart } from './argon.js?v=20261108m';
+import { healthAt } from './health.js?v=20261108m';
+import { livePp } from './pp.js?v=20261108m';
+import { keysAt } from './keys.js?v=20261108m';
+import { ORDER, rectOf, fullRectOf, WIDGETS, styleInfo } from './layout.js?v=20261108m';
+import { lookFor, styleData } from './styles.js?v=20261108m';
+import { drawModIcons, drawModBadges } from './mods.js?v=20261108m';
+import { drawFlashlight } from './flashlight.js?v=20261108m';
 
 const ZONE = 120;  // room below the field for the catcher, in field units
 const PAD = 12;
@@ -187,10 +187,29 @@ export function loadOverlayFonts(base = new URL('../assets/fonts/', import.meta.
   return fontsReady;
 }
 
+let bgCache = null;                                        // the last still background, already scaled and dimmed for this frame size
+function stillBackground(img, W, H, dim, makeCanvas) {
+  if (bgCache && bgCache.img === img && bgCache.W === W && bgCache.H === H && bgCache.dim === dim) return bgCache.canvas;
+  const canvas = makeCanvas ? makeCanvas(W, H) : (typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(W, H) : null);
+  if (!canvas) return null;
+  const g = canvas.getContext('2d');
+  const iw = img.width, ih = img.height, k = Math.max(W / iw, H / ih);
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(img, (W - iw * k) / 2, (H - ih * k) / 2, iw * k, ih * k);
+  g.fillStyle = `rgba(0,0,0,${Math.min(1, Math.max(0, dim))})`;
+  g.fillRect(0, 0, W, H);
+  bgCache = { img, W, H, dim, canvas };
+  return canvas;
+}
+
 /** Cover-fit the beatmap background over the whole frame and darken it. */
-function drawBackground(ctx, W, H, img, dim) {
+function drawBackground(ctx, W, H, img, dim, makeCanvas) {
   const iw = img.videoWidth || img.width, ih = img.videoHeight || img.height;   // a <video> or an image
   if (!iw || !ih) return;
+  if (!img.videoWidth && makeCanvas !== undefined) {
+    const c = stillBackground(img, W, H, dim, makeCanvas);
+    if (c) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.drawImage(c, 0, 0); return; }
+  }
   const k = Math.max(W / iw, H / ih);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalAlpha = 1;
@@ -750,7 +769,7 @@ export function drawFrame(ctx, W, H, scene, track, t, opts = {}) {
     sb.drawUnder(g, sbBuf.w, sbBuf.h, t);
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(sbBuf.canvas, 0, 0, W, H);
-  } else if (bg && !(sb && !bg.videoWidth)) drawBackground(ctx, W, H, bg, sb ? 0 : bgDim);   // a storyboard replaces the still background image (a video still plays under it)
+  } else if (bg && !(sb && !bg.videoWidth)) drawBackground(ctx, W, H, bg, sb ? 0 : bgDim, makeCanvas ?? null);   // a storyboard replaces the still background image (a video still plays under it)
   if (sb) {                                                // the storyboard's Background / Pass / Foreground layers, then the dim over all of it
     if (!sbBuf) sb.drawUnder(ctx, W, H, t);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
