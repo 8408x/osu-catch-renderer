@@ -2,6 +2,14 @@
 // A position is the widget's top-left corner as a fraction of the frame (so a layout is the same at any resolution),
 // and a scale multiplies the widget's natural size. Pure data and arithmetic, no drawing.
 
+/** Where to find each overlay author. Only links I have confirmed; add `twitter` / `discord` URLs here when known. */
+export const AUTHORS = {
+  Dartandr: { github: 'https://github.com/Dartandr' },
+  uwuclxdy: { github: 'https://github.com/uwuclxdy' },
+  zeronic: { github: 'https://github.com/just-zeronic' },
+  HosizoraN: { github: 'https://github.com/shinomimi' },
+};
+
 const K = 1.222;      // the tosu overlays are drawn 1.222x (or 1.7x) larger than their browser-source size
 
 /**
@@ -14,18 +22,18 @@ export const WIDGETS = {
     label: 'Map details', at: [6, 8], on: true,
     styles: [
       { id: 'cpol', label: 'CPOL', credit: 'ArtistTitleDifficulty, author unknown', w: 800 * K, h: 90 * K, tosu: true },
-      { id: 'kerli1', label: 'Kerli 1', credit: 'Kerli 1 by Dartandr', w: 794, h: 124 },
-      { id: 'recomfortaa', label: 'reComfortaa', credit: 'reComfortaa by Dartandr', w: 900, h: 130 },
+      { id: 'kerli1', label: 'Kerli 1', credit: 'Kerli 1 by Dartandr', author: 'Dartandr', w: 794, h: 124 },
+      { id: 'recomfortaa', label: 'reComfortaa', credit: 'reComfortaa by Dartandr', author: 'Dartandr', w: 900, h: 130 },
       { id: 'mapdisplay', label: 'Map Display', credit: 'Map Display, author unknown', w: 1040, h: 86 },
     ],
   },
   pp: {
     label: 'pp counter', at: [6, 8 + 90 * K + 4], on: true,
     styles: [
-      { id: 'ingame3', label: 'InGame3', credit: 'InGame3 by Dartandr', w: 190 * K, h: 100 * K, tosu: true },
-      { id: 'ingame1', label: 'InGame1', credit: 'InGame1 by Dartandr', w: 260, h: 150 },
-      { id: 'triangles', label: 'Triangles', credit: 'Triangles Lazer PP by uwuclxdy', w: 200, h: 90 },
-      { id: 'vertigo', label: 'Vertigo', credit: 'vertigo by zeronic', w: 170, h: 220 },
+      { id: 'ingame3', label: 'InGame3', credit: 'InGame3 by Dartandr', author: 'Dartandr', w: 190 * K, h: 100 * K, tosu: true },
+      { id: 'ingame1', label: 'InGame1', credit: 'InGame1 by Dartandr', author: 'Dartandr', w: 260, h: 150 },
+      { id: 'triangles', label: 'Triangles', credit: 'Triangles Lazer PP by uwuclxdy', author: 'uwuclxdy', w: 200, h: 90 },
+      { id: 'vertigo', label: 'Vertigo', credit: 'vertigo by zeronic', author: 'zeronic', w: 170, h: 220 },
     ],
   },
   acc: {
@@ -40,7 +48,7 @@ export const WIDGETS = {
     label: 'Key presses', at: [1920 - 56 - 8, 540 - (4 * 56 + 3 * 10) / 2 + 36], on: true,
     styles: [
       { id: 'boxes', label: 'Boxes', credit: 'this site', w: 56, h: 3 * 56 + 2 * 10 },
-      { id: 'bars', label: 'Bars', credit: 'KeyOverlay by HosizoraN', w: 190, h: 190 },
+      { id: 'bars', label: 'Bars', credit: 'KeyOverlay by HosizoraN', author: 'HosizoraN', w: 190, h: 190 },
     ],
   },
   hits: {
@@ -48,8 +56,8 @@ export const WIDGETS = {
     styles: [
       { id: 'plain', label: 'Plain', credit: 'this site', w: 420, h: 84 },
       { id: 'hitcounts', label: 'HitCounts', credit: 'HitCounts, author unknown', w: 350, h: 44 },
-      { id: 'kerli2', label: 'Kerli 2', credit: 'Kerli 2 by Dartandr', w: 360, h: 240 },
-      { id: 'classic', label: 'Classic', credit: 'classic by Dartandr', w: 330, h: 44 },
+      { id: 'kerli2', label: 'Kerli 2', credit: 'Kerli 2 by Dartandr', author: 'Dartandr', w: 360, h: 240 },
+      { id: 'classic', label: 'Classic', credit: 'classic by Dartandr', author: 'Dartandr', w: 330, h: 44 },
     ],
   },
   progress: {

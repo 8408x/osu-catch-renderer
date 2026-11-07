@@ -1,7 +1,33 @@
 // The Layout tab and dragging on the preview. Owns the layout object (saved in localStorage); main.js hands it to
 // drawFrame. Pure UI: nothing here draws a frame.
 
-import { WIDGETS, styleInfo, ORDER, MIN_SCALE, MAX_SCALE, defaultLayout, normalizeLayout, rectOf, hitTest, clampPosition, snapPosition } from './layout.js?v=20261107y';
+import { WIDGETS, AUTHORS, styleInfo, ORDER, MIN_SCALE, MAX_SCALE, defaultLayout, normalizeLayout, rectOf, hitTest, clampPosition, snapPosition } from './layout.js?v=20261107z';
+
+const ICONS = {
+  github: '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.89-1.17-.89-1.17-.73-.5.05-.49.05-.49.8.06 1.23.83 1.23.83.71 1.22 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.65-.89-3.65-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>',
+  twitter: '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M12.2 1.5h2.2L9.6 7l5.6 7.5h-4.4L7.4 9.9 3.4 14.5H1.2l5.2-5.9L1 1.5h4.5l3.1 4.2zm-.8 11.7h1.2L4.7 2.7H3.4z"/></svg>',
+  discord: '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M13.5 3.3A13 13 0 0 0 10.3 2.3l-.2.4a12 12 0 0 0-4.2 0l-.2-.4a13 13 0 0 0-3.2 1C.6 6.3.1 9.2.3 12a13 13 0 0 0 4 2l.8-1.3-1.3-.6.3-.2a9.300 9.300 0 0 0 7.800 0l.3.2-1.300.6.8 1.300a13 13 0 0 0 4-2c.3-3.200-.5-6.100-2.200-8.700zM5.700 10.300c-.8 0-1.400-.7-1.400-1.600s.6-1.600 1.400-1.600 1.400.7 1.400 1.600-.6 1.600-1.400 1.600zm4.600 0c-.8 0-1.400-.7-1.400-1.600s.6-1.600 1.400-1.600 1.400.7 1.400 1.600-.6 1.600-1.400 1.600z"/></svg>',
+};
+
+/** "Design by <author>" followed by small icon links for the author's GitHub, X/Twitter and Discord, when known. */
+function creditLine(st) {
+  const el = document.createElement('span');
+  el.append(document.createTextNode(`Design: ${st.credit} `));
+  const links = AUTHORS[st.author] ?? {};
+  for (const kind of ['github', 'twitter', 'discord']) {
+    if (!links[kind]) continue;
+    const a = document.createElement('a');
+    a.href = links[kind];
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.className = 'iconlink';
+    a.title = `${st.author} on ${kind === 'twitter' ? 'X / Twitter' : kind[0].toUpperCase() + kind.slice(1)}`;
+    a.setAttribute('aria-label', a.title);
+    a.innerHTML = ICONS[kind];
+    el.append(a);
+  }
+  return el;
+}
 
 const KEY = 'ocr.layout';
 const load = () => { try { return normalizeLayout(JSON.parse(localStorage.getItem(KEY))); } catch { return defaultLayout(); } };
@@ -27,8 +53,10 @@ export function initLayoutEditor({ canvas, pane, editable, redraw }) {
     </div>
     <div class="group" id="widgetprops">
       <h3 id="propstitle">Selected</h3>
-      <label class="field" id="stylefield"><span>Look</span><select id="widgetstyle"></select></label>
-      <p class="note" id="stylecredit" style="margin:4px 0 10px"></p>
+      <div class="field" id="stylefield"><span>Look</span>
+        <div class="dd" id="lookdd"><button type="button" id="lookbtn" aria-haspopup="listbox" aria-expanded="false"></button><ul id="looklist" role="listbox" hidden></ul></div>
+      </div>
+      <p class="note credit" id="stylecredit" style="margin:4px 0 10px"></p>
       <label class="slider"><span>Size</span><output id="scaleout"></output>
         <input id="widgetscale" type="range" min="${Math.round(MIN_SCALE * 100)}" max="${Math.round(MAX_SCALE * 100)}" step="5" value="100">
       </label>
@@ -69,28 +97,44 @@ export function initLayoutEditor({ canvas, pane, editable, redraw }) {
     }
     const c = layout[ui.selected];
     $('propstitle').textContent = WIDGETS[ui.selected].label;
-    const sel = $('widgetstyle');
-    sel.innerHTML = WIDGETS[ui.selected].styles.map((x) => `<option value="${x.id}">${x.label}</option>`).join('');
-    sel.value = c.style;
-    sel.disabled = WIDGETS[ui.selected].styles.length < 2;
-    $('stylecredit').textContent = `Design: ${styleInfo(ui.selected, c.style).credit}`;
+    const st = styleInfo(ui.selected, c.style), many = WIDGETS[ui.selected].styles.length > 1;
+    $('lookbtn').textContent = st.label;
+    $('lookbtn').disabled = !many;
+    $('looklist').hidden = true;
+    $('lookbtn').setAttribute('aria-expanded', 'false');
+    $('looklist').replaceChildren(...WIDGETS[ui.selected].styles.map((x) => {
+      const li = document.createElement('li');
+      li.role = 'option';
+      li.tabIndex = 0;
+      li.setAttribute('aria-selected', String(x.id === c.style));
+      li.innerHTML = `<b>${x.label}</b><small>${x.author ?? x.credit}</small>`;
+      const pick = () => { c.style = x.id; fitStyle(); changed(); $('lookbtn').focus(); };
+      li.addEventListener('click', pick);
+      li.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } });
+      return li;
+    }));
+    $('stylecredit').replaceChildren(creditLine(st));
     $('widgetscale').value = String(Math.round(c.s * 100));
     $('scaleout').textContent = `${Math.round(c.s * 100)}%`;
     $('widgetprops').style.opacity = c.on ? '1' : '0.5';
   };
   const changed = () => { save(layout); sync(); redraw(); };
 
-  $('widgetstyle').addEventListener('change', (e) => {
-    const c = layout[ui.selected];
-    const before = rectOf(ui.selected, layout, canvas.width, canvas.height);
-    c.style = e.target.value;
-    const after = rectOf(ui.selected, layout, canvas.width, canvas.height);
-    // keep the widget's top-left where it was; only pull it back if the new look would leave the frame
-    c.x = Math.min(c.x, 1 - 0.25 * after[2] / canvas.width);
-    c.y = Math.min(c.y, 1 - 0.25 * after[3] / canvas.height);
-    void before;
-    changed();
-  });
+  // keep the widget's top-left where it was; only pull it back if the new look would leave the frame
+  const fitStyle = () => {
+    const c = layout[ui.selected], r = rectOf(ui.selected, layout, canvas.width, canvas.height);
+    c.x = Math.min(c.x, 1 - 0.25 * r[2] / canvas.width);
+    c.y = Math.min(c.y, 1 - 0.25 * r[3] / canvas.height);
+  };
+  const toggleList = (open) => {
+    const list = $('looklist'), btn = $('lookbtn');
+    if (btn.disabled) return;
+    list.hidden = !open;
+    btn.setAttribute('aria-expanded', String(open));
+  };
+  $('lookbtn').addEventListener('click', () => toggleList($('looklist').hidden));
+  document.addEventListener('pointerdown', (e) => { if (!$('lookdd').contains(e.target)) toggleList(false); });
+  $('lookdd').addEventListener('keydown', (e) => { if (e.key === 'Escape') { toggleList(false); $('lookbtn').focus(); } });
   $('widgetscale').addEventListener('input', (e) => {
     const c = layout[ui.selected];
     const before = rectOf(ui.selected, layout, canvas.width, canvas.height);
