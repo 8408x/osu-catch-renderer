@@ -59,7 +59,7 @@ function restoreChoices() {
 }
 
 function initTrays() {
-  const pairs = [['msgbtn', 'msgtray'], ['resultbtn', 'rendertray']];
+  const pairs = [['msgbtn', 'msgtray']];
   const set = (btnId, trayId, open) => {
     const tray = $(trayId), btn = $(btnId);
     tray.hidden = !open;
@@ -126,19 +126,27 @@ function initMessages(setTray) {
   update();
 }
 
-function initResults(setTray) {
-  const box = $('result'), btn = $('resultbtn'), count = $('resultcount');
+function initResults() {
+  const box = $('result'), seg = $('viewseg'), count = $('resultcount');
+  const view = $('resultview'), stage = document.querySelector('.stagewrap'), bar = $('transport');
+  const show = (videos) => {
+    view.hidden = !videos;
+    stage.hidden = videos;
+    bar.hidden = videos;
+    $('viewprev').setAttribute('aria-pressed', String(!videos));
+    $('viewvids').setAttribute('aria-pressed', String(videos));
+  };
   const update = () => {
     const n = box.querySelectorAll('a.dl').length;
-    btn.hidden = n === 0;
-    count.textContent = String(n);
-  };
-  const obs = new MutationObserver(() => {
     const before = Number(count.textContent) || 0;
-    update();
-    if ((Number(count.textContent) || 0) > before) setTray('resultbtn', 'rendertray', true);
-  });
-  obs.observe(box, { childList: true });
+    count.textContent = String(n);
+    seg.hidden = n === 0;
+    if (n === 0) show(false);
+    else if (n > before) show(true);                            // a new video: show it in place of the preview
+  };
+  $('viewprev').addEventListener('click', () => show(false));
+  $('viewvids').addEventListener('click', () => show(true));
+  new MutationObserver(update).observe(box, { childList: true });
   update();
 }
 
@@ -202,7 +210,7 @@ try {
     initReadouts();
     const setTray = initTrays();
     initMessages(setTray);
-    initResults(setTray);
+    initResults();
     initStatus();
     initKeys();
     initDrop();

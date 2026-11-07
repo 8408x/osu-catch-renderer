@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="app-version" content="20261107t">
+  <meta name="app-version" content="20261107u">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>osu!catch Replay Renderer</title>
   <style>
@@ -50,6 +50,16 @@
     /* ---- shell ---- */
     .shell { display:grid; grid-template-columns:minmax(0,1fr) var(--side); min-height:0; }
     .stagecol { position:relative; display:flex; flex-direction:column; gap:10px; padding:12px 16px 14px; min-height:0; min-width:0; }
+    .topline { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+    .seg { display:inline-flex; flex:none; padding:3px; gap:2px; background:var(--surface); border:1px solid var(--line); border-radius:10px; }
+    .seg button { border:0; background:transparent; padding:4px 12px; border-radius:7px; color:var(--dim); font-size:13px; }
+    .seg button[aria-pressed="true"] { background:var(--surface2); color:var(--text); box-shadow:0 0 0 1px var(--line2) inset; }
+    .seg button:hover:not(:disabled) { background:var(--surface2); }
+    .resultview { flex:1; min-height:0; container-type:size; overflow:auto; }
+    .resultview > #result { min-height:100cqh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:2px 0 8px; }
+    .resultview a.dl { display:inline-flex; align-items:center; gap:8px; padding:8px 14px; background:var(--accent); color:var(--accent-ink); border-radius:8px; text-decoration:none; }
+    .resultview a.dl:hover { background:#ff829c; }
+    .resultview video { width:min(100%, calc((100cqh - 64px) * 16 / 9)); max-height:none; margin:0 0 18px; border-radius:10px; box-shadow:0 12px 40px #0008; }
     .chips { display:flex; flex-wrap:wrap; gap:6px; min-height:26px; }
     .chip { display:inline-flex; align-items:center; gap:7px; max-width:100%; padding:3px 10px 3px 8px; border:1px solid var(--line); border-radius:999px; background:var(--surface); color:var(--dim); font-size:12px; cursor:pointer; }
     .chip:hover { border-color:var(--line2); color:var(--text); }
@@ -71,10 +81,8 @@
     .tray header { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-bottom:1px solid var(--line); font-weight:700; }
     .tray .body { padding:12px 14px; overflow:auto; }
     #msgtray { top:50px; }
-    #rendertray { bottom:70px; }
-    .msgs p { margin:5px 0; font-size:13px; }
+        .msgs p { margin:5px 0; font-size:13px; }
     .ok { color:var(--text); } .warn { color:var(--warn); } .err { color:var(--err); } .dim { color:var(--dim); }
-    #result video { width:100%; max-height:300px; margin:8px 0 14px; border-radius:10px; background:#000; }
     a.dl { color:var(--accent); font-weight:600; word-break:break-all; }
 
     /* ---- inspector ---- */
@@ -144,7 +152,6 @@
   <div id="status" aria-live="polite"></div>
   <div class="actions">
     <button id="msgbtn" class="ghost pill" type="button" aria-controls="msgtray" aria-expanded="false">Messages <span class="count" id="msgcount">0</span></button>
-    <button id="resultbtn" class="ghost pill" type="button" aria-controls="rendertray" aria-expanded="false" hidden>Renders <span class="count" id="resultcount" data-tone="ok">0</span></button>
     <button id="cancel" class="ghost" disabled>Cancel</button>
     <button id="exportall" disabled hidden>Render all replays</button>
     <button id="export" class="primary" disabled>Render MP4</button>
@@ -154,9 +161,16 @@
 
 <div class="shell">
   <section class="stagecol" aria-label="Preview">
-    <div class="chips" id="chips" aria-label="Loaded files"></div>
+    <div class="topline">
+      <div class="chips" id="chips" aria-label="Loaded files"></div>
+      <div class="seg" id="viewseg" role="group" aria-label="Stage view" hidden>
+        <button type="button" id="viewprev" aria-pressed="true">Preview</button>
+        <button type="button" id="viewvids" aria-pressed="false">Video <span class="count" id="resultcount" data-tone="ok">0</span></button>
+      </div>
+    </div>
     <div class="stagewrap"><canvas id="stage" width="1280" height="720"></canvas></div>
-    <div class="transport">
+    <div class="resultview" id="resultview" hidden><div id="result"></div></div>
+    <div class="transport" id="transport">
       <button id="play" class="ghost" disabled>Play</button>
       <input id="seek" type="range" min="0" max="1" step="1" value="0" disabled aria-label="Position">
       <span id="clock">0:00</span>
@@ -166,10 +180,6 @@
     <div id="msgtray" class="tray" hidden>
       <header><span>Messages</span><button class="ghost small" type="button" data-close="msgtray">Close</button></header>
       <div class="body"><div id="msgs" class="msgs"></div></div>
-    </div>
-    <div id="rendertray" class="tray" hidden>
-      <header><span>Finished videos</span><button class="ghost small" type="button" data-close="rendertray">Close</button></header>
-      <div class="body"><div id="result"></div></div>
     </div>
   </section>
 
@@ -335,6 +345,6 @@
 <div class="dropveil" id="dropveil"><div>Drop files to load them<small>.osr replay · .osz map set · .osu · .osk skin · image · song</small></div></div>
 
 <script src="vendor/lzma-d-min.js"></script>
-<script type="module" src="src/main.js?v=20261107t"></script>
+<script type="module" src="src/main.js?v=20261107u"></script>
 </body>
 </html>
