@@ -7,16 +7,16 @@
 //   - droplets use 0.8x and tiny droplets 0.4x of that; sprites are capped at 160 px
 //   - catcher sprite = texture size x 0.35 x catcher scale, hung from the plate line 16 px down
 
-import { FIELD_W, FIELD_H } from './catch.js?v=20261107s';
-import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261107s';
-import { hudAt, scoreShownAt } from './score.js?v=20261107s';
-import { plateAt, explosionsAt } from './plate.js?v=20261107s';
-import { drawArgonHud } from './argon.js?v=20261107s';
-import { healthAt } from './health.js?v=20261107s';
-import { livePp } from './pp.js?v=20261107s';
-import { keysAt } from './keys.js?v=20261107s';
-import { drawModIcons, drawModBadges } from './mods.js?v=20261107s';
-import { drawFlashlight } from './flashlight.js?v=20261107s';
+import { FIELD_W, FIELD_H } from './catch.js?v=20261107t';
+import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261107t';
+import { hudAt, scoreShownAt } from './score.js?v=20261107t';
+import { plateAt, explosionsAt } from './plate.js?v=20261107t';
+import { drawArgonHud } from './argon.js?v=20261107t';
+import { healthAt } from './health.js?v=20261107t';
+import { livePp } from './pp.js?v=20261107t';
+import { keysAt } from './keys.js?v=20261107t';
+import { drawModIcons, drawModBadges } from './mods.js?v=20261107t';
+import { drawFlashlight } from './flashlight.js?v=20261107t';
 
 const ZONE = 120;  // room below the field for the catcher, in field units
 const PAD = 12;
@@ -575,8 +575,23 @@ function drawHitLighting(ctx, skin, scene, t, catcherX) {
  * @param {number} t beatmap time in ms
  * @param {{skin: import('./skin.js').Skin, showCatchWidth?: boolean}} opts
  */
+const sbBuffers = new WeakMap();
+/** The reduced-size canvas the storyboard is drawn on, or null when the frame is already that small. */
+function sbBuffer(ctx, makeCanvas, W, H, bgDim) {
+  const bh = Math.min(H, bgDim >= 0.5 ? 360 : 720);
+  if (bh >= H) return null;
+  const bw = Math.round((W * bh) / H);
+  let b = sbBuffers.get(ctx);
+  if (!b || b.w !== bw || b.h !== bh) {
+    const canvas = makeCanvas(bw, bh);
+    b = { canvas, g: canvas.getContext('2d'), w: bw, h: bh };
+    sbBuffers.set(ctx, b);
+  }
+  return b;
+}
+
 export function drawFrame(ctx, W, H, scene, track, t, opts = {}) {
-  const { skin, showCatchWidth = false, showHud = false, hitLighting = false, style = 'overlay', bg = null, bgDim = 0.8, keys = null, argon = null, tosu = null, sb = null } = opts;
+  const { skin, showCatchWidth = false, showHud = false, hitLighting = false, style = 'overlay', bg = null, bgDim = 0.8, keys = null, argon = null, tosu = null, sb = null, makeCanvas = null } = opts;
   const overlay = true;                                    // both HUD styles use the full-height playfield
   const { s, ox, oy } = layout(W, H, overlay);
 
@@ -588,9 +603,23 @@ export function drawFrame(ctx, W, H, scene, track, t, opts = {}) {
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, W, H);
 
-  if (bg && !(sb && !bg.videoWidth)) drawBackground(ctx, W, H, bg, sb ? 0 : bgDim);   // a storyboard replaces the still background image (a video still plays under it)
+  const sbBuf = sb && makeCanvas ? sbBuffer(ctx, makeCanvas, W, H, bgDim) : null;
+  if (sbBuf) {
+    // The storyboard sits under a heavy dim, so it is drawn at a lower resolution and scaled up: the cost is
+    // mostly fill rate, and this cuts the pixels it fills by 2 to 5 times with no visible loss behind the dim.
+    const g = sbBuf.g;
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.globalAlpha = 1;
+    g.globalCompositeOperation = 'source-over';
+    g.fillStyle = '#0d0f16';
+    g.fillRect(0, 0, sbBuf.w, sbBuf.h);
+    if (bg && bg.videoWidth) drawBackground(g, sbBuf.w, sbBuf.h, bg, 0);
+    sb.drawUnder(g, sbBuf.w, sbBuf.h, t);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(sbBuf.canvas, 0, 0, W, H);
+  } else if (bg && !(sb && !bg.videoWidth)) drawBackground(ctx, W, H, bg, sb ? 0 : bgDim);   // a storyboard replaces the still background image (a video still plays under it)
   if (sb) {                                                // the storyboard's Background / Pass / Foreground layers, then the dim over all of it
-    sb.drawUnder(ctx, W, H, t);
+    if (!sbBuf) sb.drawUnder(ctx, W, H, t);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalAlpha = 1;
     ctx.fillStyle = `rgba(0,0,0,${Math.min(1, Math.max(0, bgDim))})`;

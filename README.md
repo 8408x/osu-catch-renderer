@@ -173,3 +173,7 @@ The page is a single-screen studio: the preview and its transport bar fill the l
 ## Long renders and memory
 
 The finished MP4 is collected in 16 MB pieces rather than one big buffer, so long, high-bitrate renders no longer fail with "Array buffer allocation failed". The whole file is still held in memory until you download it (about 90 MB per minute at 12 Mbps), so for very long maps lower the bitrate, render a range, or split the map.
+
+## Render speed
+
+The storyboard is drawn at 360p (up to 720p when the background dim is under 50%) and scaled up under the dim, because storyboard drawing cost is mostly fill rate. In a software-only test browser this halved the export time per frame with a storyboard (62 to 32 ms at 720p) and the picture differs from the full-size draw by at most 25 of 255 levels. Frames without a storyboard cost about 16 ms at 720p in the same browser, mostly the browser's own drawing and encoding, which a GPU and a hardware encoder do far faster.

@@ -1,25 +1,25 @@
-import './ui.js?v=20261107s';
-import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261107s';
-import { parseOsu } from './osu.js?v=20261107s';
-import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261107s';
-import { compareWithReplay } from './score.js?v=20261107s';
-import { nightcoreBeats } from './nightcore.js?v=20261107s';
-import { ReplayTrack } from './replay.js?v=20261107s';
-import { drawFrame, loadOverlayFonts } from './render.js?v=20261107s';
-import { loadArgonFonts } from './argon.js?v=20261107s';
-import { TosuOverlays } from './tosu.js?v=20261107s';
-import { exportMp4, webCodecsAvailable } from './encode.js?v=20261107s';
-import { VERSION } from './version.js?v=20261107s';
-import { md5 } from './md5.js?v=20261107s';
-import { resolveRange } from './range.js?v=20261107s';
-import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261107s';
-import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261107s';
-import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261107s';
-import { BackgroundVideo } from './bgvideo.js?v=20261107s';
-import { buildKeys } from './keys.js?v=20261107s';
-import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261107s';
-import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261107s';
-import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261107s';
+import './ui.js?v=20261107t';
+import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261107t';
+import { parseOsu } from './osu.js?v=20261107t';
+import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261107t';
+import { compareWithReplay } from './score.js?v=20261107t';
+import { nightcoreBeats } from './nightcore.js?v=20261107t';
+import { ReplayTrack } from './replay.js?v=20261107t';
+import { drawFrame, loadOverlayFonts } from './render.js?v=20261107t';
+import { loadArgonFonts } from './argon.js?v=20261107t';
+import { TosuOverlays } from './tosu.js?v=20261107t';
+import { exportMp4, webCodecsAvailable } from './encode.js?v=20261107t';
+import { VERSION } from './version.js?v=20261107t';
+import { md5 } from './md5.js?v=20261107t';
+import { resolveRange } from './range.js?v=20261107t';
+import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261107t';
+import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261107t';
+import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261107t';
+import { BackgroundVideo } from './bgvideo.js?v=20261107t';
+import { buildKeys } from './keys.js?v=20261107t';
+import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261107t';
+import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261107t';
+import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261107t';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('stage');
@@ -111,6 +111,7 @@ function drawAt(t, fromExport = false) {
     sb: $('showsb').checked && $('showbg').checked ? state.sb : null,
     bgDim: Math.min(100, Math.max(0, Number($('bgdim').value) || 0)) / 100,
     keys: state.keys,
+    makeCanvas: (w, h) => skinEnv.createCanvas(w, h),
   });
 }
 
