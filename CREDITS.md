@@ -24,6 +24,8 @@ These looks are recreated natively on the canvas, as this site's own code, from 
 | Hit counts | Kerli 2, classic | Dartandr |
 | Hit counts | HitCounts | unknown |
 | Key presses | KeyOverlay | HosizoraN |
+| Accuracy, combo, score, health bar, progress, key counter, pp | osu!lazer (Argon) | ppy and the osu! contributors (https://github.com/ppy/osu, MIT). Layout and sizes follow ArgonSkin; the digit images are from the Argon skin. |
+| Accuracy, combo, score, health bar, progress pie, key counter | osu!stable | peppy (https://github.com/peppy). Drawn with the skin you load (or the default skin) in stable's own positions. |
 
 The Plain hit counts, the progress bar and the Boxes key look are this site's own.
 

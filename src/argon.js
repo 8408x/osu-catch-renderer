@@ -6,11 +6,11 @@
 // and times use the system UI font instead of Torus, the key boxes are a plain stand-in (replays only store x and
 // dash), and the HP bar's tube is built from a few strokes instead of the real distance shader.
 
-import { hudAt, scoreShownAt } from './score.js?v=20261108b';
-import { healthAt } from './health.js?v=20261108b';
-import { livePp } from './pp.js?v=20261108b';
-import { keysAt } from './keys.js?v=20261108b';
-import { drawModBadges } from './mods.js?v=20261108b';
+import { hudAt, scoreShownAt } from './score.js?v=20261108d';
+import { healthAt } from './health.js?v=20261108d';
+import { livePp } from './pp.js?v=20261108d';
+import { keysAt } from './keys.js?v=20261108d';
+import { drawModBadges } from './mods.js?v=20261108d';
 
 const FILES = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'dot', 'percentage', 'x', 'wireframes'];
 const GLYPH_SCALE = 0.125;                       // TexturedCharacterGlyph(..., 0.125f): 240 px textures -> 30 units
@@ -327,5 +327,27 @@ export function drawArgonHud(ctx, W, H, scene, t, G, { keys = null } = {}) {
   drawCombo(ctx, G, scene, v, t, vh);
   drawProgress(ctx, scene, t, vw, vh);
   drawKeys(ctx, keys, t, vw, vh);
+  ctx.restore();
+}
+
+/**
+ * Single pieces of the Argon HUD for the Custom style, each drawn with its top-left corner at the origin in osu!'s
+ * 768-unit-high screen units (`w` x `h` is the box it fills). The caller scales the canvas.
+ */
+export const ARGON_PARTS = {
+  score: { w: 180, h: 23, draw: (ctx, G, sc, v, t) => { ctx.translate(-70, -54.2); drawScore(ctx, G, v, t); } },
+  acc: { w: 138, h: 40, draw: (ctx, G, sc, v) => { ctx.translate(-10.7, -21.2); drawAccuracy(ctx, G, v.acc, 170); } },
+  pp: { w: 75, h: 31, draw: (ctx, G, sc, v, t) => { ctx.translate(4.2, -73); drawPerformance(ctx, G, sc, v, t, 92); } },
+  combo: { w: 186, h: 56, draw: (ctx, G, sc, v, t) => { ctx.translate(-39.5, -(768 - 66 - (12 + GLYPH_H) * 1.3)); drawCombo(ctx, G, sc, v, t, 768); } },
+  health: { w: 351, h: 50, draw: (ctx, G, sc, v, t) => { ctx.translate(0, -20); drawHealth(ctx, sc, t); } },
+  progress: { w: 700, h: 38, draw: (ctx, G, sc, v, t) => { const vw = 700 / 0.9; ctx.translate(-(vw - 700) / 2, -720); drawProgress(ctx, sc, t, vw, 768); } },
+  keys: { w: 146, h: 56, draw: (ctx, G, sc, v, t, keys) => { ctx.translate(0, -610); drawKeys(ctx, keys, t, 182, 768); } },
+};
+
+export function drawArgonPart(ctx, G, part, scene, t, keys) {
+  const P = ARGON_PARTS[part];
+  if (!P || !G || !scene.hud) return;
+  ctx.save();
+  P.draw(ctx, G, scene, hudAt(scene.hud, t), t, keys);
   ctx.restore();
 }

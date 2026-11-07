@@ -7,18 +7,18 @@
 //   - droplets use 0.8x and tiny droplets 0.4x of that; sprites are capped at 160 px
 //   - catcher sprite = texture size x 0.35 x catcher scale, hung from the plate line 16 px down
 
-import { FIELD_W, FIELD_H } from './catch.js?v=20261108b';
-import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261108b';
-import { hudAt, scoreShownAt } from './score.js?v=20261108b';
-import { plateAt, explosionsAt } from './plate.js?v=20261108b';
-import { drawArgonHud } from './argon.js?v=20261108b';
-import { healthAt } from './health.js?v=20261108b';
-import { livePp } from './pp.js?v=20261108b';
-import { keysAt } from './keys.js?v=20261108b';
-import { ORDER, rectOf, fullRectOf, WIDGETS, styleInfo } from './layout.js?v=20261108b';
-import { lookFor, styleData } from './styles.js?v=20261108b';
-import { drawModIcons, drawModBadges } from './mods.js?v=20261108b';
-import { drawFlashlight } from './flashlight.js?v=20261108b';
+import { FIELD_W, FIELD_H } from './catch.js?v=20261108d';
+import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261108d';
+import { hudAt, scoreShownAt } from './score.js?v=20261108d';
+import { plateAt, explosionsAt } from './plate.js?v=20261108d';
+import { drawArgonHud, drawArgonPart } from './argon.js?v=20261108d';
+import { healthAt } from './health.js?v=20261108d';
+import { livePp } from './pp.js?v=20261108d';
+import { keysAt } from './keys.js?v=20261108d';
+import { ORDER, rectOf, fullRectOf, WIDGETS, styleInfo } from './layout.js?v=20261108d';
+import { lookFor, styleData } from './styles.js?v=20261108d';
+import { drawModIcons, drawModBadges } from './mods.js?v=20261108d';
+import { drawFlashlight } from './flashlight.js?v=20261108d';
 
 const ZONE = 120;  // room below the field for the catcher, in field units
 const PAD = 12;
@@ -598,8 +598,38 @@ function drawKeyColumn(ctx, ks, kx, top, size, gap, u, spare) {
   ctx.restore();
 }
 
+/** One piece of osu!stable's HUD in a box of `st.w` x `st.h` px (a 1080 p frame, so osu!'s 768 unit screen is x1.40625). */
+function drawStableLook(ctx, id, st, scene, t, skin, keys) {
+  const u = 1080 / 768, v = scene.hud ? hudAt(scene.hud, t) : null;
+  if (!v) return;
+  const { comboPrefix, scorePrefix, comboOverlap, scoreOverlap } = skin.fonts;
+  if (id === 'score') {
+    drawGlyphs(ctx, skin, scorePrefix, String(scoreShownAt(v, t)).padStart(8, '0'), st.w, -1.5, 0.96 * u, { anchor: 'right', fromTop: true, fixed: true, overlap: scoreOverlap });
+  } else if (id === 'acc') {
+    drawGlyphs(ctx, skin, scorePrefix, `${(v.acc * 100).toFixed(2)}%`, st.w, -1.7, 0.6 * 0.96 * u, { anchor: 'right', fromTop: true, fixed: true, overlap: scoreOverlap });
+  } else if (id === 'combo') {
+    if (v.combo <= 0) return;
+    const text = `${v.combo}x`, k = 1.28 * u, age = t - v.bumpT;
+    drawGlyphs(ctx, skin, comboPrefix, text, 0, st.h, k, { overlap: comboOverlap });
+    if (age >= 0 && age < HUD_POP_MS) {
+      const p = age / HUD_POP_MS;
+      drawGlyphs(ctx, skin, comboPrefix, text, 0, st.h, k * (1 + 0.6 * (1 - p)), { overlap: comboOverlap, alpha: 0.65 * (1 - p), additive: true });
+    }
+  } else if (id === 'health') {
+    const hp = scene.health ? healthAt(scene.health, t) : 1, bg = skin.get('scorebar-bg');
+    if (bg) { ctx.scale(st.w / (bg.w * u), st.w / (bg.w * u)); if (!drawSkinHealth(ctx, skin, hp, u)) return; }
+    else drawHealthBar(ctx, hp, 2, 5, 340 * u, 14 * u);
+  } else if (id === 'progress') {
+    const objs = scene.objects;
+    if (objs.length) drawProgressPie(ctx, st.w / 2, st.h / 2, 9 * u, Math.min(1, Math.max(0, (t - objs[0].t) / Math.max(1, objs[objs.length - 1].t - objs[0].t))));
+  } else if (id === 'keys' && keys) {
+    const key = skin.get('inputoverlay-key'), kw = (key?.w ?? 43) * u, kh = (key?.h ?? 46) * u;
+    drawStableKeys(ctx, kw, kh / (2 * 0.4556), skin, keys, t, u);
+  }
+}
+
 /** The Custom style: every widget the layout turns on, at its own place and size. */
-function drawCustom(ctx, W, H, scene, t, { layout, tosu, keys, skin, bg, guides }) {
+function drawCustom(ctx, W, H, scene, t, { layout, tosu, keys, skin, bg, guides, argon }) {
   const u = H / 1080;
   const v = scene.hud ? hudAt(scene.hud, t) : null;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -622,6 +652,17 @@ function drawCustom(ctx, W, H, scene, t, { layout, tosu, keys, skin, bg, guides 
     const r = rect(id);
     if (!r || isTosu(id)) continue;
     const st = styleInfo(id, layout[id].style), look = lookFor(id, st.id);
+    if (st.system) {                                       // the osu!lazer (Argon) and osu!stable HUD pieces
+      ctx.save();
+      ctx.translate(r[0], r[1]);
+      ctx.scale(r[2] / st.w, r[3] / st.h);
+      ctx.shadowBlur = 0;
+      ctx.textBaseline = 'alphabetic';
+      if (st.system === 'argon') { ctx.scale(1080 / 768, 1080 / 768); drawArgonPart(ctx, argon, id, scene, t, keys); }
+      else if (skin) drawStableLook(ctx, id, st, scene, t, skin, keys);
+      ctx.restore();
+      continue;
+    }
     if (!look) continue;
     ctx.save();
     ctx.translate(r[0], r[1]);
@@ -767,7 +808,7 @@ export function drawFrame(ctx, W, H, scene, track, t, opts = {}) {
 
   if (showHud && style === 'argon') drawArgonHud(ctx, W, H, scene, t, argon, { keys });
   else if (showHud && style === 'stable' && skin) drawStableHud(ctx, W, H, scene, t, skin, keys);
-  else if (showHud && customLayout && (style === 'custom' || style === 'overlay')) drawCustom(ctx, W, H, scene, t, { layout: customLayout, tosu, keys, skin, bg, guides });
+  else if (showHud && customLayout && (style === 'custom' || style === 'overlay')) drawCustom(ctx, W, H, scene, t, { layout: customLayout, tosu, keys, skin, bg, guides, argon });
   else if (showHud) drawOverlay(ctx, W, H, scene, t, { bg, keys, tosu, skin });
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);

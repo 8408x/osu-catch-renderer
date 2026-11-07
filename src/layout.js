@@ -8,9 +8,12 @@ export const AUTHORS = {
   uwuclxdy: { github: 'https://github.com/uwuclxdy' },
   zeronic: { github: 'https://github.com/just-zeronic' },
   HosizoraN: { github: 'https://github.com/HosizoraN' },
+  ppy: { github: 'https://github.com/ppy/osu', twitter: 'https://x.com/ppy', discord: 'https://discord.gg/ppy' },
+  peppy: { github: 'https://github.com/peppy', twitter: 'https://x.com/ppy' },
 };
 
-const K = 1.222;      // the tosu overlays are drawn 1.222x (or 1.7x) larger than their browser-source size
+const K = 1.222;
+const V = 1080 / 768;   // osu!'s HUD is laid out for a 768 unit high screen      // the tosu overlays are drawn 1.222x (or 1.7x) larger than their browser-source size
 
 /**
  * The widgets and the looks each can take. A style has a natural size in px on a 1080 p high frame (`w` x `h`), the
@@ -38,21 +41,46 @@ export const WIDGETS = {
       { id: 'ingame1', label: 'InGame1', credit: 'InGame1 by Dartandr', author: 'Dartandr', w: 260, h: 150 },
       { id: 'triangles', label: 'Triangles Lazer PP', credit: 'Triangles Lazer PP by uwuclxdy', author: 'uwuclxdy', w: 200, h: 90 },
       { id: 'vertigo', label: 'vertigo', credit: 'vertigo by zeronic', author: 'zeronic', w: 170, h: 220 },
+      { id: 'argon', label: 'osu!lazer (Argon)', credit: 'osu!lazer (Argon skin) by ppy and contributors', author: 'ppy', system: 'argon', w: 75 * V, h: 31 * V },
     ],
   },
   acc: {
     label: 'Accuracy and rank', at: [1920 - 8 - 340 * 1.7, 0], on: true,
-    styles: [{ id: 'cpol', label: 'AccuracyPP', credit: 'AccuracyPP by unknown', w: 340 * 1.7, h: 80 * 1.7, tosu: true, pad: [0.5, 0.12, 0, 0.5] }],
+    styles: [
+      { id: 'cpol', label: 'AccuracyPP', credit: 'AccuracyPP by unknown', w: 340 * 1.7, h: 80 * 1.7, tosu: true, pad: [0.5, 0.12, 0, 0.5] },
+      { id: 'argon', label: 'osu!lazer (Argon)', credit: 'osu!lazer (Argon skin) by ppy and contributors', author: 'ppy', system: 'argon', w: 138 * V, h: 40 * V },
+      { id: 'stable', label: 'osu!stable', credit: 'osu!stable default HUD by peppy', author: 'peppy', system: 'stable', w: 176, h: 35 },
+    ],
   },
   combo: {
     label: 'Combo', at: [4, 1080 - 12 - 44 * 1.7], on: true,
-    styles: [{ id: 'cpol', label: 'Combo', credit: 'Combo by unknown', w: 420 * 1.7, h: 44 * 1.7, tosu: true, pad: [0, 0.3, 0.4, 0.1] }],
+    styles: [
+      { id: 'cpol', label: 'Combo', credit: 'Combo by unknown', w: 420 * 1.7, h: 44 * 1.7, tosu: true, pad: [0, 0.3, 0.4, 0.1] },
+      { id: 'argon', label: 'osu!lazer (Argon)', credit: 'osu!lazer (Argon skin) by ppy and contributors', author: 'ppy', system: 'argon', w: 186 * V, h: 56 * V },
+      { id: 'stable', label: 'osu!stable', credit: 'osu!stable default HUD by peppy', author: 'peppy', system: 'stable', w: 320, h: 84 },
+    ],
+  },
+  score: {
+    label: 'Score', at: [1920 - 8 - 356, 150], on: false,
+    styles: [
+      { id: 'argon', label: 'osu!lazer (Argon)', credit: 'osu!lazer (Argon skin) by ppy and contributors', author: 'ppy', system: 'argon', w: 180 * V, h: 23 * V },
+      { id: 'stable', label: 'osu!stable', credit: 'osu!stable default HUD by peppy', author: 'peppy', system: 'stable', w: 336, h: 61 },
+    ],
+  },
+  health: {
+    label: 'Health bar', at: [20, 260], on: false,
+    styles: [
+      { id: 'argon', label: 'osu!lazer (Argon)', credit: 'osu!lazer (Argon skin) by ppy and contributors', author: 'ppy', system: 'argon', w: 351 * V, h: 50 * V },
+      { id: 'stable', label: 'osu!stable', credit: 'osu!stable default HUD by peppy', author: 'peppy', system: 'stable', w: 494, h: 30 },
+    ],
   },
   keys: {
     label: 'Key presses', at: [1920 - 56 - 8, 540 - (4 * 56 + 3 * 10) / 2 + 36], on: true,
     styles: [
       { id: 'boxes', label: 'Boxes (this site)', credit: 'this site', w: 56, h: 3 * 56 + 2 * 10 },
       { id: 'bars', label: 'KeyOverlay', credit: 'KeyOverlay by HosizoraN', author: 'HosizoraN', w: 182, h: 186 },
+      { id: 'argon', label: 'osu!lazer (Argon)', credit: 'osu!lazer (Argon skin) by ppy and contributors', author: 'ppy', system: 'argon', w: 146 * V, h: 56 * V },
+      { id: 'stable', label: 'osu!stable', credit: 'osu!stable default HUD by peppy', author: 'peppy', system: 'stable', w: 61, h: 266 },
     ],
   },
   hits: {
@@ -66,12 +94,16 @@ export const WIDGETS = {
   },
   progress: {
     label: 'Progress bar', at: [(1920 - 720) / 2, 14], on: false,
-    styles: [{ id: 'bar', label: 'Bar (this site)', credit: 'this site', w: 720, h: 28 }],
+    styles: [
+      { id: 'bar', label: 'Bar (this site)', credit: 'this site', w: 720, h: 28 },
+      { id: 'argon', label: 'osu!lazer (Argon)', credit: 'osu!lazer (Argon skin) by ppy and contributors', author: 'ppy', system: 'argon', w: 700 * V, h: 38 * V },
+      { id: 'stable', label: 'osu!stable (pie)', credit: 'osu!stable default HUD by peppy', author: 'peppy', system: 'stable', w: 30, h: 30 },
+    ],
   },
 };
 
 /** Draw and hit-test order, back to front. */
-export const ORDER = ['title', 'pp', 'acc', 'combo', 'hits', 'progress', 'keys'];
+export const ORDER = ['title', 'pp', 'acc', 'combo', 'score', 'health', 'hits', 'progress', 'keys'];
 
 export const styleInfo = (id, styleId) => WIDGETS[id].styles.find((x) => x.id === styleId) ?? WIDGETS[id].styles[0];
 

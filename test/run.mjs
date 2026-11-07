@@ -1699,7 +1699,7 @@ await test('custom styles: every non-tosu look exists, draws in its own box, and
   const d = S.styleData(scene, 1000, null, null);
   let drawn = 0;
   for (const id of L.ORDER) for (const st of L.WIDGETS[id].styles) {
-    if (st.tosu || (id === 'keys' && st.id === 'boxes')) continue;
+    if (st.tosu || st.system || (id === 'keys' && st.id === 'boxes')) continue;
     const look = S.lookFor(id, st.id);
     assert.equal(typeof look, 'function', `${id}/${st.id} has a look`);
     look(ctx, d, st.w, st.h);
