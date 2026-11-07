@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="app-version" content="20261108t">
+  <meta name="app-version" content="20261108u">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>osu!catch Replay Renderer</title>
   <style>
@@ -135,9 +135,8 @@
     #mirrorstatus { white-space:pre-line; font-size:12px; color:var(--dim); margin-bottom:8px; }
     .note { margin:6px 0 0; font-size:12px; color:var(--dim); }
     .note:empty { display:none; }
-    #contact { display:flex; align-items:center; gap:12px; padding:10px 16px; border-top:1px solid var(--line); font-size:12px; color:var(--dim); }
-    #contact span { flex:1; }
-    #contact a { display:inline-flex; color:var(--dim); }
+    #contact { display:flex; align-items:center; gap:10px; margin-left:4px; }
+    #contact a { display:inline-flex; color:var(--faint); }
     #contact a:hover { color:#fff; }
     #ver { padding:10px 16px; border-top:1px solid var(--line); font-size:11px; color:var(--faint); }
     #ver.warn { color:var(--warn); }
@@ -156,7 +155,7 @@
       .stagewrap { flex:none; height:min(34vh, 52vw); }
       .side { border-left:0; border-top:1px solid var(--line); }
       .panes { overflow:visible; }
-      .brand small, .hint, .brand span { display:none; }
+      .brand small, .hint, .brand span, #contact { display:none; }
       .top { gap:8px; padding:0 10px; }
       #status { display:none; }
       #msgtray { right:8px; }
@@ -168,6 +167,11 @@
   <div class="brand">
     <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="18" r="11" fill="#ff6b8a"/><path d="M16 8c0-3 2-5 6-5-.2 3.4-2.4 5-6 5z" fill="#7ee0a0"/><path d="M10 15a7 7 0 0 1 4-3" stroke="#ffd0da" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
     <span>Catch Renderer <small>osu!catch replay to MP4</small></span>
+  </div>
+  <div id="contact">
+    <a href="https://github.com/8408x" target="_blank" rel="noopener" title="GitHub: 8408x"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.89-1.17-.89-1.17-.73-.5.05-.49.05-.49.8.06 1.23.83 1.23.83.71 1.22 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.65-.89-3.65-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></a>
+    <a href="https://x.com/8408x" target="_blank" rel="noopener" title="X / Twitter: @8408x"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M12.2 1.5h2.2L9.6 7l5.6 7.5h-4.4L7.4 9.9 3.4 14.5H1.2l5.2-5.9L1 1.5h4.5l3.1 4.2zm-.8 11.7h1.2L4.7 2.7H3.4z"/></svg></a>
+    <a href="https://discord.com/users/598870579835174923" target="_blank" rel="noopener" title="Discord"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M13.5 3.3A13 13 0 0 0 10.3 2.3l-.2.4a12 12 0 0 0-4.2 0l-.2-.4a13 13 0 0 0-3.2 1C.6 6.3.1 9.2.3 12a13 13 0 0 0 4 2l.8-1.3-1.3-.6.3-.2a9.300 9.300 0 0 0 7.800 0l.3.2-1.300.6.8 1.300a13 13 0 0 0 4-2c.3-3.200-.5-6.100-2.200-8.700zM5.700 10.300c-.8 0-1.400-.7-1.400-1.600s.6-1.600 1.400-1.600 1.400.7 1.400 1.600-.6 1.600-1.400 1.600zm4.600 0c-.8 0-1.400-.7-1.400-1.600s.6-1.600 1.400-1.600 1.400.7 1.400 1.600-.6 1.600-1.400 1.600z"/></svg></a>
   </div>
   <div id="status" aria-live="polite"></div>
   <div class="actions">
@@ -363,11 +367,6 @@
       </div>
 
     </div>
-    <div id="contact"><span>Made by 8408</span>
-      <a href="https://github.com/8408x" target="_blank" rel="noopener" title="GitHub: 8408x"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.89-1.17-.89-1.17-.73-.5.05-.49.05-.49.8.06 1.23.83 1.23.83.71 1.22 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.65-.89-3.65-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></a>
-      <a href="https://x.com/8408x" target="_blank" rel="noopener" title="X / Twitter: @8408x"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M12.2 1.5h2.2L9.6 7l5.6 7.5h-4.4L7.4 9.9 3.4 14.5H1.2l5.2-5.9L1 1.5h4.5l3.1 4.2zm-.8 11.7h1.2L4.7 2.7H3.4z"/></svg></a>
-      <a href="https://discord.com/users/598870579835174923" target="_blank" rel="noopener" title="Discord"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M13.5 3.3A13 13 0 0 0 10.3 2.3l-.2.4a12 12 0 0 0-4.2 0l-.2-.4a13 13 0 0 0-3.2 1C.6 6.3.1 9.2.3 12a13 13 0 0 0 4 2l.8-1.3-1.3-.6.3-.2a9.300 9.300 0 0 0 7.800 0l.3.2-1.300.6.8 1.300a13 13 0 0 0 4-2c.3-3.200-.5-6.100-2.200-8.700zM5.700 10.300c-.8 0-1.400-.7-1.400-1.600s.6-1.600 1.400-1.600 1.400.7 1.400 1.600-.6 1.600-1.400 1.600zm4.600 0c-.8 0-1.400-.7-1.400-1.600s.6-1.600 1.400-1.600 1.400.7 1.400 1.600-.6 1.600-1.400 1.600z"/></svg></a>
-    </div>
     <footer id="ver"></footer>
   </aside>
 </div>
@@ -375,6 +374,6 @@
 <div class="dropveil" id="dropveil"><div>Drop files to load them<small>.osr replay · .osz map set · .osu · .osk skin · image · song</small></div></div>
 
 <script src="vendor/lzma-d-min.js"></script>
-<script type="module" src="src/main.js?v=20261108t"></script>
+<script type="module" src="src/main.js?v=20261108u"></script>
 </body>
 </html>
