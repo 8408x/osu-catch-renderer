@@ -1,26 +1,26 @@
-import './ui.js?v=20261108w';
-import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261108w';
-import { parseOsu } from './osu.js?v=20261108w';
-import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261108w';
-import { compareWithReplay } from './score.js?v=20261108w';
-import { nightcoreBeats } from './nightcore.js?v=20261108w';
-import { ReplayTrack } from './replay.js?v=20261108w';
-import { drawFrame, loadOverlayFonts } from './render.js?v=20261108w';
-import { loadArgonFonts } from './argon.js?v=20261108w';
-import { TosuOverlays } from './tosu.js?v=20261108w';
-import { exportMp4, webCodecsAvailable } from './encode.js?v=20261108w';
-import { VERSION } from './version.js?v=20261108w';
-import { md5 } from './md5.js?v=20261108w';
-import { resolveRange } from './range.js?v=20261108w';
-import { initLayoutEditor } from './layoutui.js?v=20261108w';
-import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261108w';
-import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261108w';
-import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261108w';
-import { BackgroundVideo } from './bgvideo.js?v=20261108w';
-import { buildKeys } from './keys.js?v=20261108w';
-import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261108w';
-import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261108w';
-import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261108w';
+import './ui.js?v=20261108x';
+import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261108x';
+import { parseOsu } from './osu.js?v=20261108x';
+import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261108x';
+import { compareWithReplay } from './score.js?v=20261108x';
+import { nightcoreBeats } from './nightcore.js?v=20261108x';
+import { ReplayTrack } from './replay.js?v=20261108x';
+import { drawFrame, loadOverlayFonts } from './render.js?v=20261108x';
+import { loadArgonFonts } from './argon.js?v=20261108x';
+import { TosuOverlays } from './tosu.js?v=20261108x';
+import { exportMp4, webCodecsAvailable } from './encode.js?v=20261108x';
+import { VERSION } from './version.js?v=20261108x';
+import { md5 } from './md5.js?v=20261108x';
+import { resolveRange } from './range.js?v=20261108x';
+import { initLayoutEditor } from './layoutui.js?v=20261108x';
+import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261108x';
+import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261108x';
+import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261108x';
+import { BackgroundVideo } from './bgvideo.js?v=20261108x';
+import { buildKeys } from './keys.js?v=20261108x';
+import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261108x';
+import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261108x';
+import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261108x';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('stage');
@@ -692,13 +692,30 @@ function stopPreview() {
   $('play').textContent = 'Play';
 }
 
+/** The part of the map set for rendering, or null when the whole map (or an invalid range) is in effect. */
+function activeRange() {
+  const sc = state.scene; if (!sc) return null;
+  const r = exportRange(sc);
+  return r.error || r.whole ? null : r;
+}
+/** Jump the preview to t (beatmap time), paused. */
+function seekPreview(t) {
+  const sc = state.scene; if (!sc) return;
+  stopPreview();
+  state.t = Math.min(sc.endTime, Math.max(sc.startTime, t));
+  $('seek').value = String(Math.floor(state.t));
+  drawAt(state.t);
+  updateClock();
+}
+
 let lastTick = 0, slowAcc = 0, slowN = 0, lastUi = 0;
 function tick(now) {
   if (!playing) return;
   const sc = state.scene;
   const elapsedMs = previewSource ? (audioCtx.currentTime - audioT0) * 1000 : now - playClock;
   state.t = playFrom + elapsedMs * sc.rate;
-  if (state.t >= sc.endTime) { state.t = sc.endTime; stopPreview(); }
+  const rng = activeRange(), stopAt = rng ? Math.min(rng.to, sc.endTime) : sc.endTime;   // a set range ends the preview where the render would
+  if (state.t >= stopAt) { state.t = stopAt; stopPreview(); }
   drawAt(state.t);
   if (now - lastUi > 100 || !playing) { lastUi = now; $('seek').value = String(Math.floor(state.t)); updateClock(); }   // the slider and clock need no 60 Hz updates
   // auto preview quality: a window of 45 frames averaging over 25 ms (under 40 fps) drops the preview one resolution step
@@ -719,7 +736,8 @@ $('play').addEventListener('click', async () => {
   if (playing) { stopPreview(); return; }
   const sc = state.scene;
   if (!sc) return;
-  if (state.t >= sc.endTime) state.t = sc.startTime;
+  const rng = activeRange();
+  if (rng ? state.t < rng.from || state.t >= rng.to - 50 : state.t >= sc.endTime) state.t = rng ? rng.from : sc.startTime;   // with a range set, play from its start
   playing = true;
   const token = ++playToken;
   $('play').textContent = 'Pause';
@@ -826,6 +844,7 @@ for (const kind of ['from', 'to']) {
     const atEnd = kind === 'from' ? t - sc.startTime < 150 : sc.endTime - t < 150;
     box.value = atEnd ? '' : fmtTenths(t - sc.startTime);
     updateRangeNote();
+    seekPreview(t);                                      // the preview follows the handle you are moving
   };
   h.addEventListener('pointerdown', (e) => { if (exporting) return; h.setPointerCapture(e.pointerId); h.dataset.drag = '1'; e.preventDefault(); });
   h.addEventListener('pointermove', (e) => { if (h.dataset.drag) put(timeAt(e)); });
@@ -837,7 +856,11 @@ for (const kind of ['from', 'to']) {
     put(cur + (e.key === 'ArrowRight' ? 1 : -1) * (e.shiftKey ? 5000 : 500)); e.preventDefault();
   });
 }
-for (const id of ['rangefrom', 'rangeto']) $(id).addEventListener('input', updateRangeNote);
+for (const kind of ['from', 'to']) $('range' + kind).addEventListener('input', () => {
+  updateRangeNote();
+  const sc = state.scene, r = sc && exportRange(sc);
+  if (r && !r.error) seekPreview(kind === 'from' ? r.from : r.to);
+});
 $('rangefromnow').addEventListener('click', () => { if (state.scene) { $('rangefrom').value = fmtTime(state.t - state.scene.startTime); updateRangeNote(); } });
 $('rangetonow').addEventListener('click', () => { if (state.scene) { $('rangeto').value = fmtTime(state.t - state.scene.startTime); updateRangeNote(); } });
 $('rangeclear').addEventListener('click', () => { $('rangefrom').value = ''; $('rangeto').value = ''; updateRangeNote(); });
