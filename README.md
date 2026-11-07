@@ -133,6 +133,8 @@ The **Overlay style** menu picks the look. The default, *CPOL*, recreates the lo
 
 ## Licenses
 
+Overlay designs are credited in [CREDITS.md](CREDITS.md).
+
 - `vendor/lzma-d-min.js` (LZMA-JS), `vendor/mp4-muxer.mjs` (mp4-muxer) and `vendor/fflate.mjs` (fflate): MIT.
 - Catch constants and juice stream logic follow osu!lazer (MIT).
 - **`assets/default-skin/*.png`, `assets/argon/*.png` and `assets/default-sounds/*.wav` are from ppy/osu-resources and licensed CC BY-NC 4.0: free to use with credit, but not for commercial use.** See the `ATTRIBUTION.md` in each folder. If you put this online, keep it free and non-commercial, or replace these images.
