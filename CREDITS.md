@@ -22,6 +22,9 @@ These looks are recreated natively on the canvas, as this site's own code, from 
 | pp counter | Triangles Lazer PP | uwuclxdy |
 | pp counter | PP counter | unknown |
 | pp counter | simple pp counter | Inlayo (https://github.com/Inlayo) |
+| pp counter | PP | Belikhun (https://github.com/Belikhun) |
+| pp counter | InGame2 | Dartandr |
+| pp counter | OldClassic | Dartandr |
 | Accuracy and rank | Rank and Accuracy | Belikhun (https://github.com/Belikhun) |
 | pp counter | vertigo | zeronic |
 | Hit counts | Kerli 2, classic | Dartandr |
@@ -35,7 +38,7 @@ These looks are recreated natively on the canvas, as this site's own code, from 
 
 **Full gameplay HUDs:** ANON OVERLAY (ANON TOKYO, https://github.com/FukutoTojido, CC BY-ND 4.0), EvosOverlay and SonataOverlay (Paraliyzed_evo, https://github.com/Paraliyzedevo, GPL-3.0), Luscent Remake and osuLike Overlay (Dartandr), paradox (mofuries, https://github.com/mofuries), SimpleOverlay (HosizoraN, https://github.com/shinomimi), Souei-Overlay (-Souei), VictimCrasherOverlay (VictimCrasher, https://github.com/VictimCrasher).
 
-**PP counters:** InGame1 (Dartandr), PP counter (unknown), simple pp counter (Inlayo, https://github.com/Inlayo), Triangles Lazer PP (uwuclxdy, https://github.com/uwuclxdy), vertigo (zeronic, https://github.com/just-zeronic), PP Blossom (rosekki, https://github.com/jossomori, MIT), PP by Belikhun (https://github.com/Belikhun).
+**PP counters:** PP Blossom (rosekki, https://github.com/jossomori, MIT).
 
 **Map details:** Map Display and Map Overlay (unknown), Kerli 1 and reComfortaa (Dartandr).
 

@@ -2,9 +2,10 @@
 // (credited in layout.js and CREDITS.md) in this site's own code; no overlay code or images are copied. A draw function
 // works in the style's natural size (see layout.js): the caller translates and scales the canvas to fit.
 
-import { tosuTokens } from './tosu.js?v=20261108o';
-import { hudAt } from './score.js?v=20261108o';
-import { keysAt } from './keys.js?v=20261108o';
+import { tosuTokens } from './tosu.js?v=20261108p';
+import { hudAt } from './score.js?v=20261108p';
+import { livePp } from './pp.js?v=20261108p';
+import { keysAt } from './keys.js?v=20261108p';
 
 const SANS = '"Exo 2", "Torus", "Segoe UI", system-ui, -apple-system, sans-serif';
 const MONO = '"Roboto Mono", ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace';
@@ -19,7 +20,7 @@ export function styleData(scene, t, bg, keys) {
   const v = scene.hud ? hudAt(scene.hud, t) : { n300: 0, n100: 0, n50: 0, nMiss: 0, combo: 0, maxCombo: 0 };
   const m = scene.meta ?? {};
   return {
-    tok, v, bg, t,
+    tok, v, bg, t, scene,
     key: keys ? keysAt(keys, t) : null,
     pp: tok.ppIfMapEndsNow, ppFc: tok.ppIfRestFced,
     title: m.title ?? '', artist: m.artistUnicode ?? m.artist ?? '', diff: m.version ?? '', mapper: m.creator ?? '',
@@ -90,6 +91,27 @@ function paddedNumber(ctx, n, cx, y, digits, size) {
   const cw = ctx.measureText('0').width, x0 = cx - (cw * str.length) / 2;
   ctx.textAlign = 'left';
   [...str].forEach((ch, i) => { ctx.fillStyle = i < lead ? 'rgba(255,255,255,0.28)' : '#fff'; ctx.fillText(ch, x0 + i * cw, y); });
+}
+
+
+/** pp over the whole map (about 90 samples) and the moments of the misses, worked out once per scene for the graph looks. */
+const ppSeries = new WeakMap();
+function seriesOf(scene) {
+  let s = ppSeries.get(scene);
+  if (s) return s;
+  const objs = scene.objects, first = objs[0]?.t ?? 0, last = objs[objs.length - 1]?.t ?? 1;
+  const pts = [], misses = [];
+  if (scene.diff && scene.hud) {
+    for (let i = 0; i <= 90; i++) {
+      const ts = first + ((last - first) * i) / 90;
+      pts.push(livePp(scene.diff, scene, hudAt(scene.hud, ts), ts));
+    }
+    let prev = 0;
+    for (const e of scene.hud.timeline) { if ((e.nMiss ?? 0) > prev) { prev = e.nMiss; if (misses.length < 60) misses.push((e.t - first) / Math.max(1, last - first)); } }
+  }
+  s = { pts, misses, max: Math.max(1, scene.maxPp ?? 0, ...pts) };
+  ppSeries.set(scene, s);
+  return s;
 }
 
 const LOOKS = {
@@ -180,6 +202,70 @@ const LOOKS = {
     simplepp(ctx, d, W, H) {
       ctx.fillStyle = 'rgba(0,0,0,0.67)'; rr(ctx, 0, 0, W, H, 15); ctx.fill();
       text(ctx, `${d.pp}pp`, W / 2, H / 2 + 17, { size: 50, weight: 400, align: 'center', maxW: W - 16, shadow: false });
+    },
+    // PP by Belikhun: the pp so far, a graph of pp over the map, a dashed "pp if fc" line and the misses
+    ppbelikhun(ctx, d, W, H) {
+      const sr = seriesOf(d.scene), now = d.scene.diff && d.scene.hud ? livePp(d.scene.diff, d.scene, d.v, d.t) : 0;
+      ctx.fillStyle = 'rgba(0,0,0,0.78)'; rr(ctx, 0, 0, W, H, 14); ctx.fill();
+      text(ctx, 'pp', 22, 40, { size: 28, weight: 300, shadow: false });
+      text(ctx, now.toFixed(2), 20, 112, { size: 76, weight: 300, shadow: false, maxW: W - 40 });
+      const gx = 24, gy = 128, gw = W - 24 - 70, gh = 100, pct = d.progress, top = sr.max * 1.05;
+      const X = (f) => gx + gw * f, Y = (v) => gy + gh - (gh * v) / top;
+      ctx.fillStyle = 'rgba(255,255,255,0.07)'; ctx.fillRect(gx, gy, gw + 40, gh);
+      ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(gx, gy + gh * 0.45, gw + 40, gh * 0.55);
+      ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(gx - 4, gy, 4, gh);
+      const n = Math.max(1, Math.round(pct * 90)), upto = sr.pts.slice(0, n + 1);
+      if (upto.length > 1) {
+        const grad = ctx.createLinearGradient(0, gy, 0, gy + gh);
+        grad.addColorStop(0, 'rgba(76,184,255,0.55)'); grad.addColorStop(1, 'rgba(76,184,255,0)');
+        ctx.beginPath(); ctx.moveTo(X(0), gy + gh);
+        upto.forEach((v, i) => ctx.lineTo(X(i / 90), Y(v)));
+        ctx.lineTo(X((upto.length - 1) / 90), gy + gh); ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
+        ctx.beginPath(); upto.forEach((v, i) => (i ? ctx.lineTo(X(i / 90), Y(v)) : ctx.moveTo(X(i / 90), Y(v))));
+        ctx.strokeStyle = '#4cb8ff'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.stroke();
+        ctx.fillStyle = '#4cb8ff'; ctx.beginPath(); ctx.arc(X((upto.length - 1) / 90), Y(upto[upto.length - 1]), 4, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.fillStyle = 'rgba(255,143,163,0.55)';
+      for (const m of sr.misses) if (m <= pct) ctx.fillRect(X(m) - 1, gy, 2, gh);
+      const fcY = Y(d.ppFc || sr.max);
+      ctx.setLineDash([5, 4]); ctx.strokeStyle = '#e2b0ff'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(gx, fcY); ctx.lineTo(gx + gw + 36, fcY); ctx.stroke(); ctx.setLineDash([]);
+      [[d.ppFc, '#e2b0ff', fcY], [Math.round(now), '#4cb8ff', Y(now)]].forEach(([v, c, y]) => {
+        ctx.fillStyle = c; ctx.fillRect(gx + gw + 4, y - 10, 62, 20);
+        text(ctx, String(v), gx + gw + 35, y + 5, { size: 14, weight: 500, fill: '#000', align: 'center', shadow: false });
+      });
+      [['miss', '#ff8fa3', 24], ['pp if fc', '#e2b0ff', 96], ['pp', '#4cb8ff', 196]].forEach(([label, c, x]) => {
+        ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, H - 22, 6, 0, Math.PI * 2); ctx.fill();
+        text(ctx, label, x + 12, H - 17, { size: 14, weight: 400, fill: c, shadow: false });
+      });
+    },
+    // InGame2 by Dartandr: a thin progress bar over three counts with coloured dots, and the pp
+    ingame2(ctx, d, W, H) {
+      ctx.fillStyle = 'rgba(8,8,10,0.86)'; rr(ctx, 0, 0, W, H, 12); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.18)'; rr(ctx, 14, 12, W - 28, 5, 2.5); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.75)'; rr(ctx, 14, 12, Math.max(5, (W - 28) * d.progress), 5, 2.5); ctx.fill();
+      [[d.v.n100, GREEN], [d.v.n50, BLUE], [d.v.nMiss, RED]].forEach(([n, c], i) => {
+        const cx = 40 + i * 58;
+        text(ctx, String(n), cx, 62, { size: 28, align: 'center', shadow: false });
+        ctx.fillStyle = c; rr(ctx, cx - 9, 72, 18, 5, 2.5); ctx.fill();
+      });
+      ctx.font = '800 40px ' + SANS; ctx.textAlign = 'right';
+      const pw = (() => { ctx.font = '800 22px ' + SANS; return ctx.measureText('pp').width; })();
+      text(ctx, 'pp', W - 16, 66, { size: 22, fill: PURPLE, align: 'right', shadow: false, weight: 800 });
+      text(ctx, String(d.pp), W - 16 - pw - 2, 66, { size: 44, align: 'right', shadow: false, weight: 800, maxW: W - 220 });
+    },
+    // OldClassic by Dartandr: the map picture with its title over a black bar with "267 PP" and the 100 / 50 / MISS counts
+    oldclassic(ctx, d, W, H) {
+      ctx.save(); rr(ctx, 0, 0, W, H, 8); ctx.clip();
+      cover(ctx, d.bg, 0, 0, W, H * 0.58, 0, 0.45);
+      text(ctx, `${d.artist} - ${d.title}`.toUpperCase(), W / 2, H * 0.34, { size: 30, weight: 800, align: 'center', maxW: W - 24 });
+      ctx.fillStyle = '#050505'; ctx.fillRect(0, H * 0.5, W, H * 0.5);
+      text(ctx, `${d.pp} PP`, 20, H * 0.5 + 62, { size: 54, weight: 900, shadow: false, maxW: 215 });
+      [['100', d.v.n100], ['50', d.v.n50], ['MISS', d.v.nMiss]].forEach(([label, n], i) => {
+        const cx = 290 + i * 80;
+        text(ctx, label, cx, H * 0.5 + 34, { size: 18, weight: 600, fill: 'rgba(255,255,255,0.45)', align: 'center', shadow: false });
+        text(ctx, String(n), cx, H * 0.5 + 74, { size: 32, weight: 800, align: 'center', shadow: false });
+      });
+      ctx.restore();
     },
     // vertigo by zeronic: two outlined boxes, pp if the rest is a full combo and pp now
     vertigo(ctx, d, W, H) {
