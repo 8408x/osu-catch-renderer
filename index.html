@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="app-version" content="20261108m">
+  <meta name="app-version" content="20261108n">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>osu!catch Replay Renderer</title>
   <style>
@@ -336,6 +336,7 @@
           <label class="field" style="margin-top:10px"><span>Bitrate (Mbps)</span>
             <input id="mbps" type="number" min="1" max="80" step="1" value="12">
           </label>
+          <label class="toggle" style="margin-top:10px"><input id="fastdraft" type="checkbox"> Fast draft <small>(skips the storyboard, background video, hit lighting and tosu overlay images; much quicker)</small></label>
         </div>
         <div class="group">
           <h3>Render only part of the map</h3>
@@ -365,6 +366,6 @@
 <div class="dropveil" id="dropveil"><div>Drop files to load them<small>.osr replay · .osz map set · .osu · .osk skin · image · song</small></div></div>
 
 <script src="vendor/lzma-d-min.js"></script>
-<script type="module" src="src/main.js?v=20261108m"></script>
+<script type="module" src="src/main.js?v=20261108n"></script>
 </body>
 </html>

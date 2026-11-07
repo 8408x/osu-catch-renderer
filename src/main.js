@@ -1,26 +1,26 @@
-import './ui.js?v=20261108m';
-import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261108m';
-import { parseOsu } from './osu.js?v=20261108m';
-import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261108m';
-import { compareWithReplay } from './score.js?v=20261108m';
-import { nightcoreBeats } from './nightcore.js?v=20261108m';
-import { ReplayTrack } from './replay.js?v=20261108m';
-import { drawFrame, loadOverlayFonts } from './render.js?v=20261108m';
-import { loadArgonFonts } from './argon.js?v=20261108m';
-import { TosuOverlays } from './tosu.js?v=20261108m';
-import { exportMp4, webCodecsAvailable } from './encode.js?v=20261108m';
-import { VERSION } from './version.js?v=20261108m';
-import { md5 } from './md5.js?v=20261108m';
-import { resolveRange } from './range.js?v=20261108m';
-import { initLayoutEditor } from './layoutui.js?v=20261108m';
-import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261108m';
-import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261108m';
-import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261108m';
-import { BackgroundVideo } from './bgvideo.js?v=20261108m';
-import { buildKeys } from './keys.js?v=20261108m';
-import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261108m';
-import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261108m';
-import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261108m';
+import './ui.js?v=20261108n';
+import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261108n';
+import { parseOsu } from './osu.js?v=20261108n';
+import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261108n';
+import { compareWithReplay } from './score.js?v=20261108n';
+import { nightcoreBeats } from './nightcore.js?v=20261108n';
+import { ReplayTrack } from './replay.js?v=20261108n';
+import { drawFrame, loadOverlayFonts } from './render.js?v=20261108n';
+import { loadArgonFonts } from './argon.js?v=20261108n';
+import { TosuOverlays } from './tosu.js?v=20261108n';
+import { exportMp4, webCodecsAvailable } from './encode.js?v=20261108n';
+import { VERSION } from './version.js?v=20261108n';
+import { md5 } from './md5.js?v=20261108n';
+import { resolveRange } from './range.js?v=20261108n';
+import { initLayoutEditor } from './layoutui.js?v=20261108n';
+import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261108n';
+import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261108n';
+import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261108n';
+import { BackgroundVideo } from './bgvideo.js?v=20261108n';
+import { buildKeys } from './keys.js?v=20261108n';
+import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261108n';
+import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261108n';
+import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261108n';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('stage');
@@ -90,11 +90,12 @@ function size() {
 /** What to paint behind the playfield at time t: the video frame when it is on and ready, else the still picture. */
 function backgroundFor(t) {
   if (!$('showbg').checked) { state.bgv?.sync(t, false); return null; }
-  if (state.bgv && $('showvideo').checked && state.bgv.sync(t, playing, state.scene?.rate ?? 1)) return state.bgv.el;
+  if (state.bgv && $('showvideo').checked && !(exporting && draftExport) && state.bgv.sync(t, playing, state.scene?.rate ?? 1)) return state.bgv.el;
   return state.bg;
 }
 
 let exporting = false;     // while the exporter owns the canvas (and the background video), preview redraws stand aside
+let draftExport = false;                                   // 'Fast draft': the export skips the costly extras
 function drawAt(t, fromExport = false) {
   if (exporting && !fromExport) return;
   const { width: W, height: H } = canvas;
@@ -113,12 +114,12 @@ function drawAt(t, fromExport = false) {
     skin: state.skin,
     showCatchWidth: $('showwidth').checked,
     showHud: $('showhud').checked,
-    hitLighting: $('showlight').checked,
+    hitLighting: $('showlight').checked && !(fromExport && draftExport),
     style: $('hudstyle').value,
     argon: state.argon,
-    tosu: state.tosu,
+    tosu: fromExport && draftExport ? null : state.tosu,
     bg: backgroundFor(t),
-    sb: $('showsb').checked && $('showbg').checked ? state.sb : null,
+    sb: $('showsb').checked && $('showbg').checked && !(fromExport && draftExport) ? state.sb : null,
     bgDim: Math.min(100, Math.max(0, Number($('bgdim').value) || 0)) / 100,
     keys: state.keys,
     makeCanvas: (w, h) => skinEnv.createCanvas(w, h),
@@ -849,11 +850,12 @@ async function renderCurrent(job = null) {
   const hitVolume = Math.min(100, Math.max(0, Number($('hitvolume').value))) / 100;
   const clip = { ...sc, startTime: range.from, endTime: range.to };       // the audio code reads the scene's start and end
 
+  draftExport = $('fastdraft').checked;
   const res = await exportMp4({
     canvas,
     drawAt: async (t) => {
-      if (state.bgv && $('showbg').checked && $('showvideo').checked && state.bgv.active(t)) await state.bgv.seek(t);
-      if (state.tosu && ['custom', 'overlay'].includes($('hudstyle').value) && $('showhud').checked) { try { await state.tosu.prepare(sc, t); } catch { /* drawn by the canvas fallback */ } }
+      if (state.bgv && !draftExport && $('showbg').checked && $('showvideo').checked && state.bgv.active(t)) await state.bgv.seek(t);
+      if (state.tosu && !draftExport && ['custom', 'overlay'].includes($('hudstyle').value) && $('showhud').checked) { try { await state.tosu.prepare(sc, t); } catch { /* drawn by the canvas fallback */ } }
       drawAt(t, true);
     },
     startTime: range.from,
