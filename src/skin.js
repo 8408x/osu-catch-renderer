@@ -8,7 +8,7 @@
 //   - skin.ini [Colours] Combo1..Combo8 are used when the beatmap defines no combo colours.
 
 import { unzipSync } from '../vendor/fflate.mjs';
-import { MOD_SKIN_NAMES } from './mods.js?v=20261108d';
+import { MOD_SKIN_NAMES } from './mods.js?v=20261108e';
 
 export const DEFAULT_SKIN_FILES = [
   'fruit-apple', 'fruit-apple-overlay', 'fruit-grapes', 'fruit-grapes-overlay',
@@ -26,7 +26,7 @@ export const glyphNames = (prefix) => GLYPH_SUFFIXES.map((g) => `${prefix}-${g}`
 const WANTED = /\.(png|jpe?g)$/i;
 // hitsound files a skin may bring: normal-hitnormal.wav, soft-slidertick2.ogg, catch-banana.wav ...
 const GLYPH_FILE = /^[a-z0-9_]+-(?:[0-9]|comma|dot|percent|x)(?:@2x)?\.(?:png|jpe?g)$/i;   // HUD numbers under any font prefix
-const HUD_FILE = /^(?:scorebar-(?:bg|colour|ki|kidanger2?)|inputoverlay-(?:key|background)|selection-mod-[a-z0-9]+)(?:@2x)?\.(?:png|jpe?g)$/i;   // HP bar parts and key counter
+const HUD_FILE = /^(?:scorebar-(?:bg|colour(?:-0)?|ki|kidanger2?)|inputoverlay-(?:key|background)|selection-mod-[a-z0-9]+)(?:@2x)?\.(?:png|jpe?g)$/i;   // HP bar parts and key counter
 const SAMPLE_FILE = /^((normal|soft|drum)-(hitnormal|hitwhistle|hitfinish|hitclap|slidertick)\d*|metronomelow|catch-banana)\.(wav|mp3|ogg)$/i;
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
 
@@ -209,7 +209,7 @@ const ELEMENTS = [
 ];
 
 /** Gameplay HUD images a skin may provide: HP bar parts and the key counter. */
-export const HUD_ELEMENTS = [...MOD_SKIN_NAMES, 'scorebar-bg', 'scorebar-colour', 'scorebar-ki', 'scorebar-kidanger', 'scorebar-kidanger2', 'inputoverlay-key', 'inputoverlay-background'];
+export const HUD_ELEMENTS = [...MOD_SKIN_NAMES, 'scorebar-bg', 'scorebar-colour', 'scorebar-colour-0', 'scorebar-ki', 'scorebar-kidanger', 'scorebar-kidanger2', 'inputoverlay-key', 'inputoverlay-background'];
 
 /** Bundled default skin. `fetchBytes(url)` returns a Uint8Array. */
 export async function loadDefaultSkin(env, fetchBytes, baseUrl = 'assets/default-skin/') {

@@ -7,18 +7,18 @@
 //   - droplets use 0.8x and tiny droplets 0.4x of that; sprites are capped at 160 px
 //   - catcher sprite = texture size x 0.35 x catcher scale, hung from the plate line 16 px down
 
-import { FIELD_W, FIELD_H } from './catch.js?v=20261108d';
-import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261108d';
-import { hudAt, scoreShownAt } from './score.js?v=20261108d';
-import { plateAt, explosionsAt } from './plate.js?v=20261108d';
-import { drawArgonHud, drawArgonPart } from './argon.js?v=20261108d';
-import { healthAt } from './health.js?v=20261108d';
-import { livePp } from './pp.js?v=20261108d';
-import { keysAt } from './keys.js?v=20261108d';
-import { ORDER, rectOf, fullRectOf, WIDGETS, styleInfo } from './layout.js?v=20261108d';
-import { lookFor, styleData } from './styles.js?v=20261108d';
-import { drawModIcons, drawModBadges } from './mods.js?v=20261108d';
-import { drawFlashlight } from './flashlight.js?v=20261108d';
+import { FIELD_W, FIELD_H } from './catch.js?v=20261108e';
+import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261108e';
+import { hudAt, scoreShownAt } from './score.js?v=20261108e';
+import { plateAt, explosionsAt } from './plate.js?v=20261108e';
+import { drawArgonHud, drawArgonPart } from './argon.js?v=20261108e';
+import { healthAt } from './health.js?v=20261108e';
+import { livePp } from './pp.js?v=20261108e';
+import { keysAt } from './keys.js?v=20261108e';
+import { ORDER, rectOf, fullRectOf, WIDGETS, styleInfo } from './layout.js?v=20261108e';
+import { lookFor, styleData } from './styles.js?v=20261108e';
+import { drawModIcons, drawModBadges } from './mods.js?v=20261108e';
+import { drawFlashlight } from './flashlight.js?v=20261108e';
 
 const ZONE = 120;  // room below the field for the catcher, in field units
 const PAD = 12;
@@ -429,7 +429,9 @@ function drawProgressPie(ctx, cx, cy, r, p) {
 
 /** A skin's own HP bar (scorebar-bg / -colour / -ki, kidanger at low health), laid out for the 768 px high screen like stable. Returns false when the skin has none. */
 function drawSkinHealth(ctx, skin, hp, u) {
-  const bg = skin.get('scorebar-bg'), fill = skin.get('scorebar-colour');
+  let bg = skin.get('scorebar-bg'), fill = skin.get('scorebar-colour') ?? skin.get('scorebar-colour-0');   // some skins animate the fill (-0, -1, ...): the first frame stands in
+  if (bg && bg.w < 16) bg = null;                        // a blank image is how a skin hides the bar: use the built-in bar instead
+  if (fill && fill.w < 16) fill = null;
   if (!bg && !fill) return false;
   hp = Math.max(0, Math.min(1, hp));
   const OX = 4.8 * u, OY = 16 * u;                       // stable: the fill sits at (3, 10) of its 640x480 layout, x1.6
@@ -617,8 +619,11 @@ function drawStableLook(ctx, id, st, scene, t, skin, keys) {
     }
   } else if (id === 'health') {
     const hp = scene.health ? healthAt(scene.health, t) : 1, bg = skin.get('scorebar-bg');
-    if (bg) { ctx.scale(st.w / (bg.w * u), st.w / (bg.w * u)); if (!drawSkinHealth(ctx, skin, hp, u)) return; }
-    else drawHealthBar(ctx, hp, 2, 5, 340 * u, 14 * u);
+    ctx.save();
+    const k = bg && bg.w >= 16 ? st.w / (bg.w * u) : 1;
+    ctx.scale(k, k);
+    if (!drawSkinHealth(ctx, skin, hp, u)) { ctx.restore(); drawHealthBar(ctx, hp, 2, 5, 340 * u, 14 * u); return; }
+    ctx.restore();
   } else if (id === 'progress') {
     const objs = scene.objects;
     if (objs.length) drawProgressPie(ctx, st.w / 2, st.h / 2, 9 * u, Math.min(1, Math.max(0, (t - objs[0].t) / Math.max(1, objs[objs.length - 1].t - objs[0].t))));
