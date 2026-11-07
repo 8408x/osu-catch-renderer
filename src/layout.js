@@ -17,11 +17,15 @@ const K = 1.222;      // the tosu overlays are drawn 1.222x (or 1.7x) larger tha
  * overlay it recreates (`credit`) and `tosu: true` when the real tosu overlay is rendered instead of canvas drawing.
  * `at` is where a widget sits by default (px on a 1920x1080 frame). The first style of each widget is its default.
  */
+/** Fractions [left, top, right, bottom] of a look's natural box that hold nothing visible (tosu overlays are drawn
+ *  into a larger browser-source box). A widget's position, size and outline all describe the visible part. */
+export const padOf = (st) => st.pad ?? [0, 0, 0, 0];
+
 export const WIDGETS = {
   title: {
     label: 'Map details', at: [6, 8], on: true,
     styles: [
-      { id: 'cpol', label: 'CPOL', credit: 'ArtistTitleDifficulty, author unknown', w: 800 * K, h: 90 * K, tosu: true },
+      { id: 'cpol', label: 'CPOL', credit: 'ArtistTitleDifficulty, author unknown', w: 800 * K, h: 90 * K, tosu: true, pad: [0, 0, 0.27, 0] },
       { id: 'kerli1', label: 'Kerli 1', credit: 'Kerli 1 by Dartandr', author: 'Dartandr', w: 794, h: 124 },
       { id: 'recomfortaa', label: 'reComfortaa', credit: 'reComfortaa by Dartandr', author: 'Dartandr', w: 900, h: 130 },
       { id: 'mapdisplay', label: 'Map Display', credit: 'Map Display, author unknown', w: 1040, h: 86 },
@@ -30,7 +34,7 @@ export const WIDGETS = {
   pp: {
     label: 'pp counter', at: [6, 8 + 90 * K + 4], on: true,
     styles: [
-      { id: 'ingame3', label: 'InGame3', credit: 'InGame3 by Dartandr', author: 'Dartandr', w: 190 * K, h: 100 * K, tosu: true },
+      { id: 'ingame3', label: 'InGame3', credit: 'InGame3 by Dartandr', author: 'Dartandr', w: 190 * K, h: 100 * K, tosu: true, pad: [0, 0, 0.26, 0.4] },
       { id: 'ingame1', label: 'InGame1', credit: 'InGame1 by Dartandr', author: 'Dartandr', w: 260, h: 150 },
       { id: 'triangles', label: 'Triangles', credit: 'Triangles Lazer PP by uwuclxdy', author: 'uwuclxdy', w: 200, h: 90 },
       { id: 'vertigo', label: 'Vertigo', credit: 'vertigo by zeronic', author: 'zeronic', w: 170, h: 220 },
@@ -38,17 +42,17 @@ export const WIDGETS = {
   },
   acc: {
     label: 'Accuracy and rank', at: [1920 - 8 - 340 * 1.7, 0], on: true,
-    styles: [{ id: 'cpol', label: 'CPOL', credit: 'AccuracyPP, author unknown', w: 340 * 1.7, h: 80 * 1.7, tosu: true }],
+    styles: [{ id: 'cpol', label: 'CPOL', credit: 'AccuracyPP, author unknown', w: 340 * 1.7, h: 80 * 1.7, tosu: true, pad: [0.5, 0.12, 0, 0.5] }],
   },
   combo: {
     label: 'Combo', at: [4, 1080 - 12 - 44 * 1.7], on: true,
-    styles: [{ id: 'cpol', label: 'CPOL', credit: 'Combo, author unknown', w: 420 * 1.7, h: 44 * 1.7, tosu: true }],
+    styles: [{ id: 'cpol', label: 'CPOL', credit: 'Combo, author unknown', w: 420 * 1.7, h: 44 * 1.7, tosu: true, pad: [0, 0.3, 0.4, 0.1] }],
   },
   keys: {
     label: 'Key presses', at: [1920 - 56 - 8, 540 - (4 * 56 + 3 * 10) / 2 + 36], on: true,
     styles: [
       { id: 'boxes', label: 'Boxes', credit: 'this site', w: 56, h: 3 * 56 + 2 * 10 },
-      { id: 'bars', label: 'Bars', credit: 'KeyOverlay by HosizoraN', author: 'HosizoraN', w: 190, h: 190 },
+      { id: 'bars', label: 'Bars', credit: 'KeyOverlay by HosizoraN', author: 'HosizoraN', w: 182, h: 186 },
     ],
   },
   hits: {
@@ -56,7 +60,7 @@ export const WIDGETS = {
     styles: [
       { id: 'plain', label: 'Plain', credit: 'this site', w: 420, h: 84 },
       { id: 'hitcounts', label: 'HitCounts', credit: 'HitCounts, author unknown', w: 350, h: 44 },
-      { id: 'kerli2', label: 'Kerli 2', credit: 'Kerli 2 by Dartandr', author: 'Dartandr', w: 360, h: 240 },
+      { id: 'kerli2', label: 'Kerli 2', credit: 'Kerli 2 by Dartandr', author: 'Dartandr', w: 360, h: 190 },
       { id: 'classic', label: 'Classic', credit: 'classic by Dartandr', author: 'Dartandr', w: 330, h: 44 },
     ],
   },
@@ -77,7 +81,8 @@ export function defaultLayout() {
   const out = {};
   for (const id of ORDER) {
     const d = WIDGETS[id];
-    out[id] = { on: d.on, x: d.at[0] / 1920, y: d.at[1] / 1080, s: 1, style: d.styles[0].id };
+    const st = d.styles[0], [pl, pt] = padOf(st);
+    out[id] = { on: d.on, x: (d.at[0] + pl * st.w) / 1920, y: (d.at[1] + pt * st.h) / 1080, s: 1, style: st.id };
   }
   return out;
 }
@@ -102,10 +107,16 @@ export function normalizeLayout(raw) {
   return base;
 }
 
-/** [x, y, w, h] of a widget in a W x H frame. */
+/** [x, y, w, h] of a widget's visible part in a W x H frame (its outline and hit box). */
 export function rectOf(id, cfg, W, H) {
-  const u = H / 1080, c = cfg[id], st = styleInfo(id, c.style);
-  return [c.x * W, c.y * H, st.w * c.s * u, st.h * c.s * u];
+  const u = H / 1080, c = cfg[id], st = styleInfo(id, c.style), [l, t, r, b] = padOf(st), k = c.s * u;
+  return [c.x * W, c.y * H, st.w * (1 - l - r) * k, st.h * (1 - t - b) * k];
+}
+
+/** [x, y, w, h] of the whole box a look is drawn into: the visible part plus its empty margins. */
+export function fullRectOf(id, cfg, W, H) {
+  const u = H / 1080, c = cfg[id], st = styleInfo(id, c.style), [l, t] = padOf(st), k = c.s * u;
+  return [c.x * W - l * st.w * k, c.y * H - t * st.h * k, st.w * k, st.h * k];
 }
 
 /** The topmost shown widget under the point (px, py), or null. */

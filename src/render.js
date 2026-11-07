@@ -7,18 +7,18 @@
 //   - droplets use 0.8x and tiny droplets 0.4x of that; sprites are capped at 160 px
 //   - catcher sprite = texture size x 0.35 x catcher scale, hung from the plate line 16 px down
 
-import { FIELD_W, FIELD_H } from './catch.js?v=20261107z';
-import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261107z';
-import { hudAt, scoreShownAt } from './score.js?v=20261107z';
-import { plateAt, explosionsAt } from './plate.js?v=20261107z';
-import { drawArgonHud } from './argon.js?v=20261107z';
-import { healthAt } from './health.js?v=20261107z';
-import { livePp } from './pp.js?v=20261107z';
-import { keysAt } from './keys.js?v=20261107z';
-import { ORDER, rectOf, WIDGETS, styleInfo } from './layout.js?v=20261107z';
-import { lookFor, styleData } from './styles.js?v=20261107z';
-import { drawModIcons, drawModBadges } from './mods.js?v=20261107z';
-import { drawFlashlight } from './flashlight.js?v=20261107z';
+import { FIELD_W, FIELD_H } from './catch.js?v=20261108a';
+import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261108a';
+import { hudAt, scoreShownAt } from './score.js?v=20261108a';
+import { plateAt, explosionsAt } from './plate.js?v=20261108a';
+import { drawArgonHud } from './argon.js?v=20261108a';
+import { healthAt } from './health.js?v=20261108a';
+import { livePp } from './pp.js?v=20261108a';
+import { keysAt } from './keys.js?v=20261108a';
+import { ORDER, rectOf, fullRectOf, WIDGETS, styleInfo } from './layout.js?v=20261108a';
+import { lookFor, styleData } from './styles.js?v=20261108a';
+import { drawModIcons, drawModBadges } from './mods.js?v=20261108a';
+import { drawFlashlight } from './flashlight.js?v=20261108a';
 
 const ZONE = 120;  // room below the field for the catcher, in field units
 const PAD = 12;
@@ -614,7 +614,7 @@ function drawCustom(ctx, W, H, scene, t, { layout, tosu, keys, skin, bg, guides 
 
   // the tosu overlays (map details, pp, accuracy, combo) show only while their widget uses the tosu look; without
   // the overlay renderer the fixed canvas copy stands in when every one of them is on its tosu look
-  const tosuOk = tosu ? tosu.draw(ctx, W, H, scene, t, (name) => (isTosu(name) ? rect(name) : null)) : false;
+  const tosuOk = tosu ? tosu.draw(ctx, W, H, scene, t, (name) => (isTosu(name) && layout[name].on ? fullRectOf(name, layout, W, H) : null)) : false;
   if (!tosuOk && ['title', 'pp', 'acc', 'combo'].every(isTosu)) drawOverlay(ctx, W, H, scene, t, { bg, keys: null, tosu: null, skin });
 
   // looks drawn natively, at the look's own size scaled to the widget's rectangle

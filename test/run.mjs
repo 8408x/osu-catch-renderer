@@ -1719,7 +1719,9 @@ await test('custom layout: defaults match the old overlay places, bad data is re
   assert.equal(d.title.on && d.pp.on && d.acc.on && d.combo.on && d.keys.on, true);
   assert.equal(d.hits.on || d.progress.on, false);
   const [x, y, w, h] = L.rectOf('title', d, 1920, 1080);          // title: 6 px in, 8 px down, 800 x 90 drawn at 1.222
-  near(x, 6); near(y, 8); near(w, 800 * 1.222); near(h, 90 * 1.222);
+  near(x, 6); near(y, 8); near(w, 800 * 1.222 * 0.73); near(h, 90 * 1.222);
+  const full = L.fullRectOf('title', d, 1920, 1080);                // the drawn box is the visible part plus its empty margin
+  near(full[0], 6); near(full[2], 800 * 1.222);
   const [, , w2] = L.rectOf('title', d, 960, 540);                // same layout at half the size
   near(w2, w / 2);
   const bad = L.normalizeLayout({ title: { on: 'yes', x: 'a', y: 99, s: 50 }, nonsense: 1 });
@@ -1736,7 +1738,7 @@ await test('custom layout: defaults match the old overlay places, bad data is re
   assert.equal(L.hitTest(l, 1920, 1080, 960, 540), null);
   // a widget dragged far off screen is pulled back so a quarter of it stays visible
   const [cx] = L.clampPosition('title', l, -5, 0.2, 1920, 1080);
-  assert.ok(cx > -0.75 * 800 * 1.222 / 1920 - 1e-9);
+  assert.ok(cx > -0.75 * 800 * 1.222 * 0.73 / 1920 - 1e-9);
   // dragging a widget near the centre line snaps it there
   const [sx, , g] = L.snapPosition('keys', l, 0.5 - 0.0005 - L.rectOf('keys', l, 1920, 1080)[2] / 1920 / 2, 0.3, 1920, 1080);
   near(sx + L.rectOf('keys', l, 1920, 1080)[2] / 1920 / 2, 0.5);
