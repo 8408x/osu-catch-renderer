@@ -1692,7 +1692,7 @@ await test('custom styles: every non-tosu look exists, draws in its own box, and
   const L = await import('../src/layout.js'), S = await import('../src/styles.js');
   const calls = [];
   const ctx = new Proxy({ measureText: (t) => ({ width: String(t).length * 8 }), font: '12px x' }, {
-    get: (o, k) => (k in o ? o[k] : (...a) => { calls.push(k); }),
+    get: (o, k) => (k in o ? o[k] : (...a) => { calls.push(k); return /^create.*Gradient$/.test(String(k)) ? { addColorStop() {} } : undefined; }),
     set: (o, k, v) => { o[k] = v; return true; },
   });
   const scene = { objects: [{ t: 0 }, { t: 60000 }], meta: { title: 'T', artist: 'A', version: 'D', creator: 'M', cs: 4, ar: 9, od: 8, hp: 5, bpm: 180, lengthMs: 90000 }, diff: { star: 6.1 }, hud: null };
@@ -1716,7 +1716,7 @@ await test('custom styles: every non-tosu look exists, draws in its own box, and
 
 await test('layout presets and files: built-ins are valid and on screen, files round-trip, junk is rejected', async () => {
   const L = await import('../src/layout.js');
-  assert.deepEqual(L.PRESETS.map((p) => p.id), ['cpol', 'lazer', 'stable']);
+  assert.deepEqual(L.PRESETS.map((p) => p.id), ['cpol', 'lazer', 'stable', 'simpleoverlay', 'souei', 'victim']);
   for (const p of L.PRESETS) {
     const l = p.build();
     assert.deepEqual(L.normalizeLayout(l), l, `${p.id} is already normalized`);

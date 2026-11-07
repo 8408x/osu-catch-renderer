@@ -2,10 +2,11 @@
 // (credited in layout.js and CREDITS.md) in this site's own code; no overlay code or images are copied. A draw function
 // works in the style's natural size (see layout.js): the caller translates and scales the canvas to fit.
 
-import { tosuTokens } from './tosu.js?v=20261108q';
-import { hudAt } from './score.js?v=20261108q';
-import { livePp, ppAtAccuracy } from './pp.js?v=20261108q';
-import { keysAt } from './keys.js?v=20261108q';
+import { tosuTokens } from './tosu.js?v=20261108r';
+import { hudAt } from './score.js?v=20261108r';
+import { healthAt } from './health.js?v=20261108r';
+import { livePp, ppAtAccuracy } from './pp.js?v=20261108r';
+import { keysAt } from './keys.js?v=20261108r';
 
 const SANS = '"Exo 2", "Torus", "Segoe UI", system-ui, -apple-system, sans-serif';
 const MONO = '"Roboto Mono", ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace';
@@ -21,6 +22,8 @@ export function styleData(scene, t, bg, keys) {
   const m = scene.meta ?? {};
   return {
     tok, v, bg, t, scene,
+    health: scene.health ? Math.max(0, Math.min(1, healthAt(scene.health, t))) : 1,
+    player: scene.player ?? '',
     key: keys ? keysAt(keys, t) : null,
     pp: tok.ppIfMapEndsNow, ppFc: tok.ppIfRestFced,
     title: m.title ?? '', artist: m.artistUnicode ?? m.artist ?? '', diff: m.version ?? '', mapper: m.creator ?? '',
@@ -114,8 +117,31 @@ function seriesOf(scene) {
   return s;
 }
 
+const grouped = (n) => String(Math.max(0, Math.round(n))).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+const ring = (ctx, cx, cy, r, f, colour = '#fff') => {      // a clock-style pie: an outline with a filling wedge
+  ctx.strokeStyle = colour; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = colour; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r - 5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * f); ctx.closePath(); ctx.fill();
+};
+/** A rounded corner patch (pink into purple) hugging one corner of the box, as the VictimCrasherOverlay uses. */
+function blob(ctx, W, H, corner) {
+  ctx.save();
+  ctx.translate(corner.includes('r') ? W : 0, corner.includes('b') ? H : 0);
+  ctx.scale(corner.includes('r') ? -1 : 1, corner.includes('b') ? -1 : 1);
+  const g = ctx.createLinearGradient(0, corner.includes('b') ? H : 0, 0, corner.includes('b') ? 0 : H);
+  g.addColorStop(0, '#ff7a8a'); g.addColorStop(1, '#8a2fa8');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(W, 0); ctx.bezierCurveTo(W * 0.92, H * 0.5, W * 0.55, H, 0, H); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
 const LOOKS = {
   title: {
+    // VictimCrasherOverlay: the top-left patch with the player's name
+    victim(ctx, d, W, H) {
+      blob(ctx, W, H, 'tl');
+      text(ctx, 'player:', 16, 46, { size: 20, weight: 600 });
+      text(ctx, d.player || d.title, 16, 84, { size: 36, weight: 800, maxW: W - 90 });
+    },
     // Kerli 1 by Dartandr: the title over four underlined difficulty values
     kerli1(ctx, d, W, H) {
       cover(ctx, d.bg, 0, 0, W, H, 14, 0.5);
@@ -285,6 +311,23 @@ const LOOKS = {
       });
       ctx.restore();
     },
+    // SimpleOverlay by HosizoraN: the pp in large type with the four hit counts under it
+    simpleoverlay(ctx, d, W, H) {
+      text(ctx, `${Math.round(d.pp)}pp`, 4, 56, { size: 62, weight: 600, maxW: W - 8 });
+      [d.v.n300, d.v.n100, d.v.n50, d.v.nMiss].forEach((n, i) => text(ctx, String(n), 8 + i * 76, 102, { size: 30, weight: 600 }));
+    },
+    // Souei-Overlay: the pp as a blue-tagged chip on the bottom bar
+    soueipp(ctx, d, W, H) {
+      ctx.fillStyle = 'rgba(8,8,10,0.92)'; rr(ctx, 0, 0, W, H, H / 2); ctx.fill();
+      text(ctx, d.scene.diff && d.scene.hud ? livePp(d.scene.diff, d.scene, d.v, d.t).toFixed(2) : '0', 20, H * 0.68, { size: 24, weight: 700, shadow: false, maxW: W - 70 });
+      text(ctx, 'pp', W - 18, H * 0.68, { size: 22, weight: 700, fill: '#4f6bff', align: 'right', shadow: false });
+    },
+    // VictimCrasherOverlay: the pp in the bottom-right patch
+    victim(ctx, d, W, H) {
+      blob(ctx, W, H, 'br');
+      text(ctx, String(Math.round(d.pp)), W - 78, H - 24, { size: 52, weight: 800, align: 'right', maxW: W - 130 });
+      text(ctx, 'PP', W - 18, H - 24, { size: 24, weight: 800, align: 'right' });
+    },
     // vertigo by zeronic: two outlined boxes, pp if the rest is a full combo and pp now
     vertigo(ctx, d, W, H) {
       ctx.fillStyle = 'rgba(32,32,38,0.88)'; rr(ctx, 0, 0, W, H, 24); ctx.fill();
@@ -298,6 +341,22 @@ const LOOKS = {
   },
 
   acc: {
+    // SimpleOverlay by HosizoraN: the accuracy, centred
+    simple(ctx, d, W, H) {
+      text(ctx, `${d.tok.acc}%`, W / 2, H * 0.78, { size: 38, weight: 600, align: 'center', maxW: W - 8 });
+    },
+    // Souei-Overlay: a clock-style progress ring and the accuracy
+    souei(ctx, d, W, H) {
+      ring(ctx, 28, H / 2, 20, d.progress);
+      text(ctx, `${d.tok.acc}%`, W - 6, H / 2 + 12, { size: 34, weight: 300, align: 'right', maxW: W - 70 });
+    },
+    // VictimCrasherOverlay: the top-right patch with score, accuracy and the mods
+    victim(ctx, d, W, H) {
+      blob(ctx, W, H, 'tr');
+      text(ctx, grouped(d.v.score), W - 16, 52, { size: 36, weight: 800, align: 'right', maxW: W - 60 });
+      text(ctx, `${d.tok.acc} %`, W - 16, 86, { size: 26, weight: 700, align: 'right' });
+      text(ctx, 'Mods', W - 16, 114, { size: 18, weight: 600, align: 'right' });
+    },
     // Rank and Accuracy by Belikhun: a dark panel with the rank and the accuracy, each over a small label
     rankacc(ctx, d, W, H) {
       const grade = d.tok.grade || '', acc = Number(d.tok.acc) || 0;
@@ -346,10 +405,70 @@ const LOOKS = {
         ctx.fillStyle = colour; rr(ctx, cx - 44, 172, 88, 11, 5.5); ctx.fill();
       });
     },
+    // Souei-Overlay: four counts, each over a short coloured tick
+    soueicounts(ctx, d, W, H) {
+      ctx.fillStyle = 'rgba(20,20,22,0.82)'; rr(ctx, 0, 0, W, H, 8); ctx.fill();
+      [[d.v.n300, '#3ddc4b'], [d.v.n100, '#ffd23f'], [d.v.n50, '#ff3b3b'], [d.v.nMiss, '#8a8a90']].forEach(([n, c], i) => {
+        const cx = 30 + i * 60;
+        ctx.fillStyle = c; rr(ctx, cx - 15, 7, 30, 3.5, 1.75); ctx.fill();
+        text(ctx, String(n), cx, H - 12, { size: 26, weight: 600, align: 'center', shadow: false });
+      });
+    },
+    // VictimCrasherOverlay: "16 x100 / 0 x50 / 0 x miss" in the bottom-right patch
+    victim(ctx, d, W, H) {
+      [[d.v.n100, 'x 100'], [d.v.n50, 'x 50'], [d.v.nMiss, 'x miss']].forEach(([n, label], i) => {
+        const y = H - 120 + i * 32;
+        text(ctx, String(n), W - 84, y, { size: 28, weight: 700, align: 'right' });
+        text(ctx, label, W - 78, y, { size: 16, weight: 600, fill: 'rgba(255,255,255,0.8)' });
+      });
+    },
     // classic by Dartandr: "0x100  0x50  0xMiss" in a dark pill
     classic(ctx, d, W, H) {
       ctx.fillStyle = 'rgba(0,0,0,0.6)'; rr(ctx, 0, 0, W, H, 10); ctx.fill();
       [`${d.v.n100}x100`, `${d.v.n50}x50`, `${d.v.nMiss}xMiss`].forEach((s, i) => text(ctx, s, W * (0.18 + i * 0.32), 29, { size: 21, align: 'center', shadow: false }));
+    },
+  },
+
+  combo: {
+    // SimpleOverlay by HosizoraN and Souei-Overlay: a big bold "33x"
+    simple(ctx, d, W, H) {
+      text(ctx, `${d.v.combo}x`, 4, H - 8, { size: 62, weight: 800, maxW: W - 8 });
+    },
+    // VictimCrasherOverlay: the bottom-left patch with a COMBO label
+    victim(ctx, d, W, H) {
+      blob(ctx, W, H, 'bl');
+      text(ctx, 'COMBO', 56, H - 82, { size: 16, weight: 700 });
+      text(ctx, String(d.v.combo), 14, H - 14, { size: 60, weight: 800, maxW: W - 70 });
+    },
+  },
+
+  score: {
+    // SimpleOverlay by HosizoraN: the score in groups of three, centred
+    simple(ctx, d, W, H) {
+      text(ctx, grouped(d.v.score), W / 2, H - 10, { size: 52, weight: 600, align: 'center', maxW: W - 8 });
+    },
+    // Souei-Overlay: the score as eight light digits
+    souei(ctx, d, W, H) {
+      text(ctx, String(Math.round(d.v.score)).padStart(8, '0'), W - 4, H - 8, { size: 40, weight: 300, align: 'right', maxW: W - 8 });
+    },
+  },
+
+  health: {
+    // VictimCrasherOverlay: a yellow-orange bar across the top labelled "Health"
+    victim(ctx, d, W, H) {
+      ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(0, 0, W, H);
+      const g = ctx.createLinearGradient(0, 0, W, 0); g.addColorStop(0, '#e68a00'); g.addColorStop(1, '#ffc928');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W * d.health, H);
+      text(ctx, 'Health', W / 2, H - 4, { size: H - 5, weight: 600, align: 'center', shadow: false });
+    },
+  },
+
+  progress: {
+    // SimpleOverlay by HosizoraN and Souei-Overlay: a thin white bar that fills, with a dot at the end
+    simple(ctx, d, W, H) {
+      ctx.fillStyle = 'rgba(255,255,255,0.18)'; rr(ctx, 0, H / 2 - 2.5, W, 5, 2.5); ctx.fill();
+      ctx.fillStyle = '#fff'; rr(ctx, 0, H / 2 - 2.5, Math.max(5, W * d.progress), 5, 2.5); ctx.fill();
+      ctx.beginPath(); ctx.arc(Math.max(5, W * d.progress), H / 2, 6, 0, Math.PI * 2); ctx.fill();
     },
   },
 

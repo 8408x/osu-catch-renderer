@@ -8,6 +8,7 @@ export const AUTHORS = {
   uwuclxdy: { github: 'https://github.com/uwuclxdy' },
   zeronic: { github: 'https://github.com/just-zeronic' },
   HosizoraN: { github: 'https://github.com/HosizoraN' },
+  VictimCrasher: { github: 'https://github.com/VictimCrasher' },
   rosekki: { github: 'https://github.com/jossomori' },
   Inlayo: { github: 'https://github.com/Inlayo' },
   Belikhun: { github: 'https://github.com/Belikhun' },
@@ -35,6 +36,7 @@ export const WIDGETS = {
       { id: 'kerli1', label: 'Kerli 1', credit: 'Kerli 1 by Dartandr', author: 'Dartandr', w: 794, h: 124 },
       { id: 'recomfortaa', label: 'reComfortaa', credit: 'reComfortaa by Dartandr', author: 'Dartandr', w: 900, h: 130 },
       { id: 'mapdisplay', label: 'Map Display', credit: 'Map Display by unknown', w: 1040, h: 86 },
+      { id: 'victim', label: 'VictimCrasherOverlay', credit: 'VictimCrasherOverlay by VictimCrasher', author: 'VictimCrasher', w: 400, h: 110 },
     ],
   },
   pp: {
@@ -46,6 +48,9 @@ export const WIDGETS = {
       { id: 'vertigo', label: 'vertigo', credit: 'vertigo by zeronic', author: 'zeronic', w: 170, h: 220 },
       { id: 'ppcounter', label: 'PP counter', credit: 'PP counter by unknown', w: 500, h: 85 },
       { id: 'ppbelikhun', label: 'PP', credit: 'PP by Belikhun', author: 'Belikhun', w: 460, h: 285 },
+      { id: 'simpleoverlay', label: 'SimpleOverlay', credit: 'SimpleOverlay by HosizoraN', author: 'HosizoraN', w: 330, h: 116 },
+      { id: 'soueipp', label: 'Souei-Overlay', credit: 'Souei-Overlay by -Souei', w: 190, h: 40 },
+      { id: 'victim', label: 'VictimCrasherOverlay', credit: 'VictimCrasherOverlay by VictimCrasher', author: 'VictimCrasher', w: 300, h: 290 },
       { id: 'ppblossom', label: 'PP Blossom', credit: 'PP Blossom by rosekki', author: 'rosekki', w: 330, h: 340 },
       { id: 'ingame2', label: 'InGame2', credit: 'InGame2 by Dartandr', author: 'Dartandr', w: 330, h: 92 },
       { id: 'oldclassic', label: 'OldClassic', credit: 'OldClassic by Dartandr', author: 'Dartandr', w: 500, h: 190 },
@@ -60,6 +65,9 @@ export const WIDGETS = {
       { id: 'rankacc', label: 'Rank and Accuracy', credit: 'Rank and Accuracy by Belikhun', author: 'Belikhun', w: 380, h: 152 },
       { id: 'argon', label: 'osu!lazer (Argon)', credit: 'osu!lazer (Argon skin) by ppy and contributors', author: 'ppy', system: 'argon', w: 138 * V, h: 40 * V },
       { id: 'stable', label: 'osu!stable', credit: 'osu!stable default HUD by peppy', author: 'peppy', system: 'stable', w: 176, h: 35 },
+      { id: 'simple', label: 'SimpleOverlay', credit: 'SimpleOverlay by HosizoraN', author: 'HosizoraN', w: 280, h: 56 },
+      { id: 'souei', label: 'Souei-Overlay', credit: 'Souei-Overlay by -Souei', w: 250, h: 56 },
+      { id: 'victim', label: 'VictimCrasherOverlay', credit: 'VictimCrasherOverlay by VictimCrasher', author: 'VictimCrasher', w: 340, h: 118 },
     ],
   },
   combo: {
@@ -68,6 +76,8 @@ export const WIDGETS = {
       { id: 'cpol', label: 'Combo', credit: 'Combo by unknown', w: 420 * 1.7, h: 44 * 1.7, tosu: true, pad: [0, 0.3, 0.4, 0.1] },
       { id: 'argon', label: 'osu!lazer (Argon)', credit: 'osu!lazer (Argon skin) by ppy and contributors', author: 'ppy', system: 'argon', w: 186 * V, h: 56 * V },
       { id: 'stable', label: 'osu!stable', credit: 'osu!stable default HUD by peppy', author: 'peppy', system: 'stable', w: 320, h: 84 },
+      { id: 'simple', label: 'SimpleOverlay / Souei-Overlay', credit: 'SimpleOverlay by HosizoraN; Souei-Overlay by -Souei', author: 'HosizoraN', w: 230, h: 76 },
+      { id: 'victim', label: 'VictimCrasherOverlay', credit: 'VictimCrasherOverlay by VictimCrasher', author: 'VictimCrasher', w: 230, h: 130 },
     ],
   },
   score: {
@@ -75,6 +85,8 @@ export const WIDGETS = {
     styles: [
       { id: 'argon', label: 'osu!lazer (Argon)', credit: 'osu!lazer (Argon skin) by ppy and contributors', author: 'ppy', system: 'argon', w: 180 * V, h: 23 * V },
       { id: 'stable', label: 'osu!stable', credit: 'osu!stable default HUD by peppy', author: 'peppy', system: 'stable', w: 336, h: 61 },
+      { id: 'simple', label: 'SimpleOverlay', credit: 'SimpleOverlay by HosizoraN', author: 'HosizoraN', w: 340, h: 66 },
+      { id: 'souei', label: 'Souei-Overlay', credit: 'Souei-Overlay by -Souei', w: 280, h: 54 },
     ],
   },
   health: {
@@ -82,6 +94,7 @@ export const WIDGETS = {
     styles: [
       { id: 'argon', label: 'osu!lazer (Argon)', credit: 'osu!lazer (Argon skin) by ppy and contributors', author: 'ppy', system: 'argon', w: 351 * V, h: 50 * V },
       { id: 'stable', label: 'osu!stable', credit: 'osu!stable default HUD by peppy', author: 'peppy', system: 'stable', w: 494, h: 30 },
+      { id: 'victim', label: 'VictimCrasherOverlay', credit: 'VictimCrasherOverlay by VictimCrasher', author: 'VictimCrasher', w: 1280, h: 22 },
     ],
   },
   keys: {
@@ -99,6 +112,8 @@ export const WIDGETS = {
       { id: 'hitcounts', label: 'HitCounts', credit: 'HitCounts by unknown', w: 350, h: 44 },
       { id: 'kerli2', label: 'Kerli 2', credit: 'Kerli 2 by Dartandr', author: 'Dartandr', w: 360, h: 190 },
       { id: 'classic', label: 'classic', credit: 'classic by Dartandr', author: 'Dartandr', w: 330, h: 44 },
+      { id: 'soueicounts', label: 'Souei-Overlay', credit: 'Souei-Overlay by -Souei', w: 250, h: 56 },
+      { id: 'victim', label: 'VictimCrasherOverlay', credit: 'VictimCrasherOverlay by VictimCrasher', author: 'VictimCrasher', w: 280, h: 190 },
     ],
   },
   progress: {
@@ -106,6 +121,7 @@ export const WIDGETS = {
     styles: [
       { id: 'argon', label: 'osu!lazer (Argon)', credit: 'osu!lazer (Argon skin) by ppy and contributors', author: 'ppy', system: 'argon', w: 700 * V, h: 38 * V },
       { id: 'stable', label: 'osu!stable (pie)', credit: 'osu!stable default HUD by peppy', author: 'peppy', system: 'stable', w: 30, h: 30 },
+      { id: 'simple', label: 'SimpleOverlay / Souei-Overlay', credit: 'SimpleOverlay by HosizoraN; Souei-Overlay by -Souei', author: 'HosizoraN', w: 900, h: 20 },
     ],
   },
 };
@@ -210,6 +226,15 @@ export const PRESETS = [
   { id: 'stable', name: 'osu!stable', build: () => fromRows([
     ['health', 'stable', 12, 9], ['score', 'stable', 1570, 1.5], ['acc', 'stable', 1720, 76], ['progress', 'stable', 1670, 77],
     ['combo', 'stable', 14, 982], ['keys', 'stable', 1859, 460]]) },
+  { id: 'simpleoverlay', name: 'SimpleOverlay (HosizoraN)', build: () => fromRows([
+    ['progress', 'simple', 20, 4], ['score', 'simple', 790, 14], ['acc', 'simple', 820, 82], ['pp', 'simpleoverlay', 8, 270],
+    ['combo', 'simple', 8, 980], ['keys', 'bars', 1738, 400]]) },
+  { id: 'souei', name: 'Souei-Overlay', build: () => fromRows([
+    ['progress', 'simple', 20, 6], ['score', 'souei', 1630, 8], ['acc', 'souei', 1660, 66], ['hits', 'soueicounts', 10, 950],
+    ['combo', 'simple', 10, 862], ['pp', 'soueipp', 865, 1030], ['keys', 'bars', 1738, 400]]) },
+  { id: 'victim', name: 'VictimCrasherOverlay', build: () => fromRows([
+    ['health', 'victim', 0, 0], ['title', 'victim', 0, 0], ['acc', 'victim', 1580, 0], ['combo', 'victim', 0, 950],
+    ['pp', 'victim', 1620, 790], ['hits', 'victim', 1640, 820], ['keys', 'stable', 1859, 460]]) },
 ];
 
 /** A layout file: `{ "app": "osu-catch-renderer", "layout": {...} }`, or a bare layout. Returns a layout or null. */
