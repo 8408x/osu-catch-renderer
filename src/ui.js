@@ -205,6 +205,7 @@ function initDrop() {
     give($('bgfile'), by.img.slice(0, 1));
     give($('audio'), by.map.slice(0, 1));
     if (by.osr.length || by.osu.length || by.map.length) document.getElementById('tab-files')?.click();
+    if (by.osu.length || by.map.length) { const d = $('audio')?.closest('details'); if (d) d.open = true; }   // so the files you dropped are visible
   });
 }
 

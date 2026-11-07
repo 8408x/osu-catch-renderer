@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="app-version" content="20261107v">
+  <meta name="app-version" content="20261107w">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>osu!catch Replay Renderer</title>
   <style>
@@ -204,21 +204,22 @@
         </div>
         <div class="group">
           <h3>Beatmap</h3>
-          <label class="field"><span>Beatmap set (.osz): map, music, storyboard and video in one file</span>
-            <input id="audio" type="file" accept=".osz,.zip,.mp3,.ogg,.oga,.wav,.m4a,.aac,.flac,.opus">
-            <small>Or just the song (mp3, ogg…) if you pick the difficulty below.</small>
+          <p class="note" style="margin:0 0 10px">The map is looked up and downloaded automatically from the replay. If that fails, paste its link or ID here.</p>
+          <label class="field"><span>Beatmap set link or ID</span>
+            <input id="mirrorid" type="text" placeholder="https://osu.ppy.sh/beatmapsets/123456  or  123456" autocomplete="off">
           </label>
-          <label class="field"><span>Single difficulty (.osu), the exact one you played</span>
-            <input id="osu" type="file" accept=".osu">
-          </label>
+          <div class="row" style="margin-bottom:10px"><button id="mirrorbtn" class="ghost" type="button" disabled>Download beatmap</button></div>
+          <div id="mirrorstatus"></div>
           <details>
-            <summary>No map file? Download it from a mirror</summary>
+            <summary>Unuploaded or custom map? Add the files yourself</summary>
             <div class="inner">
-              <label class="field"><span>Beatmap set link or ID (optional, if the automatic lookup fails)</span>
-                <input id="mirrorid" type="text" placeholder="https://osu.ppy.sh/beatmapsets/123456  or  123456" autocomplete="off">
+              <label class="field"><span>Beatmap set (.osz): map, music, storyboard and video in one file</span>
+                <input id="audio" type="file" accept=".osz,.zip,.mp3,.ogg,.oga,.wav,.m4a,.aac,.flac,.opus">
+                <small>Or just the song (mp3, ogg…) if you pick the difficulty below.</small>
               </label>
-              <div class="row" style="margin-bottom:10px"><button id="mirrorbtn" class="ghost" type="button" disabled>Download from mirror</button></div>
-              <div id="mirrorstatus"></div>
+              <label class="field"><span>Single difficulty (.osu), the exact one you played</span>
+                <input id="osu" type="file" accept=".osu">
+              </label>
             </div>
           </details>
         </div>
@@ -345,6 +346,6 @@
 <div class="dropveil" id="dropveil"><div>Drop files to load them<small>.osr replay · .osz map set · .osu · .osk skin · image · song</small></div></div>
 
 <script src="vendor/lzma-d-min.js"></script>
-<script type="module" src="src/main.js?v=20261107v"></script>
+<script type="module" src="src/main.js?v=20261107w"></script>
 </body>
 </html>

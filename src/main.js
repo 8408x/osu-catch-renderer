@@ -1,25 +1,25 @@
-import './ui.js?v=20261107v';
-import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261107v';
-import { parseOsu } from './osu.js?v=20261107v';
-import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261107v';
-import { compareWithReplay } from './score.js?v=20261107v';
-import { nightcoreBeats } from './nightcore.js?v=20261107v';
-import { ReplayTrack } from './replay.js?v=20261107v';
-import { drawFrame, loadOverlayFonts } from './render.js?v=20261107v';
-import { loadArgonFonts } from './argon.js?v=20261107v';
-import { TosuOverlays } from './tosu.js?v=20261107v';
-import { exportMp4, webCodecsAvailable } from './encode.js?v=20261107v';
-import { VERSION } from './version.js?v=20261107v';
-import { md5 } from './md5.js?v=20261107v';
-import { resolveRange } from './range.js?v=20261107v';
-import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261107v';
-import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261107v';
-import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261107v';
-import { BackgroundVideo } from './bgvideo.js?v=20261107v';
-import { buildKeys } from './keys.js?v=20261107v';
-import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261107v';
-import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261107v';
-import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261107v';
+import './ui.js?v=20261107w';
+import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261107w';
+import { parseOsu } from './osu.js?v=20261107w';
+import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261107w';
+import { compareWithReplay } from './score.js?v=20261107w';
+import { nightcoreBeats } from './nightcore.js?v=20261107w';
+import { ReplayTrack } from './replay.js?v=20261107w';
+import { drawFrame, loadOverlayFonts } from './render.js?v=20261107w';
+import { loadArgonFonts } from './argon.js?v=20261107w';
+import { TosuOverlays } from './tosu.js?v=20261107w';
+import { exportMp4, webCodecsAvailable } from './encode.js?v=20261107w';
+import { VERSION } from './version.js?v=20261107w';
+import { md5 } from './md5.js?v=20261107w';
+import { resolveRange } from './range.js?v=20261107w';
+import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261107w';
+import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261107w';
+import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261107w';
+import { BackgroundVideo } from './bgvideo.js?v=20261107w';
+import { buildKeys } from './keys.js?v=20261107w';
+import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261107w';
+import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261107w';
+import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261107w';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('stage');
@@ -379,7 +379,12 @@ $('osr').addEventListener('change', async (e) => {
   state.replay = state.replays[0]?.replay ?? null;
   fillReplayPick();
   refresh();
+  // No map yet: look it up from the replay's beatmap hash straight away (the Beatmap box can also take a link or ID).
+  if (state.replay && !state.osz && !state.osuBytes && !state.audioFile && !mirrorAbort && !$('mirrorid').value.trim()) $('mirrorbtn').click();
 });
+// Picking map files by hand wins over a lookup still in progress.
+let quietAbort = false;
+for (const id of ['audio', 'osu']) $(id).addEventListener('change', () => { if (mirrorAbort) { quietAbort = true; mirrorAbort.abort(); } });
 
 /** With several replays loaded: a picker for the one that is previewed, and the "render all" button. */
 function fillReplayPick() {
@@ -473,10 +478,11 @@ $('mirrorbtn').addEventListener('click', async () => {
     status.textContent = `Got beatmap set ${res.setId} from ${res.mirror} (${(res.bytes.length / 1e6).toFixed(1)} MB).`
       + (res.matched ? '' : ' It has no difficulty with exactly this replay\'s hash, so it may be a newer version of the map than the one you played.');
   } catch (err) {
-    status.textContent = err.name === 'AbortError' ? 'Download cancelled.' : err.message;
+    status.textContent = err.name === 'AbortError' ? (quietAbort ? '' : 'Download cancelled.') : err.message;
+    quietAbort = false;
   } finally {
     mirrorAbort = null;
-    $('mirrorbtn').textContent = 'Download from mirror';
+    $('mirrorbtn').textContent = 'Download beatmap';
     $('mirrorid').disabled = false;
     refresh();
   }

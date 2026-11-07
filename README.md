@@ -177,3 +177,7 @@ The finished MP4 is collected in 16 MB pieces rather than one big buffer, so lon
 ## Render speed
 
 The storyboard is drawn at 360p (up to 720p when the background dim is under 50%) and scaled up under the dim, because storyboard drawing cost is mostly fill rate. In a software-only test browser this halved the export time per frame with a storyboard (62 to 32 ms at 720p) and the picture differs from the full-size draw by at most 25 of 255 levels. Frames without a storyboard cost about 16 ms at 720p in the same browser, mostly the browser's own drawing and encoding, which a GPU and a hardware encoder do far faster.
+
+## Getting the map
+
+Picking a replay starts a download of its map straight away (found by the replay's beatmap hash). If that cannot find it, paste the beatmap set link or ID in the Beatmap box and press Download beatmap. For maps that are not uploaded or are custom, open "Unuploaded or custom map?" and add the .osz, or the song plus the .osu. Choosing your own files cancels a lookup that is still running.
