@@ -8,6 +8,8 @@ export const AUTHORS = {
   uwuclxdy: { github: 'https://github.com/uwuclxdy' },
   zeronic: { github: 'https://github.com/just-zeronic' },
   HosizoraN: { github: 'https://github.com/HosizoraN' },
+  Inlayo: { github: 'https://github.com/Inlayo' },
+  Belikhun: { github: 'https://github.com/Belikhun' },
   ppy: { github: 'https://github.com/ppy/osu', twitter: 'https://x.com/ppy', discord: 'https://discord.gg/ppy' },
   peppy: { github: 'https://github.com/peppy', twitter: 'https://x.com/ppy' },
 };
@@ -41,6 +43,8 @@ export const WIDGETS = {
       { id: 'ingame1', label: 'InGame1', credit: 'InGame1 by Dartandr', author: 'Dartandr', w: 260, h: 150 },
       { id: 'triangles', label: 'Triangles Lazer PP', credit: 'Triangles Lazer PP by uwuclxdy', author: 'uwuclxdy', w: 200, h: 90 },
       { id: 'vertigo', label: 'vertigo', credit: 'vertigo by zeronic', author: 'zeronic', w: 170, h: 220 },
+      { id: 'ppcounter', label: 'PP counter', credit: 'PP counter by unknown', w: 500, h: 85 },
+      { id: 'simplepp', label: 'simple pp counter', credit: 'simple pp counter by Inlayo', author: 'Inlayo', w: 150, h: 60 },
       { id: 'argon', label: 'osu!lazer (Argon)', credit: 'osu!lazer (Argon skin) by ppy and contributors', author: 'ppy', system: 'argon', w: 75 * V, h: 31 * V },
     ],
   },
@@ -48,6 +52,7 @@ export const WIDGETS = {
     label: 'Accuracy and rank', at: [1920 - 8 - 340 * 1.7, 0], on: true,
     styles: [
       { id: 'cpol', label: 'AccuracyPP', credit: 'AccuracyPP by unknown', w: 340 * 1.7, h: 80 * 1.7, tosu: true, pad: [0.5, 0.12, 0, 0.5] },
+      { id: 'rankacc', label: 'Rank and Accuracy', credit: 'Rank and Accuracy by Belikhun', author: 'Belikhun', w: 380, h: 152 },
       { id: 'argon', label: 'osu!lazer (Argon)', credit: 'osu!lazer (Argon skin) by ppy and contributors', author: 'ppy', system: 'argon', w: 138 * V, h: 40 * V },
       { id: 'stable', label: 'osu!stable', credit: 'osu!stable default HUD by peppy', author: 'peppy', system: 'stable', w: 176, h: 35 },
     ],

@@ -20,6 +20,9 @@ These looks are recreated natively on the canvas, as this site's own code, from 
 | Map details | Map Display | unknown |
 | pp counter | InGame1 | Dartandr |
 | pp counter | Triangles Lazer PP | uwuclxdy |
+| pp counter | PP counter | unknown |
+| pp counter | simple pp counter | Inlayo (https://github.com/Inlayo) |
+| Accuracy and rank | Rank and Accuracy | Belikhun (https://github.com/Belikhun) |
 | pp counter | vertigo | zeronic |
 | Hit counts | Kerli 2, classic | Dartandr |
 | Hit counts | HitCounts | unknown |

@@ -2,9 +2,9 @@
 // (credited in layout.js and CREDITS.md) in this site's own code; no overlay code or images are copied. A draw function
 // works in the style's natural size (see layout.js): the caller translates and scales the canvas to fit.
 
-import { tosuTokens } from './tosu.js?v=20261108h';
-import { hudAt } from './score.js?v=20261108h';
-import { keysAt } from './keys.js?v=20261108h';
+import { tosuTokens } from './tosu.js?v=20261108i';
+import { hudAt } from './score.js?v=20261108i';
+import { keysAt } from './keys.js?v=20261108i';
 
 const SANS = '"Exo 2", "Torus", "Segoe UI", system-ui, -apple-system, sans-serif';
 const MONO = '"Roboto Mono", ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace';
@@ -160,6 +160,27 @@ const LOOKS = {
       text(ctx, num, x0, 62, { size: 58, weight: 300, shadow: false });
       text(ctx, 'PP', x0 + nw + 8, 62, { size: 26, shadow: false });
     },
+    // PP counter (author unknown): a pill with the map picture, the hit segments on the left and the pp on the right
+    ppcounter(ctx, d, W, H) {
+      cover(ctx, d.bg, 0, 0, W, H, H / 2, 0.45);
+      const segs = [[d.v.n100, 'rgba(50,205,50,0.67)'], [d.v.n50, 'rgba(138,43,226,0.67)'], [d.v.nMiss, 'rgba(255,69,0,0.67)']];
+      const sw = 78;
+      ctx.save();
+      rr(ctx, 0, 0, W, H, H / 2); ctx.clip();
+      segs.forEach(([n, fill], i) => {
+        ctx.fillStyle = fill;
+        ctx.beginPath(); ctx.rect(i * sw, 0, sw, H);
+        ctx.fill();
+        text(ctx, String(n), i * sw + sw / 2, H / 2 + 7, { size: 22, weight: 700, align: 'center', shadow: false });
+      });
+      ctx.restore();
+      text(ctx, `${d.pp}pp`, W - 40, H / 2 + 14, { size: 40, weight: 700, align: 'right' });
+    },
+    // simple pp counter by Inlayo: white pp on a translucent black rounded box
+    simplepp(ctx, d, W, H) {
+      ctx.fillStyle = 'rgba(0,0,0,0.67)'; rr(ctx, 0, 0, W, H, 15); ctx.fill();
+      text(ctx, `${d.pp}pp`, W / 2, H / 2 + 17, { size: 50, weight: 400, align: 'center', maxW: W - 16, shadow: false });
+    },
     // vertigo by zeronic: two outlined boxes, pp if the rest is a full combo and pp now
     vertigo(ctx, d, W, H) {
       ctx.fillStyle = 'rgba(32,32,38,0.88)'; rr(ctx, 0, 0, W, H, 24); ctx.fill();
@@ -172,6 +193,21 @@ const LOOKS = {
     },
   },
 
+  acc: {
+    // Rank and Accuracy by Belikhun: a dark panel with the rank and the accuracy, each over a small label
+    rankacc(ctx, d, W, H) {
+      const grade = d.tok.grade || '', acc = Number(d.tok.acc) || 0;
+      const colour = /^SS?H?$/.test(grade) ? (grade.includes('S') && grade.length > 1 && grade[0] === 'S' && grade[1] === 'S' ? '#f6f6f6' : '#f6c21c') : grade === 'A' ? '#88b400' : grade === 'B' ? '#44aadd' : grade === 'C' ? '#ff66aa' : grade ? '#dd2d44' : '#485e74';
+      [[0, 'rank'], [W / 2 + 6, 'accuracy']].forEach(([x, label], i) => {
+        ctx.fillStyle = 'rgba(33,33,33,0.9)'; rr(ctx, x, 0, W / 2 - 6, H, 8); ctx.fill();
+        text(ctx, label, x + 16, 28, { size: 16, weight: 400, fill: 'rgba(255,255,255,0.8)', shadow: false });
+        text(ctx, i === 0 ? (grade || '---') : `${acc.toFixed(2)}%`, x + 16, 82, { size: 40, weight: 900, fill: i === 0 ? colour : '#fff', maxW: W / 2 - 38, shadow: false });
+      });
+      const bx = W / 2 + 22, bw = W / 2 - 38;
+      ctx.fillStyle = 'rgba(255,255,255,0.2)'; rr(ctx, bx, 110, bw, 10, 5); ctx.fill();
+      ctx.fillStyle = '#44aadd'; rr(ctx, bx, 110, Math.max(10, bw * Math.max(0, Math.min(1, (acc - 80) / 20))), 10, 5); ctx.fill();
+    },
+  },
   hits: {
     // this site's own four labelled counters: fruits, droplets, tiny droplets, misses
     plain(ctx, d, W, H) {
