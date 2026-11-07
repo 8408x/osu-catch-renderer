@@ -1,7 +1,7 @@
 // Reading a beatmap set (.osz = zip): the difficulties (.osu) and the song audio.
 
 import { unzipSync } from '../vendor/fflate.mjs';
-import { md5 } from './md5.js?v=20261107r';
+import { md5 } from './md5.js?v=20261107s';
 
 const AUDIO_EXT = /\.(mp3|ogg|oga|wav|m4a|aac|flac|opus)$/i;
 const MAX_AUDIO_BYTES = 200 * 1024 * 1024;

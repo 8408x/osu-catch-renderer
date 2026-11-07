@@ -3,8 +3,8 @@
 // The clock is a fixed timestep (frame i = i / fps), so rendering is not tied to real time
 // and the output has perfectly even frame timing.
 
-import { Muxer, ArrayBufferTarget } from '../vendor/mp4-muxer.mjs';
-import { SAMPLE_RATE } from './audio.js?v=20261107r';
+import { Muxer, StreamTarget } from '../vendor/mp4-muxer.mjs';
+import { SAMPLE_RATE } from './audio.js?v=20261107s';
 
 // Tried in order; the first one this browser can encode wins.
 const CANDIDATES = [
@@ -138,8 +138,11 @@ export async function exportMp4({ canvas, drawAt, startTime, endTime, rate = 1, 
     if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError');
   }
 
+  // Collect the file as separate 16 MB pieces instead of one growing ArrayBuffer: a long 1080p render is hundreds of
+  // MB, and a single buffer that size (doubled while it grows) is what fails with "Array buffer allocation failed".
+  const pieces = [];
   const muxer = new Muxer({
-    target: new ArrayBufferTarget(),
+    target: new StreamTarget({ onData: (data, position) => pieces.push({ position, data: data.slice() }), chunked: true, chunkSize: 16 * 1024 * 1024 }),
     video: { codec: picked.mux, width, height, frameRate: fps },
     ...(audio ? { audio: { codec: audioPicked.mux, numberOfChannels: 2, sampleRate: audio.sampleRate } } : {}),
     fastStart: 'in-memory',
@@ -186,8 +189,14 @@ export async function exportMp4({ canvas, drawAt, startTime, endTime, rate = 1, 
 
   muxer.finalize();
   onProgress?.(1);
+  pieces.sort((a, b) => a.position - b.position);
+  let at = 0;
+  for (const piece of pieces) {
+    if (piece.position !== at) throw new Error('Internal error: the MP4 pieces do not line up.');
+    at += piece.data.byteLength;
+  }
   return {
-    blob: new Blob([muxer.target.buffer], { type: 'video/mp4' }),
+    blob: new Blob(pieces.map((x) => x.data), { type: 'video/mp4' }),
     codec: audio ? `${picked.label} + ${audioPicked.label}` : picked.label,
     frames: total,
     seconds: durationSec,

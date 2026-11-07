@@ -169,3 +169,7 @@ Preview speed: the *Preview quality* setting only changes the size of the on-scr
 ## The page layout
 
 The page is a single-screen studio: the preview and its transport bar fill the left, and a settings panel with four tabs (Files, Look, Sound, Render) sits on the right, so nothing needs scrolling to change a setting. Render MP4, Render all, Cancel and the progress line live in the top bar. Messages and finished videos open in trays over the preview (the Messages and Renders buttons), and an error opens the tray by itself. Chips under the stage summarise the loaded replay, map, music and skin. You can drop files anywhere on the page and each goes to the right picker. Space plays and pauses. Resolution, frame rate, bitrate, overlay style, preview quality and the dim and volume sliders are remembered between visits. On a phone the preview stays pinned at the top while the settings scroll beneath it. The page chrome is in `src/ui.js`; it never touches rendering.
+
+## Long renders and memory
+
+The finished MP4 is collected in 16 MB pieces rather than one big buffer, so long, high-bitrate renders no longer fail with "Array buffer allocation failed". The whole file is still held in memory until you download it (about 90 MB per minute at 12 Mbps), so for very long maps lower the bitrate, render a range, or split the map.

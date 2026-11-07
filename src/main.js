@@ -1,25 +1,25 @@
-import './ui.js?v=20261107r';
-import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261107r';
-import { parseOsu } from './osu.js?v=20261107r';
-import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261107r';
-import { compareWithReplay } from './score.js?v=20261107r';
-import { nightcoreBeats } from './nightcore.js?v=20261107r';
-import { ReplayTrack } from './replay.js?v=20261107r';
-import { drawFrame, loadOverlayFonts } from './render.js?v=20261107r';
-import { loadArgonFonts } from './argon.js?v=20261107r';
-import { TosuOverlays } from './tosu.js?v=20261107r';
-import { exportMp4, webCodecsAvailable } from './encode.js?v=20261107r';
-import { VERSION } from './version.js?v=20261107r';
-import { md5 } from './md5.js?v=20261107r';
-import { resolveRange } from './range.js?v=20261107r';
-import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261107r';
-import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261107r';
-import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261107r';
-import { BackgroundVideo } from './bgvideo.js?v=20261107r';
-import { buildKeys } from './keys.js?v=20261107r';
-import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261107r';
-import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261107r';
-import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261107r';
+import './ui.js?v=20261107s';
+import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261107s';
+import { parseOsu } from './osu.js?v=20261107s';
+import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261107s';
+import { compareWithReplay } from './score.js?v=20261107s';
+import { nightcoreBeats } from './nightcore.js?v=20261107s';
+import { ReplayTrack } from './replay.js?v=20261107s';
+import { drawFrame, loadOverlayFonts } from './render.js?v=20261107s';
+import { loadArgonFonts } from './argon.js?v=20261107s';
+import { TosuOverlays } from './tosu.js?v=20261107s';
+import { exportMp4, webCodecsAvailable } from './encode.js?v=20261107s';
+import { VERSION } from './version.js?v=20261107s';
+import { md5 } from './md5.js?v=20261107s';
+import { resolveRange } from './range.js?v=20261107s';
+import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261107s';
+import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261107s';
+import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261107s';
+import { BackgroundVideo } from './bgvideo.js?v=20261107s';
+import { buildKeys } from './keys.js?v=20261107s';
+import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261107s';
+import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261107s';
+import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261107s';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('stage');
@@ -896,7 +896,7 @@ async function runExports(batch) {
       $('status').textContent = `Done: ${made} of ${jobs.length} videos in ${secs} s.${skipped.length ? ` Skipped (no matching difficulty): ${skipped.join(', ')}.` : ''}`;
     }
   } catch (err) {
-    $('status').textContent = err.name === 'AbortError' ? `Cancelled${made ? ` after ${made} finished video${made === 1 ? '' : 's'}` : ''}.` : `Export failed: ${err.message}`;
+    $('status').textContent = err.name === 'AbortError' ? `Cancelled${made ? ` after ${made} finished video${made === 1 ? '' : 's'}` : ''}.` : `Export failed: ${err.message}${/allocation|memory/i.test(err.message) ? ' The browser ran out of memory. Lower the bitrate or resolution, or render a shorter range, and close other tabs.' : ''}`;
   } finally {
     setBusy(false);
     $('bar').value = 0;
