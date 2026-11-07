@@ -23,6 +23,7 @@ These looks are recreated natively on the canvas, as this site's own code, from 
 | pp counter | PP counter | unknown |
 | pp counter | simple pp counter | Inlayo (https://github.com/Inlayo) |
 | pp counter | PP | Belikhun (https://github.com/Belikhun) |
+| pp counter | PP Blossom | rosekki (https://github.com/jossomori, MIT) |
 | pp counter | InGame2 | Dartandr |
 | pp counter | OldClassic | Dartandr |
 | Accuracy and rank | Rank and Accuracy | Belikhun (https://github.com/Belikhun) |
@@ -37,8 +38,6 @@ These looks are recreated natively on the canvas, as this site's own code, from 
 ## Planned styles, by type
 
 **Full gameplay HUDs:** ANON OVERLAY (ANON TOKYO, https://github.com/FukutoTojido, CC BY-ND 4.0), EvosOverlay and SonataOverlay (Paraliyzed_evo, https://github.com/Paraliyzedevo, GPL-3.0), Luscent Remake and osuLike Overlay (Dartandr), paradox (mofuries, https://github.com/mofuries), SimpleOverlay (HosizoraN, https://github.com/shinomimi), Souei-Overlay (-Souei), VictimCrasherOverlay (VictimCrasher, https://github.com/VictimCrasher).
-
-**PP counters:** PP Blossom (rosekki, https://github.com/jossomori, MIT).
 
 **Map details:** Map Display and Map Overlay (unknown), Kerli 1 and reComfortaa (Dartandr).
 

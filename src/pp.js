@@ -213,6 +213,21 @@ export function maxPerformance(scene, diff) {
     { n300, n100, n50, nKatu: 0, nMiss: 0, maxCombo: diff.maxCombo }, { mods: scene.mods ?? 0, ar: scene.ar });
 }
 
+/** pp of a full-combo play of the whole map at a given accuracy (0..1): tiny droplets are lost first, then droplets. */
+export function ppAtAccuracy(scene, diff, acc) {
+  let n300 = 0, n100 = 0, n50 = 0;
+  for (const o of scene.objects) {
+    if (o.kind === 'fruit') n300++; else if (o.kind === 'droplet') n100++; else if (o.kind === 'tiny') n50++;
+  }
+  const total = n300 + n100 + n50;
+  let lost = Math.max(0, total - Math.round(clamp(acc, 0, 1) * total));
+  const tinyMiss = Math.min(lost, n50); lost -= tinyMiss;
+  const dropMiss = Math.min(lost, n100); lost -= dropMiss;
+  return catchPerformance({ star: diff.star, maxCombo: diff.maxCombo },
+    { n300: n300 - lost, n100: n100 - dropMiss, n50: n50 - tinyMiss, nKatu: tinyMiss, nMiss: dropMiss + lost, maxCombo: Math.max(0, diff.maxCombo - dropMiss - lost) },
+    { mods: scene.mods ?? 0, ar: scene.ar });
+}
+
 /** Live pp at time t, from the HUD entry (`v` = hudAt(...)) and the star rating after the latest top-level object. */
 export function livePp(diff, scene, v, t) {
   const steps = diff.steps;

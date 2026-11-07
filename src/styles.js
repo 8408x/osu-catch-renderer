@@ -2,10 +2,10 @@
 // (credited in layout.js and CREDITS.md) in this site's own code; no overlay code or images are copied. A draw function
 // works in the style's natural size (see layout.js): the caller translates and scales the canvas to fit.
 
-import { tosuTokens } from './tosu.js?v=20261108p';
-import { hudAt } from './score.js?v=20261108p';
-import { livePp } from './pp.js?v=20261108p';
-import { keysAt } from './keys.js?v=20261108p';
+import { tosuTokens } from './tosu.js?v=20261108q';
+import { hudAt } from './score.js?v=20261108q';
+import { livePp, ppAtAccuracy } from './pp.js?v=20261108q';
+import { keysAt } from './keys.js?v=20261108q';
 
 const SANS = '"Exo 2", "Torus", "Segoe UI", system-ui, -apple-system, sans-serif';
 const MONO = '"Roboto Mono", ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace';
@@ -236,6 +236,24 @@ const LOOKS = {
       [['miss', '#ff8fa3', 24], ['pp if fc', '#e2b0ff', 96], ['pp', '#4cb8ff', 196]].forEach(([label, c, x]) => {
         ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, H - 22, 6, 0, Math.PI * 2); ctx.fill();
         text(ctx, label, x + 12, H - 17, { size: 14, weight: 400, fill: c, shadow: false });
+      });
+    },
+    // PP Blossom by rosekki: the title, a row of map stats and the pp a full combo would give at 100% down to 95%
+    ppblossom(ctx, d, W, H) {
+      const pill = (y, h, w) => { ctx.fillStyle = 'rgba(24,24,26,0.88)'; rr(ctx, (W - w) / 2, y, w, h, h / 2); ctx.fill(); };
+      pill(0, 58, W);
+      text(ctx, `${d.artist} - ${d.title}`, W / 2, 26, { size: 17, weight: 700, align: 'center', maxW: W - 40, shadow: false });
+      text(ctx, `Difficulty: ${d.diff} - Mapped by ${d.mapper}`, W / 2, 46, { size: 12, weight: 400, fill: 'rgba(255,255,255,0.8)', align: 'center', maxW: W - 40, shadow: false });
+      pill(68, 34, W - 24);
+      const stats = [`★ ${d.stars.toFixed(2)}`, `♩ ${Math.round(d.bpm)}`, `⏱ ${clock(d.length)}`, `AR ${fmt1(d.ar)}`, `CS ${fmt1(d.cs)}`, `HP ${fmt1(d.hp)}`];
+      stats.forEach((s2, i) => text(ctx, s2, 12 + (W - 24) * ((i + 0.5) / stats.length) + 0, 91, { size: 12, weight: 600, align: 'center', shadow: false }));
+      ctx.fillStyle = 'rgba(24,24,26,0.88)'; rr(ctx, 24, 114, W - 48, H - 114, 20); ctx.fill();
+      const rows = d.scene.diff ? [100, 99, 98, 97, 96, 95] : [];
+      rows.forEach((a, i) => {
+        const y = 150 + i * 31;
+        text(ctx, `${a}%`, 52, y, { size: 19, weight: 800, shadow: false });
+        text(ctx, '→', W / 2, y, { size: 16, weight: 400, fill: 'rgba(255,255,255,0.55)', align: 'center', shadow: false });
+        text(ctx, `${Math.round(ppAtAccuracy(d.scene, d.scene.diff, a / 100))}pp`, W - 52, y, { size: 19, weight: 800, align: 'right', shadow: false });
       });
     },
     // InGame2 by Dartandr: a thin progress bar over three counts with coloured dots, and the pp
