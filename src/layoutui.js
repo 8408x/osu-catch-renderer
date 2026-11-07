@@ -1,7 +1,7 @@
 // The Layout tab and dragging on the preview. Owns the layout object (saved in localStorage); main.js hands it to
 // drawFrame. Pure UI: nothing here draws a frame.
 
-import { WIDGETS, AUTHORS, styleInfo, ORDER, MIN_SCALE, MAX_SCALE, defaultLayout, normalizeLayout, rectOf, hitTest, clampPosition, snapPosition } from './layout.js?v=20261108g';
+import { PRESETS, parseLayoutFile, layoutFileText, WIDGETS, AUTHORS, styleInfo, ORDER, MIN_SCALE, MAX_SCALE, defaultLayout, normalizeLayout, rectOf, hitTest, clampPosition, snapPosition } from './layout.js?v=20261108h';
 
 const ICONS = {
   github: '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.89-1.17-.89-1.17-.73-.5.05-.49.05-.49.8.06 1.23.83 1.23.83.71 1.22 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.65-.89-3.65-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>',
@@ -29,7 +29,9 @@ function creditLine(st) {
   return el;
 }
 
-const KEY = 'ocr.layout';
+const KEY = 'ocr.layout', PKEY = 'ocr.presets';
+const loadPresets = () => { try { const o = JSON.parse(localStorage.getItem(PKEY)); return o && typeof o === 'object' ? o : {}; } catch { return {}; } };
+const savePresets = (o) => { try { localStorage.setItem(PKEY, JSON.stringify(o)); } catch { /* storage blocked */ } };
 const load = () => { try { return normalizeLayout(JSON.parse(localStorage.getItem(KEY))); } catch { return defaultLayout(); } };
 const save = (l) => { try { localStorage.setItem(KEY, JSON.stringify(l)); } catch { /* storage blocked */ } };
 
@@ -46,6 +48,21 @@ export function initLayoutEditor({ canvas, pane, editable, redraw }) {
 
   // ---- the pane ----
   pane.innerHTML = `
+    <div class="group">
+      <h3>Layouts</h3>
+      <label class="field"><span>Load a layout</span><select id="presetsel"></select></label>
+      <div class="row">
+        <input type="text" id="presetname" placeholder="Name to save the current layout as" maxlength="40" style="flex:1;min-width:0">
+        <button type="button" class="ghost small" id="presetsave">Save</button>
+      </div>
+      <div class="row">
+        <button type="button" class="ghost small" id="presetdel">Delete saved</button>
+        <button type="button" class="ghost small" id="presetexport">Export file</button>
+        <button type="button" class="ghost small" id="presetimport">Import file</button>
+        <input type="file" id="presetfile" accept=".json,application/json" hidden>
+      </div>
+      <p class="note" id="presetmsg" style="margin:6px 0 0"></p>
+    </div>
     <div class="group">
       <h3>Widgets</h3>
       <p class="note" id="layoutnote" style="margin:0 0 10px"></p>
@@ -119,6 +136,61 @@ export function initLayoutEditor({ canvas, pane, editable, redraw }) {
     $('widgetprops').style.opacity = c.on ? '1' : '0.5';
   };
   const changed = () => { save(layout); sync(); redraw(); };
+
+  // ---- saved layouts, built-in layouts, and layout files ----
+  const saved = loadPresets();
+  const say = (m) => { $('presetmsg').textContent = m; };
+  const fillPresets = (pick = '') => {
+    const sel = $('presetsel');
+    sel.replaceChildren(new Option('Choose…', ''), ...PRESETS.map((p) => new Option(p.name, `b:${p.id}`)),
+      ...Object.keys(saved).map((n) => new Option(`${n} (saved)`, `s:${n}`)));
+    sel.value = pick;
+    $('presetdel').disabled = !pick.startsWith('s:');
+  };
+  const applyLayout = (l) => { Object.assign(layout, normalizeLayout(l)); ui.selected = ORDER.find((id) => layout[id].on) ?? ORDER[0]; changed(); };
+  $('presetsel').addEventListener('change', (e) => {
+    const v = e.target.value;
+    if (v.startsWith('b:')) applyLayout(PRESETS.find((p) => p.id === v.slice(2)).build());
+    else if (v.startsWith('s:') && saved[v.slice(2)]) applyLayout(saved[v.slice(2)]);
+    $('presetdel').disabled = !v.startsWith('s:');
+    say(v ? `Loaded ${v.slice(2)}.` : '');
+  });
+  $('presetsave').addEventListener('click', () => {
+    const name = $('presetname').value.trim();
+    if (!name) { say('Type a name first.'); return; }
+    saved[name] = JSON.parse(JSON.stringify(layout));
+    savePresets(saved);
+    $('presetname').value = '';
+    fillPresets(`s:${name}`);
+    say(`Saved ${name}.`);
+  });
+  $('presetdel').addEventListener('click', () => {
+    const v = $('presetsel').value;
+    if (!v.startsWith('s:')) return;
+    delete saved[v.slice(2)];
+    savePresets(saved);
+    fillPresets();
+    say('Deleted.');
+  });
+  $('presetexport').addEventListener('click', () => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([layoutFileText(layout)], { type: 'application/json' }));
+    a.download = 'catch-layout.json';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    say('Exported catch-layout.json.');
+  });
+  $('presetimport').addEventListener('click', () => $('presetfile').click());
+  $('presetfile').addEventListener('change', async (e) => {
+    const f = e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    const l = parseLayoutFile(await f.text());
+    if (!l) { say('That file is not a layout.'); return; }
+    applyLayout(l);
+    say(`Imported ${f.name}.`);
+  });
+  fillPresets();
 
   // keep the widget's top-left where it was; only pull it back if the new look would leave the frame
   const fitStyle = () => {

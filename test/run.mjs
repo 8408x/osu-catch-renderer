@@ -1714,6 +1714,28 @@ await test('custom styles: every non-tosu look exists, draws in its own box, and
   near(L.rectOf('title', n, 1920, 1080)[2], 794);
 });
 
+await test('layout presets and files: built-ins are valid and on screen, files round-trip, junk is rejected', async () => {
+  const L = await import('../src/layout.js');
+  assert.deepEqual(L.PRESETS.map((p) => p.id), ['cpol', 'lazer', 'stable']);
+  for (const p of L.PRESETS) {
+    const l = p.build();
+    assert.deepEqual(L.normalizeLayout(l), l, `${p.id} is already normalized`);
+    assert.ok(ORDER_ON(L, l) > 3, `${p.id} shows widgets`);
+    for (const id of L.ORDER) {
+      if (!l[id].on) continue;
+      const [x, y, w, h] = L.rectOf(id, l, 1920, 1080);
+      assert.ok(x >= -1 && y >= -1 && x + w <= 1925 && y + h <= 1085, `${p.id}/${id} fits the frame: ${[x, y, w, h].map(Math.round)}`);
+    }
+  }
+  assert.equal(L.PRESETS[2].build().acc.style, 'stable');
+  const l = L.PRESETS[1].build();
+  assert.deepEqual(L.parseLayoutFile(L.layoutFileText(l)), l);
+  assert.deepEqual(L.parseLayoutFile(JSON.stringify(l)), l);
+  assert.equal(L.parseLayoutFile('nope'), null);
+  assert.equal(L.parseLayoutFile('{"a":1}'), null);
+  function ORDER_ON(M, lay) { return M.ORDER.filter((id) => lay[id].on).length; }
+});
+
 await test('custom layout: defaults match the old overlay places, bad data is repaired, hit-testing and snapping work', async () => {
   const L = await import('../src/layout.js');
   const d = L.defaultLayout();

@@ -181,3 +181,33 @@ export function snapPosition(id, cfg, x, y, W, H) {
   };
   return [tryAxis(x, fw, 'x'), tryAxis(y, fh, 'y'), guides];
 }
+
+/** Build a layout from `[id, style, x, y, on, scale]` rows (x, y: top-left of the visible part in px on a 1920x1080 frame). */
+function fromRows(rows) {
+  const l = defaultLayout();
+  for (const id of ORDER) l[id].on = false;
+  for (const [id, style, x, y, on = true, s = 1] of rows) l[id] = { on, x: x / 1920, y: y / 1080, s, style };
+  return normalizeLayout(l);
+}
+
+/** Layouts that ship with the site. `name` is what the menu shows. */
+export const PRESETS = [
+  { id: 'cpol', name: 'CPOL (default)', build: () => defaultLayout() },
+  { id: 'lazer', name: 'osu!lazer (Argon)', build: () => fromRows([
+    ['health', 'argon', 0, 28], ['score', 'argon', 98, 76], ['acc', 'argon', 1697, 30], ['pp', 'argon', 1786, 103],
+    ['combo', 'argon', 56, 910], ['progress', 'argon', 468, 1012], ['keys', 'argon', 1664, 858]]) },
+  { id: 'stable', name: 'osu!stable', build: () => fromRows([
+    ['health', 'stable', 12, 9], ['score', 'stable', 1570, 1.5], ['acc', 'stable', 1720, 76], ['progress', 'stable', 1670, 77],
+    ['combo', 'stable', 14, 982], ['keys', 'stable', 1859, 460]]) },
+];
+
+/** A layout file: `{ "app": "osu-catch-renderer", "layout": {...} }`, or a bare layout. Returns a layout or null. */
+export function parseLayoutFile(text) {
+  let raw;
+  try { raw = JSON.parse(text); } catch { return null; }
+  const l = raw && typeof raw === 'object' && raw.layout && typeof raw.layout === 'object' ? raw.layout : raw;
+  if (!l || typeof l !== 'object' || !ORDER.some((id) => l[id] && typeof l[id] === 'object')) return null;
+  return normalizeLayout(l);
+}
+
+export const layoutFileText = (layout) => JSON.stringify({ app: 'osu-catch-renderer', version: 1, layout }, null, 2);
