@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="app-version" content="20261107p">
+  <meta name="app-version" content="20261107q">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>osu!catch Replay Renderer</title>
   <style>
@@ -19,6 +19,7 @@
     button { background:var(--accent); color:#0b1020; border:0; border-radius:8px; padding:9px 16px; font:inherit; font-weight:600; cursor:pointer; }
     button.ghost { background:transparent; color:var(--text); border:1px solid var(--line); }
     button:disabled { opacity:.4; cursor:not-allowed; }
+    [hidden] { display:none !important; }
     canvas { width:100%; height:auto; display:block; border-radius:10px; background:#0a0b10; }
     .controls { display:flex; gap:10px; align-items:center; margin-top:10px; }
     .controls input[type=range] { flex:1; }
@@ -39,8 +40,11 @@
 
   <section class="panel">
     <div class="row">
-      <label>Replay (.osr)
-        <input id="osr" type="file" accept=".osr">
+      <label>Replay (.osr), pick several to render them all
+        <input id="osr" type="file" accept=".osr" multiple>
+      </label>
+      <label id="replaypickwrap" hidden>Previewing
+        <select id="replaypick"></select>
       </label>
       <label>Beatmap difficulty (.osu), the exact one you played
         <input id="osu" type="file" accept=".osu">
@@ -141,9 +145,22 @@
     <p id="prevnote" class="dim" style="margin:0 0 10px;font-size:13px"></p>
     <div class="controls" style="margin-top:0">
       <button id="export" disabled>Render MP4</button>
+      <button id="exportall" disabled hidden>Render all replays</button>
       <button id="cancel" class="ghost" disabled>Cancel</button>
       <span id="status" class="dim"></span>
     </div>
+    <div class="controls" style="margin-top:12px">
+      <label>Render from (m:ss)
+        <input id="rangefrom" type="text" placeholder="start" autocomplete="off" style="width:90px">
+      </label>
+      <button id="rangefromnow" type="button" class="ghost">Use preview time</button>
+      <label>to
+        <input id="rangeto" type="text" placeholder="end" autocomplete="off" style="width:90px">
+      </label>
+      <button id="rangetonow" type="button" class="ghost">Use preview time</button>
+      <button id="rangeclear" type="button" class="ghost">Whole map</button>
+    </div>
+    <p id="rangenote" class="dim" style="margin:6px 0 0;font-size:13px"></p>
     <progress id="bar" max="1" value="0" style="margin-top:12px"></progress>
     <div id="result"></div>
   </section>
@@ -151,6 +168,6 @@
 <footer id="ver" class="dim" style="max-width:960px;margin:0 auto;padding:0 16px 24px;font-size:12px"></footer>
 
 <script src="vendor/lzma-d-min.js"></script>
-<script type="module" src="src/main.js?v=20261107p"></script>
+<script type="module" src="src/main.js?v=20261107q"></script>
 </body>
 </html>

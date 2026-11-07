@@ -1,30 +1,31 @@
-import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261107p';
-import { parseOsu } from './osu.js?v=20261107p';
-import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261107p';
-import { compareWithReplay } from './score.js?v=20261107p';
-import { nightcoreBeats } from './nightcore.js?v=20261107p';
-import { ReplayTrack } from './replay.js?v=20261107p';
-import { drawFrame, loadOverlayFonts } from './render.js?v=20261107p';
-import { loadArgonFonts } from './argon.js?v=20261107p';
-import { TosuOverlays } from './tosu.js?v=20261107p';
-import { exportMp4, webCodecsAvailable } from './encode.js?v=20261107p';
-import { VERSION } from './version.js?v=20261107p';
-import { md5 } from './md5.js?v=20261107p';
-import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261107p';
-import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261107p';
-import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261107p';
-import { BackgroundVideo } from './bgvideo.js?v=20261107p';
-import { buildKeys } from './keys.js?v=20261107p';
-import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261107p';
-import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261107p';
-import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261107p';
+import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261107q';
+import { parseOsu } from './osu.js?v=20261107q';
+import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261107q';
+import { compareWithReplay } from './score.js?v=20261107q';
+import { nightcoreBeats } from './nightcore.js?v=20261107q';
+import { ReplayTrack } from './replay.js?v=20261107q';
+import { drawFrame, loadOverlayFonts } from './render.js?v=20261107q';
+import { loadArgonFonts } from './argon.js?v=20261107q';
+import { TosuOverlays } from './tosu.js?v=20261107q';
+import { exportMp4, webCodecsAvailable } from './encode.js?v=20261107q';
+import { VERSION } from './version.js?v=20261107q';
+import { md5 } from './md5.js?v=20261107q';
+import { resolveRange } from './range.js?v=20261107q';
+import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261107q';
+import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261107q';
+import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261107q';
+import { BackgroundVideo } from './bgvideo.js?v=20261107q';
+import { buildKeys } from './keys.js?v=20261107q';
+import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261107q';
+import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261107q';
+import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261107q';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('stage');
 const ctx = canvas.getContext('2d');
 
 const state = {
-  replay: null, osuBytes: null, beatmap: null, beatmapFrom: null, // beatmapFrom: 'file' (picked .osu) | 'osz' (matched in the .osz)
+  replay: null, replays: [], osuBytes: null, beatmap: null, beatmapFrom: null, // beatmapFrom: 'file' (picked .osu) | 'osz' (matched in the .osz)
   scene: null, track: null, t: 0,
   loadErrors: { osr: null, osu: null, audio: null },
   defaultSkin: null, skin: null, skinMsgs: [],
@@ -230,8 +231,8 @@ function refresh() {
   if (music?.error) msgs.push(['warn', `No music: ${music.error}`]);
   else if (music) msgs.push(['ok', `Music: ${music.name}${state.osz && !state.audioFile ? ` (from ${state.osz.name})` : ''}`]);
   else if (state.osz && !beatmap) msgs.push(['dim', 'Music will be taken from the .osz once the replay is matched to a difficulty.']);
-  $('usemusic').disabled = !music?.bytes;
-  $('mirrorbtn').disabled = !state.replay;
+  $('usemusic').disabled = exporting || !music?.bytes;
+  $('mirrorbtn').disabled = exporting || !state.replay;
 
   msgs.push(...state.skinMsgs);
 
@@ -241,9 +242,11 @@ function refresh() {
 
   showMessages(msgs);
   const sc = state.scene;
-  $('seek').disabled = !sc;
-  $('play').disabled = !sc;
-  $('export').disabled = !sc || !webCodecsAvailable();
+  $('seek').disabled = exporting || !sc;
+  $('play').disabled = exporting || !sc;
+  $('export').disabled = exporting || !sc || !webCodecsAvailable();
+  $('exportall').disabled = exporting || !sc || !webCodecsAvailable();
+  updateRangeNote();
   if (sc) {
     $('seek').min = String(Math.floor(sc.startTime));
     $('seek').max = String(Math.ceil(sc.endTime));
@@ -361,16 +364,37 @@ function updateClock() {
 }
 
 $('osr').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
+  const files = [...e.target.files];
   state.replay = null;
+  state.replays = [];
   state.loadErrors.osr = null;
-  if (file) {
-    try {
-      state.replay = await parseOsr(await file.arrayBuffer());
-    } catch (err) {
-      state.loadErrors.osr = `Could not read the replay: ${err.message}`;
-    }
+  const errs = [];
+  for (const file of files) {
+    try { state.replays.push({ name: file.name, replay: await parseOsr(await file.arrayBuffer()) }); }
+    catch (err) { errs.push(files.length > 1 ? `${file.name}: ${err.message}` : err.message); }
   }
+  if (errs.length) state.loadErrors.osr = `Could not read the replay: ${errs.join('; ')}`;
+  state.replay = state.replays[0]?.replay ?? null;
+  fillReplayPick();
+  refresh();
+});
+
+/** With several replays loaded: a picker for the one that is previewed, and the "render all" button. */
+function fillReplayPick() {
+  const n = state.replays.length;
+  $('replaypickwrap').hidden = n < 2;
+  $('exportall').hidden = n < 2;
+  $('exportall').textContent = `Render all ${n} replays`;
+  $('replaypick').replaceChildren(...state.replays.map((r, i) => {
+    const o = document.createElement('option');
+    o.value = String(i);
+    o.textContent = `${r.replay.player} · ${modsToString(r.replay.mods)} · ${r.replay.score.toLocaleString()}`;
+    return o;
+  }));
+}
+
+$('replaypick').addEventListener('change', () => {
+  state.replay = state.replays[Number($('replaypick').value)]?.replay ?? null;
   refresh();
 });
 
@@ -718,7 +742,9 @@ $('prevres').addEventListener('change', () => { autoCap = AUTO_CAPS[0]; setSize(
 function setBusy(busy) {
   exporting = busy;
   $('export').disabled = busy || !state.scene;
+  $('exportall').disabled = busy || !state.scene;
   $('cancel').disabled = !busy;
+  for (const id of ['rangefrom', 'rangeto', 'rangefromnow', 'rangetonow', 'rangeclear', 'replaypick']) $(id).disabled = busy;
   for (const id of ['osr', 'osu', 'audio', 'skin', 'useDefault', 'res', 'fps', 'mbps', 'volume', 'usehits', 'hitvolume', 'showwidth', 'showhud', 'showlight', 'hudstyle', 'showbg', 'bgdim', 'bgfile', 'play', 'seek', 'prevres']) $(id).disabled = busy;
   $('showvideo').disabled = busy || !state.bgv;
   $('showsb').disabled = busy || !state.sb;
@@ -729,18 +755,71 @@ function setBusy(busy) {
 
 const safeName = (s) => s.replace(/[\\/:*?"<>|]+/g, '').trim().slice(0, 80) || 'replay';
 
-$('export').addEventListener('click', async () => {
-  const sc = state.scene;
-  if (!sc) return;
-  stopPreview();
-  if (resultUrl) { URL.revokeObjectURL(resultUrl); resultUrl = null; }
-  $('result').replaceChildren();
+// ---------- export range ----------
+/** The part of the map to render: { from, to, whole } in beatmap time, or { error }. */
+const exportRange = (sc) => resolveRange($('rangefrom').value, $('rangeto').value, sc);
 
-  abort = new AbortController();
-  setBusy(true);
-  const started = performance.now();
-  $('status').textContent = 'Starting…';
+function updateRangeNote() {
+  const sc = state.scene, el = $('rangenote');
+  if (!sc) { el.textContent = ''; return; }
+  const r = exportRange(sc);
+  if (r.error) { el.textContent = r.error; return; }
+  const secs = (r.to - r.from) / sc.rate / 1000;
+  el.textContent = r.whole ? '' : `Will render ${fmtTime(r.from - sc.startTime)} to ${fmtTime(r.to - sc.startTime)} of the map (${secs.toFixed(1)} s of video).`;
+}
+
+for (const id of ['rangefrom', 'rangeto']) $(id).addEventListener('input', updateRangeNote);
+$('rangefromnow').addEventListener('click', () => { if (state.scene) { $('rangefrom').value = fmtTime(state.t - state.scene.startTime); updateRangeNote(); } });
+$('rangetonow').addEventListener('click', () => { if (state.scene) { $('rangeto').value = fmtTime(state.t - state.scene.startTime); updateRangeNote(); } });
+$('rangeclear').addEventListener('click', () => { $('rangefrom').value = ''; $('rangeto').value = ''; updateRangeNote(); });
+
+// ---------- rendering ----------
+let resultUrls = [];
+
+/** A finished video: a download link and a player, appended to the results. */
+async function addResult(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  resultUrls.push(url);
+  const a = document.createElement('a');
+  a.className = 'dl';
+  a.href = url;
+  a.download = filename;
+  a.textContent = `Download ${filename}`;
+  const video = document.createElement('video');
+  video.controls = true;
+  video.src = url;
+  $('result').append(a, video);
+  // Inside a sandboxed host (a published artifact page) <a download> is blocked: use the host's save call there.
+  try {
+    const dl = await window.claude?.use?.('downloads');
+    if (dl) {
+      a.removeAttribute('href');
+      a.removeAttribute('download');
+      a.setAttribute('role', 'button');
+      a.tabIndex = 0;
+      a.style.cursor = 'pointer';
+      const save = async () => {
+        try { await dl.save({ filename, data: blob }); }
+        catch (e) { if (e?.code !== 'declined') $('status').textContent = `Could not save the file: ${e?.message || e?.code || e}`; }
+      };
+      a.addEventListener('click', save);
+      a.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); save(); } });
+    }
+  } catch { /* plain page: the normal download link stays */ }
+}
+
+/**
+ * Render the loaded replay (the range chosen above) to an MP4 and add it to the results.
+ * `job` = { index, count, usedNames } when part of a batch: the status shows it and the bar covers all videos.
+ */
+async function renderCurrent(job = null) {
+  const sc = state.scene;
+  const range = exportRange(sc);
+  if (range.error) throw new Error(range.error);
+  const prefix = job ? `Replay ${job.index + 1} of ${job.count} (${state.replay.player}): ` : '';
+  const share = job ? 1 / job.count : 1, base = job ? job.index / job.count : 0;
   let stage = 'Rendering…';
+  const started = performance.now();
 
   const music = currentMusic();
   const useMusic = !!(music?.bytes && $('usemusic').checked);
@@ -748,73 +827,86 @@ $('export').addEventListener('click', async () => {
   const nightcore = !!(state.replay.mods & MOD.NC);
   const useHits = $('usehits').checked;
   const hitVolume = Math.min(100, Math.max(0, Number($('hitvolume').value))) / 100;
+  const clip = { ...sc, startTime: range.from, endTime: range.to };       // the audio code reads the scene's start and end
 
+  const res = await exportMp4({
+    canvas,
+    drawAt: async (t) => {
+      if (state.bgv && $('showbg').checked && $('showvideo').checked && state.bgv.active(t)) await state.bgv.seek(t);
+      if (state.tosu && $('hudstyle').value === 'overlay' && $('showhud').checked) { try { await state.tosu.prepare(sc, t); } catch { /* drawn by the canvas fallback */ } }
+      drawAt(t, true);
+    },
+    startTime: range.from,
+    endTime: range.to,
+    rate: sc.rate,
+    fps: Number($('fps').value),
+    bitrate: Math.max(1, Number($('mbps').value) || 12) * 1e6,
+    makeAudio: useMusic || useHits
+      ? (durationSec) => buildAudio(clip, durationSec, { useMusic, useHits, volume, hitVolume, nightcore, music })
+      : undefined,
+    signal: abort.signal,
+    onStatus: (text) => { stage = text; $('status').textContent = prefix + text; },
+    onProgress: (p) => {
+      $('bar').value = base + p * share;
+      $('status').textContent = `${prefix}${stage} ${(p * 100).toFixed(0)}%`;
+    },
+  });
+  let name = safeName(`${state.replay.player} - ${sc.meta.title}${range.whole ? '' : ` (${fmtTime(range.from - sc.startTime).replace(':', 'm')}s)`}`);
+  if (job) { let n = name, i = 2; while (job.usedNames.has(n)) n = `${name} (${i++})`; job.usedNames.add(n); name = n; }
+  await addResult(res.blob, `${name}.mp4`);
+  return { res, secs: (performance.now() - started) / 1000, range };
+}
+
+/** Render one video (the loaded replay) or, with `batch`, every loaded replay in turn. */
+async function runExports(batch) {
+  if (!state.scene) return;
+  stopPreview();
+  for (const u of resultUrls) URL.revokeObjectURL(u);
+  resultUrls = [];
+  $('result').replaceChildren();
+  const chosen = state.replay;                                  // restored after a batch
+  const jobs = batch ? state.replays.map((r) => r.replay) : [chosen];
+  abort = new AbortController();
+  setBusy(true);
+  const started = performance.now();
+  $('status').textContent = 'Starting…';
+  const skipped = [], usedNames = new Set();
+  let made = 0, last = null;
   try {
-    const full = size();                                    // the video is always drawn at its real size, whatever the preview uses
+    const full = size();                                      // the video is always drawn at its real size, whatever the preview uses
     canvas.width = full.w;
     canvas.height = full.h;
-    const res = await exportMp4({
-      canvas,
-      drawAt: async (t) => {
-        if (state.bgv && $('showbg').checked && $('showvideo').checked && state.bgv.active(t)) await state.bgv.seek(t);
-        if (state.tosu && $('hudstyle').value === 'overlay' && $('showhud').checked) { try { await state.tosu.prepare(sc, t); } catch { /* drawn by the canvas fallback */ } }
-        drawAt(t, true);
-      },
-      startTime: sc.startTime,
-      endTime: sc.endTime,
-      rate: sc.rate,
-      fps: Number($('fps').value),
-      bitrate: Math.max(1, Number($('mbps').value) || 12) * 1e6,
-      makeAudio: useMusic || useHits
-        ? (durationSec) => buildAudio(sc, durationSec, { useMusic, useHits, volume, hitVolume, nightcore, music })
-        : undefined,
-      signal: abort.signal,
-      onStatus: (text) => { stage = text; $('status').textContent = text; },
-      onProgress: (p) => {
-        $('bar').value = p;
-        $('status').textContent = `${stage} ${(p * 100).toFixed(0)}%`;
-      },
-    });
-    resultUrl = URL.createObjectURL(res.blob);
-    const secs = ((performance.now() - started) / 1000).toFixed(1);
-    const opusNote = /Opus/.test(res.codec) ? ' Audio is Opus (this browser cannot encode AAC): it plays in Chrome, Firefox and VLC, but some Windows apps and editors want AAC.' : '';
-    $('status').textContent = `Done: ${res.frames} frames (${res.seconds.toFixed(1)} s of video, ${res.codec}${res.hasAudio ? '' : ', no music'}) in ${secs} s, ${(res.blob.size / 1e6).toFixed(1)} MB.${opusNote}`;
-
-    const a = document.createElement('a');
-    a.className = 'dl';
-    a.href = resultUrl;
-    a.download = `${safeName(`${state.replay.player} - ${sc.meta.title}`)}.mp4`;
-    a.textContent = `Download ${a.download}`;
-    const video = document.createElement('video');
-    video.controls = true;
-    video.src = resultUrl;
-    $('result').append(a, video);
-    // Inside a sandboxed host (a published artifact page) <a download> is blocked: use the host's save call there.
-    try {
-      const dl = await window.claude?.use?.('downloads');
-      if (dl) {
-        a.removeAttribute('href');
-        a.removeAttribute('download');
-        a.setAttribute('role', 'button');
-        a.tabIndex = 0;
-        a.style.cursor = 'pointer';
-        const save = async () => {
-          try { await dl.save({ filename: a.textContent.replace(/^Download /, ''), data: res.blob }); }
-          catch (e) { if (e?.code !== 'declined') $('status').textContent = `Could not save the file: ${e?.message || e?.code || e}`; }
-        };
-        a.addEventListener('click', save);
-        a.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); save(); } });
+    for (let i = 0; i < jobs.length; i++) {
+      if (batch) {
+        state.replay = jobs[i];
+        refresh();                                              // new scene (and difficulty, if the .osz holds several) for this replay
+        if (!state.scene) { skipped.push(jobs[i].player); continue; }
       }
-    } catch { /* plain page: the normal download link stays */ }
+      last = await renderCurrent(batch ? { index: i, count: jobs.length, usedNames } : null);
+      made++;
+    }
+    const secs = ((performance.now() - started) / 1000).toFixed(1);
+    if (!batch) {
+      const { res, range } = last;
+      const opusNote = /Opus/.test(res.codec) ? ' Audio is Opus (this browser cannot encode AAC): it plays in Chrome, Firefox and VLC, but some Windows apps and editors want AAC.' : '';
+      const part = range.whole ? '' : ` (${fmtTime(range.from - state.scene.startTime)} to ${fmtTime(range.to - state.scene.startTime)})`;
+      $('status').textContent = `Done: ${res.frames} frames (${res.seconds.toFixed(1)} s of video${part}, ${res.codec}${res.hasAudio ? '' : ', no music'}) in ${secs} s, ${(res.blob.size / 1e6).toFixed(1)} MB.${opusNote}`;
+    } else {
+      $('status').textContent = `Done: ${made} of ${jobs.length} videos in ${secs} s.${skipped.length ? ` Skipped (no matching difficulty): ${skipped.join(', ')}.` : ''}`;
+    }
   } catch (err) {
-    $('status').textContent = err.name === 'AbortError' ? 'Cancelled.' : `Export failed: ${err.message}`;
+    $('status').textContent = err.name === 'AbortError' ? `Cancelled${made ? ` after ${made} finished video${made === 1 ? '' : 's'}` : ''}.` : `Export failed: ${err.message}`;
   } finally {
     setBusy(false);
     $('bar').value = 0;
     abort = null;
+    if (batch && state.replay !== chosen) { state.replay = chosen; refresh(); }
     setSize(); // back to the preview size, and redraw the preview frame
   }
-});
+}
+
+$('export').addEventListener('click', () => runExports(false));
+$('exportall').addEventListener('click', () => runExports(true));
 
 $('cancel').addEventListener('click', () => abort?.abort());
 

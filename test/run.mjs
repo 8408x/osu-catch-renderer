@@ -270,6 +270,21 @@ await test('resolveColours: beatmap > skin.ini > osu! defaults', () => {
   assert.deepEqual(resolveColours(noMap, null), DEFAULT_COLOURS);
 });
 
+await test('export range: m:ss parsing, clamping to the map, and errors', async () => {
+  const { parseClock, resolveRange } = await import('../src/range.js');
+  assert.equal(parseClock(''), null); assert.equal(parseClock('  '), null);
+  assert.equal(parseClock('1:05'), 65000); assert.equal(parseClock('1:05.5'), 65500); assert.equal(parseClock('65'), 65000); assert.equal(parseClock('0:00'), 0);
+  assert.ok(Number.isNaN(parseClock('abc'))); assert.ok(Number.isNaN(parseClock('1:2:3'))); assert.ok(Number.isNaN(parseClock('-5')));
+  const sc = { startTime: 2000, endTime: 100000 };
+  assert.deepEqual(resolveRange('', '', sc), { from: 2000, to: 100000, whole: true });
+  assert.deepEqual(resolveRange('0:10', '0:20', sc), { from: 12000, to: 22000, whole: false });   // times count from the map's first object
+  assert.deepEqual(resolveRange('0:10', '', sc), { from: 12000, to: 100000, whole: false });
+  assert.deepEqual(resolveRange('', '99:00', sc), { from: 2000, to: 100000, whole: true }, 'an end past the map is clamped');
+  assert.ok(resolveRange('0:10', '0:10', sc).error, 'empty range');
+  assert.ok(resolveRange('0:20', '0:10', sc).error, 'reversed range');
+  assert.ok(resolveRange('x', '', sc).error, 'bad text');
+});
+
 await test('ReplayTrack.facingAt follows the last direction moved', () => {
   const tr = new ReplayTrack([{ t: 0, x: 100, dash: false }, { t: 100, x: 200, dash: false }, { t: 200, x: 200, dash: false }, { t: 300, x: 50, dash: false }, { t: 400, x: 50, dash: false }]);
   assert.equal(tr.facingAt(-10), 1);
