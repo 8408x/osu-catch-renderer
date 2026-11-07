@@ -7,18 +7,18 @@
 //   - droplets use 0.8x and tiny droplets 0.4x of that; sprites are capped at 160 px
 //   - catcher sprite = texture size x 0.35 x catcher scale, hung from the plate line 16 px down
 
-import { FIELD_W, FIELD_H } from './catch.js?v=20261108i';
-import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261108i';
-import { hudAt, scoreShownAt } from './score.js?v=20261108i';
-import { plateAt, explosionsAt } from './plate.js?v=20261108i';
-import { drawArgonHud, drawArgonPart } from './argon.js?v=20261108i';
-import { healthAt } from './health.js?v=20261108i';
-import { livePp } from './pp.js?v=20261108i';
-import { keysAt } from './keys.js?v=20261108i';
-import { ORDER, rectOf, fullRectOf, WIDGETS, styleInfo } from './layout.js?v=20261108i';
-import { lookFor, styleData } from './styles.js?v=20261108i';
-import { drawModIcons, drawModBadges } from './mods.js?v=20261108i';
-import { drawFlashlight } from './flashlight.js?v=20261108i';
+import { FIELD_W, FIELD_H } from './catch.js?v=20261108j';
+import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261108j';
+import { hudAt, scoreShownAt } from './score.js?v=20261108j';
+import { plateAt, explosionsAt } from './plate.js?v=20261108j';
+import { drawArgonHud, drawArgonPart } from './argon.js?v=20261108j';
+import { healthAt } from './health.js?v=20261108j';
+import { livePp } from './pp.js?v=20261108j';
+import { keysAt } from './keys.js?v=20261108j';
+import { ORDER, rectOf, fullRectOf, WIDGETS, styleInfo } from './layout.js?v=20261108j';
+import { lookFor, styleData } from './styles.js?v=20261108j';
+import { drawModIcons, drawModBadges } from './mods.js?v=20261108j';
+import { drawFlashlight } from './flashlight.js?v=20261108j';
 
 const ZONE = 120;  // room below the field for the catcher, in field units
 const PAD = 12;
@@ -55,7 +55,8 @@ const outQuint = (p) => 1 - Math.pow(1 - Math.min(1, Math.max(0, p)), 5);
 const lerp = (a, b, p) => a + (b - a) * p;
 
 function spriteScale(o, scene) {
-  const k = o.kind === 'fruit' ? 1 : o.kind === 'droplet' ? 0.8 : 0.4;
+  // CatchHitObject.Scale comes from CS; Droplet x0.8, TinyDroplet x0.4, Fruit and Banana x1 (a banana then lerps 0.6..2.2 -> 0.6 on top)
+  const k = o.kind === 'fruit' || o.kind === 'banana' ? 1 : o.kind === 'droplet' ? 0.8 : 0.4;
   return scene.fruitScale * k;
 }
 
