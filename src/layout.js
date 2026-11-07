@@ -117,7 +117,7 @@ export function defaultLayout() {
   for (const id of ORDER) {
     const d = WIDGETS[id];
     const st = d.styles[0], [pl, pt] = padOf(st);
-    out[id] = { on: d.on, x: (d.at[0] + pl * st.w) / 1920, y: (d.at[1] + pt * st.h) / 1080, s: 1, style: st.id };
+    out[id] = { on: d.on, x: (d.at[0] + pl * st.w) / 1920, y: (d.at[1] + pt * st.h) / 1080, s: 1, a: 1, style: st.id };
   }
   return out;
 }
@@ -136,6 +136,7 @@ export function normalizeLayout(raw) {
       x: num(r.x, -0.5, 1.5, base[id].x),
       y: num(r.y, -0.5, 1.5, base[id].y),
       s: num(r.s, MIN_SCALE, MAX_SCALE, 1),
+      a: num(r.a, 0.1, 1, 1),
       style: WIDGETS[id].styles.some((x) => x.id === r.style) ? r.style : base[id].style,
     };
   }

@@ -7,18 +7,18 @@
 //   - droplets use 0.8x and tiny droplets 0.4x of that; sprites are capped at 160 px
 //   - catcher sprite = texture size x 0.35 x catcher scale, hung from the plate line 16 px down
 
-import { FIELD_W, FIELD_H } from './catch.js?v=20261108n';
-import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261108n';
-import { hudAt, scoreShownAt } from './score.js?v=20261108n';
-import { plateAt, explosionsAt } from './plate.js?v=20261108n';
-import { drawArgonHud, drawArgonPart } from './argon.js?v=20261108n';
-import { healthAt } from './health.js?v=20261108n';
-import { livePp } from './pp.js?v=20261108n';
-import { keysAt } from './keys.js?v=20261108n';
-import { ORDER, rectOf, fullRectOf, WIDGETS, styleInfo } from './layout.js?v=20261108n';
-import { lookFor, styleData } from './styles.js?v=20261108n';
-import { drawModIcons, drawModBadges } from './mods.js?v=20261108n';
-import { drawFlashlight } from './flashlight.js?v=20261108n';
+import { FIELD_W, FIELD_H } from './catch.js?v=20261108o';
+import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261108o';
+import { hudAt, scoreShownAt } from './score.js?v=20261108o';
+import { plateAt, explosionsAt } from './plate.js?v=20261108o';
+import { drawArgonHud, drawArgonPart } from './argon.js?v=20261108o';
+import { healthAt } from './health.js?v=20261108o';
+import { livePp } from './pp.js?v=20261108o';
+import { keysAt } from './keys.js?v=20261108o';
+import { ORDER, rectOf, fullRectOf, WIDGETS, styleInfo } from './layout.js?v=20261108o';
+import { lookFor, styleData } from './styles.js?v=20261108o';
+import { drawModIcons, drawModBadges } from './mods.js?v=20261108o';
+import { drawFlashlight } from './flashlight.js?v=20261108o';
 
 const ZONE = 120;  // room below the field for the catcher, in field units
 const PAD = 12;
@@ -676,7 +676,7 @@ function drawCustom(ctx, W, H, scene, t, { layout, tosu, keys, skin, bg, guides,
 
   // the tosu overlays (map details, pp, accuracy, combo) show only while their widget uses the tosu look; without
   // the overlay renderer the fixed canvas copy stands in when every one of them is on its tosu look
-  const tosuOk = tosu ? tosu.draw(ctx, W, H, scene, t, (name) => (isTosu(name) && layout[name].on ? fullRectOf(name, layout, W, H) : null)) : false;
+  const tosuOk = tosu ? tosu.draw(ctx, W, H, scene, t, (name) => (isTosu(name) && layout[name].on ? fullRectOf(name, layout, W, H) : null), (name) => layout[name].a ?? 1) : false;
   if (!tosuOk && ['title', 'pp', 'acc', 'combo'].every(isTosu)) drawOverlay(ctx, W, H, scene, t, { bg, keys: null, tosu: null, skin });
 
   // looks drawn natively, at the look's own size scaled to the widget's rectangle
@@ -684,6 +684,7 @@ function drawCustom(ctx, W, H, scene, t, { layout, tosu, keys, skin, bg, guides,
     const r = rect(id);
     if (!r || isTosu(id)) continue;
     const st = styleInfo(id, layout[id].style), look = lookFor(id, st.id);
+    ctx.globalAlpha = layout[id].a ?? 1;
     if (st.system) {                                       // the osu!lazer (Argon) and osu!stable HUD pieces
       ctx.save();
       ctx.translate(r[0], r[1]);
@@ -703,6 +704,7 @@ function drawCustom(ctx, W, H, scene, t, { layout, tosu, keys, skin, bg, guides,
     look(ctx, sd, st.w, st.h);
     ctx.restore();
   }
+  ctx.globalAlpha = 1;
 
   ctx.shadowBlur = 0;
   ctx.shadowColor = 'transparent';

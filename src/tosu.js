@@ -5,8 +5,8 @@
 // are needed for a whole song. Chromium, Edge and Firefox can rasterise this; where it is not possible the caller falls
 // back to the canvas drawing.
 
-import { hudAt } from './score.js?v=20261108n';
-import { livePp } from './pp.js?v=20261108n';
+import { hudAt } from './score.js?v=20261108o';
+import { livePp } from './pp.js?v=20261108o';
 
 const CIRCUMFERENCE = 30 * Math.PI * 2;                 // the progress ring's circle, as in the overlay's App.js
 const OSU_GRADE = ['SSH', 'SS', 'SH', 'S', 'A', 'B', 'C', 'D', 'F', ''];   // lib/consts.js
@@ -223,7 +223,7 @@ export class TosuOverlays {
    * Draw the overlays from the cache. Whatever is not ready yet is requested and the newest earlier image stands in;
    * `onReady` fires when something new arrives. Returns false when overlays cannot be rendered at all.
    */
-  draw(ctx, W, H, scene, t, place = null) {
+  draw(ctx, W, H, scene, t, place = null, alphaOf = null) {
     if (this.failed) return false;
     const k = tosuTokens(scene, t), keys = keysOf(k), u = H / 1080;
     const at = {
@@ -240,7 +240,11 @@ export class TosuOverlays {
         img = this.last[name];
       }
       const rect = place ? place(name) : at[name](PLACEMENT[name]);   // `place` (the Custom layout) can move or hide each overlay
-      if (img && rect) ctx.drawImage(img, rect[0], rect[1], rect[2], rect[3]);
+      if (img && rect) {
+        ctx.globalAlpha = alphaOf ? alphaOf(name) : 1;
+        ctx.drawImage(img, rect[0], rect[1], rect[2], rect[3]);
+        ctx.globalAlpha = 1;
+      }
     }
     return true;
   }
