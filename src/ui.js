@@ -75,6 +75,10 @@ function initTrays() {
   for (const x of document.querySelectorAll('[data-close]')) {
     x.addEventListener('click', () => { const p = pairs.find(([, t]) => t === x.dataset.close); if (p) set(p[0], p[1], false); });
   }
+  document.addEventListener('pointerdown', (e) => {          // a click anywhere else closes the logs
+    if (e.target.closest('.tray, #msgbtn, .chip')) return;
+    for (const [b, t] of pairs) if (!$(t).hidden) set(b, t, false);
+  });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') for (const [b, t] of pairs) set(b, t, false);
   });
@@ -117,7 +121,7 @@ function initMessages(setTray) {
       return b;
     }));
 
-    // A new error is worth interrupting for; everything else waits behind the Messages button.
+    // A new error is worth interrupting for; everything else waits behind the Logs button.
     const err = ps.find((p) => p.classList.contains('err'))?.textContent ?? '';
     if (err && err !== seenErr) setTray('msgbtn', 'msgtray', true);
     seenErr = err;
