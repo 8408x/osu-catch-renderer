@@ -11,7 +11,7 @@
 // A mirror only works from a web page if it sends CORS headers. That cannot be checked from the build
 // environment, so every step reports exactly what went wrong and the next mirror is tried.
 
-import { readOsz, findDifficulty } from './osz.js?v=20261108f';
+import { readOsz, findDifficulty } from './osz.js?v=20261108g';
 
 const MAX_BYTES = 300 * 1024 * 1024;
 const LOOKUP_IDLE_MS = 12_000;

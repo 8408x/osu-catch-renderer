@@ -85,6 +85,7 @@ export const WIDGETS = {
   hits: {
     label: 'Hit counts', at: [1920 - 420 - 90, 1080 - 130], on: false,
     styles: [
+      { id: 'plain', label: 'Hit counts (fruits, drops, tiny, miss)', credit: 'made for this site', w: 420, h: 84 },
       { id: 'hitcounts', label: 'HitCounts', credit: 'HitCounts by unknown', w: 350, h: 44 },
       { id: 'kerli2', label: 'Kerli 2', credit: 'Kerli 2 by Dartandr', author: 'Dartandr', w: 360, h: 190 },
       { id: 'classic', label: 'classic', credit: 'classic by Dartandr', author: 'Dartandr', w: 330, h: 44 },
