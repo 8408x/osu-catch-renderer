@@ -12,7 +12,20 @@ Thanks to the tosu team (KotRik and Cherry) for tosu and for hosting the collect
 | Map title, accuracy and combo (CPOL style) | AccuracyPP, ArtistTitleDifficulty, Combo ("SC_OverlayElements") | unknown |
 | pp counter | InGame3 | Dartandr (https://github.com/Dartandr) |
 
-The hit counts and progress bar widgets in the Custom style are drawn by this site, in simple styles of its own. The key presses widget keeps the site's own earlier key boxes.
+These looks are recreated natively on the canvas, as this site's own code, from how each overlay looks. No overlay code, images or fonts are copied. Pick them per widget in the Layout tab; the tab names the design's author.
+
+| Widget | Look | Design by |
+|---|---|---|
+| Map details | Kerli 1, reComfortaa | Dartandr |
+| Map details | Map Display | unknown |
+| pp counter | InGame1 | Dartandr |
+| pp counter | Triangles | uwuclxdy (Triangles Lazer PP) |
+| pp counter | Vertigo | zeronic (vertigo) |
+| Hit counts | Kerli 2, Classic | Dartandr |
+| Hit counts | HitCounts | unknown |
+| Key presses | Bars | HosizoraN (KeyOverlay) |
+
+The Plain hit counts, the progress bar and the Boxes key look are this site's own.
 
 ## Planned styles, by type
 

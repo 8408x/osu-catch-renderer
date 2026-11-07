@@ -1688,6 +1688,30 @@ await test('background video: [Events] Video line parsed, videos read from the .
   assert.equal(OSZ.findVideo(osz, 'other.mp4'), null);
 });
 
+await test('custom styles: every non-tosu look exists, draws in its own box, and persists through normalize', async () => {
+  const L = await import('../src/layout.js'), S = await import('../src/styles.js');
+  const calls = [];
+  const ctx = new Proxy({ measureText: (t) => ({ width: String(t).length * 8 }), font: '12px x' }, {
+    get: (o, k) => (k in o ? o[k] : (...a) => { calls.push(k); }),
+    set: (o, k, v) => { o[k] = v; return true; },
+  });
+  const scene = { objects: [{ t: 0 }, { t: 60000 }], meta: { title: 'T', artist: 'A', version: 'D', creator: 'M', cs: 4, ar: 9, od: 8, hp: 5, bpm: 180, lengthMs: 90000 }, diff: { star: 6.1 }, hud: null };
+  const d = S.styleData(scene, 1000, null, null);
+  let drawn = 0;
+  for (const id of L.ORDER) for (const st of L.WIDGETS[id].styles) {
+    if (st.tosu || (id === 'keys' && st.id === 'boxes')) continue;
+    const look = S.lookFor(id, st.id);
+    assert.equal(typeof look, 'function', `${id}/${st.id} has a look`);
+    look(ctx, d, st.w, st.h);
+    drawn++;
+  }
+  assert.ok(drawn >= 9 && calls.length > 50);
+  const n = L.normalizeLayout({ title: { style: 'kerli1' }, pp: { style: 'nope' } });
+  assert.equal(n.title.style, 'kerli1');
+  assert.equal(n.pp.style, 'ingame3');
+  near(L.rectOf('title', n, 1920, 1080)[2], 794);
+});
+
 await test('custom layout: defaults match the old overlay places, bad data is repaired, hit-testing and snapping work', async () => {
   const L = await import('../src/layout.js');
   const d = L.defaultLayout();

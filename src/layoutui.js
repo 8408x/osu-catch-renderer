@@ -1,7 +1,7 @@
 // The Layout tab and dragging on the preview. Owns the layout object (saved in localStorage); main.js hands it to
 // drawFrame. Pure UI: nothing here draws a frame.
 
-import { WIDGETS, ORDER, MIN_SCALE, MAX_SCALE, defaultLayout, normalizeLayout, rectOf, hitTest, clampPosition, snapPosition } from './layout.js?v=20261107x';
+import { WIDGETS, styleInfo, ORDER, MIN_SCALE, MAX_SCALE, defaultLayout, normalizeLayout, rectOf, hitTest, clampPosition, snapPosition } from './layout.js?v=20261107y';
 
 const KEY = 'ocr.layout';
 const load = () => { try { return normalizeLayout(JSON.parse(localStorage.getItem(KEY))); } catch { return defaultLayout(); } };
@@ -27,6 +27,8 @@ export function initLayoutEditor({ canvas, pane, editable, redraw }) {
     </div>
     <div class="group" id="widgetprops">
       <h3 id="propstitle">Selected</h3>
+      <label class="field" id="stylefield"><span>Look</span><select id="widgetstyle"></select></label>
+      <p class="note" id="stylecredit" style="margin:4px 0 10px"></p>
       <label class="slider"><span>Size</span><output id="scaleout"></output>
         <input id="widgetscale" type="range" min="${Math.round(MIN_SCALE * 100)}" max="${Math.round(MAX_SCALE * 100)}" step="5" value="100">
       </label>
@@ -67,12 +69,28 @@ export function initLayoutEditor({ canvas, pane, editable, redraw }) {
     }
     const c = layout[ui.selected];
     $('propstitle').textContent = WIDGETS[ui.selected].label;
+    const sel = $('widgetstyle');
+    sel.innerHTML = WIDGETS[ui.selected].styles.map((x) => `<option value="${x.id}">${x.label}</option>`).join('');
+    sel.value = c.style;
+    sel.disabled = WIDGETS[ui.selected].styles.length < 2;
+    $('stylecredit').textContent = `Design: ${styleInfo(ui.selected, c.style).credit}`;
     $('widgetscale').value = String(Math.round(c.s * 100));
     $('scaleout').textContent = `${Math.round(c.s * 100)}%`;
     $('widgetprops').style.opacity = c.on ? '1' : '0.5';
   };
   const changed = () => { save(layout); sync(); redraw(); };
 
+  $('widgetstyle').addEventListener('change', (e) => {
+    const c = layout[ui.selected];
+    const before = rectOf(ui.selected, layout, canvas.width, canvas.height);
+    c.style = e.target.value;
+    const after = rectOf(ui.selected, layout, canvas.width, canvas.height);
+    // keep the widget's top-left where it was; only pull it back if the new look would leave the frame
+    c.x = Math.min(c.x, 1 - 0.25 * after[2] / canvas.width);
+    c.y = Math.min(c.y, 1 - 0.25 * after[3] / canvas.height);
+    void before;
+    changed();
+  });
   $('widgetscale').addEventListener('input', (e) => {
     const c = layout[ui.selected];
     const before = rectOf(ui.selected, layout, canvas.width, canvas.height);

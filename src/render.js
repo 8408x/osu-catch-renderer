@@ -7,17 +7,18 @@
 //   - droplets use 0.8x and tiny droplets 0.4x of that; sprites are capped at 160 px
 //   - catcher sprite = texture size x 0.35 x catcher scale, hung from the plate line 16 px down
 
-import { FIELD_W, FIELD_H } from './catch.js?v=20261107x';
-import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261107x';
-import { hudAt, scoreShownAt } from './score.js?v=20261107x';
-import { plateAt, explosionsAt } from './plate.js?v=20261107x';
-import { drawArgonHud } from './argon.js?v=20261107x';
-import { healthAt } from './health.js?v=20261107x';
-import { livePp } from './pp.js?v=20261107x';
-import { keysAt } from './keys.js?v=20261107x';
-import { ORDER, rectOf, WIDGETS } from './layout.js?v=20261107x';
-import { drawModIcons, drawModBadges } from './mods.js?v=20261107x';
-import { drawFlashlight } from './flashlight.js?v=20261107x';
+import { FIELD_W, FIELD_H } from './catch.js?v=20261107y';
+import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261107y';
+import { hudAt, scoreShownAt } from './score.js?v=20261107y';
+import { plateAt, explosionsAt } from './plate.js?v=20261107y';
+import { drawArgonHud } from './argon.js?v=20261107y';
+import { healthAt } from './health.js?v=20261107y';
+import { livePp } from './pp.js?v=20261107y';
+import { keysAt } from './keys.js?v=20261107y';
+import { ORDER, rectOf, WIDGETS, styleInfo } from './layout.js?v=20261107y';
+import { lookFor, styleData } from './styles.js?v=20261107y';
+import { drawModIcons, drawModBadges } from './mods.js?v=20261107y';
+import { drawFlashlight } from './flashlight.js?v=20261107y';
 
 const ZONE = 120;  // room below the field for the catcher, in field units
 const PAD = 12;
@@ -608,59 +609,36 @@ function drawCustom(ctx, W, H, scene, t, { layout, tosu, keys, skin, bg, guides 
   ctx.shadowColor = 'rgba(0,0,0,0.65)';
   ctx.shadowBlur = 6 * u;
   const rect = (id) => (layout[id].on ? rectOf(id, layout, W, H) : null);
+  const isTosu = (id) => !!styleInfo(id, layout[id].style).tosu;
+  const sd = styleData(scene, t, bg, keys);
 
-  // the tosu overlays (map details, pp, accuracy, combo); without them the fixed canvas copy stands in
-  const tosuOk = tosu ? tosu.draw(ctx, W, H, scene, t, (name) => rect(name)) : false;
-  if (!tosuOk) drawOverlay(ctx, W, H, scene, t, { bg, keys: null, tosu: null, skin });
+  // the tosu overlays (map details, pp, accuracy, combo) show only while their widget uses the tosu look; without
+  // the overlay renderer the fixed canvas copy stands in when every one of them is on its tosu look
+  const tosuOk = tosu ? tosu.draw(ctx, W, H, scene, t, (name) => (isTosu(name) ? rect(name) : null)) : false;
+  if (!tosuOk && ['title', 'pp', 'acc', 'combo'].every(isTosu)) drawOverlay(ctx, W, H, scene, t, { bg, keys: null, tosu: null, skin });
+
+  // looks drawn natively, at the look's own size scaled to the widget's rectangle
+  for (const id of ORDER) {
+    const r = rect(id);
+    if (!r || isTosu(id)) continue;
+    const st = styleInfo(id, layout[id].style), look = lookFor(id, st.id);
+    if (!look) continue;
+    ctx.save();
+    ctx.translate(r[0], r[1]);
+    ctx.scale(r[2] / st.w, r[3] / st.h);
+    ctx.textBaseline = 'alphabetic';
+    look(ctx, sd, st.w, st.h);
+    ctx.restore();
+  }
 
   ctx.shadowBlur = 0;
   ctx.shadowColor = 'transparent';
 
-  if (rect('keys') && keys) {
+  if (rect('keys') && keys && layout.keys.style === 'boxes') {
     const [x, y, w] = rect('keys');
     const size = w, gap = (10 / 56) * size;
     if (skin?.get('inputoverlay-key')) drawStableKeys(ctx, W, H, skin, keys, t, H / 768);
     else drawKeyColumn(ctx, keysAt(keys, t), x, y, size, gap, u, false);
-  }
-
-  if (rect('hits') && v) {
-    const [x, y, w, h] = rect('hits');
-    const cells = [['fruits', v.n300 ?? 0, '#7ee0a0'], ['drops', v.n100 ?? 0, '#6fc3ff'], ['tiny', v.n50 ?? 0, '#c8a2ff'], ['miss', v.nMiss ?? 0, '#ff7b8f']];
-    ctx.fillStyle = 'rgba(10,12,18,0.55)';
-    roundRectPath(ctx, x, y, w, h, h * 0.2); ctx.fill();
-    const cw = w / cells.length;
-    ctx.textAlign = 'center';
-    cells.forEach(([label, n, colour], i) => {
-      const cx = x + cw * (i + 0.5);
-      ctx.fillStyle = '#fff';
-      ctx.font = `700 ${h * 0.42}px ${MONO}`;
-      ctx.fillText(String(n), cx, y + h * 0.56);
-      ctx.fillStyle = colour;
-      ctx.fillRect(cx - cw * 0.24, y + h * 0.7, cw * 0.48, Math.max(2, h * 0.05));
-      ctx.fillStyle = 'rgba(255,255,255,0.7)';
-      ctx.font = `500 ${h * 0.15}px ${MONO}`;
-      ctx.fillText(label, cx, y + h * 0.92);
-    });
-    ctx.textAlign = 'left';
-  }
-
-  if (rect('progress')) {
-    const [x, y, w, h] = rect('progress');
-    const first = scene.objects[0]?.t ?? 0, last = scene.objects[scene.objects.length - 1]?.t ?? 1;
-    const p = Math.min(1, Math.max(0, (t - first) / Math.max(1, last - first)));
-    const barH = Math.max(3, h * 0.2), by = y + h - barH;
-    ctx.fillStyle = 'rgba(255,255,255,0.25)';
-    roundRectPath(ctx, x, by, w, barH, barH / 2); ctx.fill();
-    ctx.fillStyle = '#fff';
-    roundRectPath(ctx, x, by, Math.max(barH, w * p), barH, barH / 2); ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.font = `600 ${h * 0.5}px ${MONO}`;
-    ctx.textAlign = 'left';
-    ctx.fillText(mmss(Math.max(0, t - first)), x, y + h * 0.5);
-    ctx.textAlign = 'right';
-    ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    ctx.fillText(mmss(last - first), x + w, y + h * 0.5);
-    ctx.textAlign = 'left';
   }
 
   if (guides) drawGuides(ctx, W, H, layout, guides, u);   // preview only: outlines while arranging

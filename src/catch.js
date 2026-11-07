@@ -2,14 +2,14 @@
 // from a parsed beatmap, following osu!lazer's JuiceStream / SliderEventGenerator logic,
 // and works out which objects a given replay caught.
 
-import { createPath } from './slider.js?v=20261107x';
-import { LegacyRandom, statelessInt, statelessSingle } from './rng.js?v=20261107x';
-import { buildCatcherFx } from './catcher.js?v=20261107x';
-import { buildHud } from './score.js?v=20261107x';
-import { buildHealth } from './health.js?v=20261107x';
-import { buildDifficulty, maxPerformance } from './pp.js?v=20261107x';
-import { buildPlate } from './plate.js?v=20261107x';
-import { makeSampler, bananaSamples } from './hitsounds.js?v=20261107x';
+import { createPath } from './slider.js?v=20261107y';
+import { LegacyRandom, statelessInt, statelessSingle } from './rng.js?v=20261107y';
+import { buildCatcherFx } from './catcher.js?v=20261107y';
+import { buildHud } from './score.js?v=20261107y';
+import { buildHealth } from './health.js?v=20261107y';
+import { buildDifficulty, maxPerformance } from './pp.js?v=20261107y';
+import { buildPlate } from './plate.js?v=20261107y';
+import { makeSampler, bananaSamples } from './hitsounds.js?v=20261107y';
 
 export const FIELD_W = 512;
 export const FIELD_H = 384;
@@ -296,7 +296,13 @@ export function buildScene(bm, mods = 0) {
     objects,
     startTime: firstT - preempt - 500,
     endTime: lastT + 1500,
-    meta: { title: bm.title, artist: bm.artist, artistUnicode: bm.artistUnicode || bm.artist, version: bm.version, creator: bm.creator },
+    meta: {
+      title: bm.title, artist: bm.artist, artistUnicode: bm.artistUnicode || bm.artist, version: bm.version, creator: bm.creator,
+      cs, ar, hp: Math.min(10, (mods & MOD_HR ? bm.hp * 1.4 : mods & MOD_EZ ? bm.hp * 0.5 : bm.hp)),
+      od: Math.min(10, (mods & MOD_HR ? (bm.od ?? 0) * 1.4 : mods & MOD_EZ ? (bm.od ?? 0) * 0.5 : (bm.od ?? 0))),
+      bpm: (() => { const tp = bm.timingPoints.find((x) => x.uninherited && x.beatLength > 0); return tp ? (60000 / tp.beatLength) * modRate(mods) : 0; })(),
+      lengthMs: (lastT - firstT) / modRate(mods),
+    },
   };
 }
 
