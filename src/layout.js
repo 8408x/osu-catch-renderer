@@ -75,18 +75,16 @@ export const WIDGETS = {
     ],
   },
   keys: {
-    label: 'Key presses', at: [1920 - 56 - 8, 540 - (4 * 56 + 3 * 10) / 2 + 36], on: true,
+    label: 'Key presses', at: [1920 - 61, 1080 * 0.4556 - 32], on: true,
     styles: [
-      { id: 'boxes', label: 'Boxes (this site)', credit: 'this site', w: 56, h: 3 * 56 + 2 * 10 },
+      { id: 'stable', label: 'osu!stable', credit: 'osu!stable default HUD by peppy', author: 'peppy', system: 'stable', w: 61, h: 266 },
       { id: 'bars', label: 'KeyOverlay', credit: 'KeyOverlay by HosizoraN', author: 'HosizoraN', w: 182, h: 186 },
       { id: 'argon', label: 'osu!lazer (Argon)', credit: 'osu!lazer (Argon skin) by ppy and contributors', author: 'ppy', system: 'argon', w: 146 * V, h: 56 * V },
-      { id: 'stable', label: 'osu!stable', credit: 'osu!stable default HUD by peppy', author: 'peppy', system: 'stable', w: 61, h: 266 },
     ],
   },
   hits: {
     label: 'Hit counts', at: [1920 - 420 - 90, 1080 - 130], on: false,
     styles: [
-      { id: 'plain', label: 'Plain (this site)', credit: 'this site', w: 420, h: 84 },
       { id: 'hitcounts', label: 'HitCounts', credit: 'HitCounts by unknown', w: 350, h: 44 },
       { id: 'kerli2', label: 'Kerli 2', credit: 'Kerli 2 by Dartandr', author: 'Dartandr', w: 360, h: 190 },
       { id: 'classic', label: 'classic', credit: 'classic by Dartandr', author: 'Dartandr', w: 330, h: 44 },
@@ -95,7 +93,6 @@ export const WIDGETS = {
   progress: {
     label: 'Progress bar', at: [(1920 - 720) / 2, 14], on: false,
     styles: [
-      { id: 'bar', label: 'Bar (this site)', credit: 'this site', w: 720, h: 28 },
       { id: 'argon', label: 'osu!lazer (Argon)', credit: 'osu!lazer (Argon skin) by ppy and contributors', author: 'ppy', system: 'argon', w: 700 * V, h: 38 * V },
       { id: 'stable', label: 'osu!stable (pie)', credit: 'osu!stable default HUD by peppy', author: 'peppy', system: 'stable', w: 30, h: 30 },
     ],

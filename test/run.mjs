@@ -1699,13 +1699,15 @@ await test('custom styles: every non-tosu look exists, draws in its own box, and
   const d = S.styleData(scene, 1000, null, null);
   let drawn = 0;
   for (const id of L.ORDER) for (const st of L.WIDGETS[id].styles) {
-    if (st.tosu || st.system || (id === 'keys' && st.id === 'boxes')) continue;
+    if (st.tosu || st.system) continue;
     const look = S.lookFor(id, st.id);
     assert.equal(typeof look, 'function', `${id}/${st.id} has a look`);
     look(ctx, d, st.w, st.h);
     drawn++;
   }
   assert.ok(drawn >= 9 && calls.length > 50);
+  for (const id of L.ORDER) for (const st of L.WIDGETS[id].styles) assert.ok(st.tosu || st.system || S.lookFor(id, st.id), `${id}/${st.id} is drawn by something`);
+  assert.equal(L.defaultLayout().keys.style, 'stable');
   const n = L.normalizeLayout({ title: { style: 'kerli1' }, pp: { style: 'nope' } });
   assert.equal(n.title.style, 'kerli1');
   assert.equal(n.pp.style, 'ingame3');

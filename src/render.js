@@ -7,18 +7,18 @@
 //   - droplets use 0.8x and tiny droplets 0.4x of that; sprites are capped at 160 px
 //   - catcher sprite = texture size x 0.35 x catcher scale, hung from the plate line 16 px down
 
-import { FIELD_W, FIELD_H } from './catch.js?v=20261108e';
-import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261108e';
-import { hudAt, scoreShownAt } from './score.js?v=20261108e';
-import { plateAt, explosionsAt } from './plate.js?v=20261108e';
-import { drawArgonHud, drawArgonPart } from './argon.js?v=20261108e';
-import { healthAt } from './health.js?v=20261108e';
-import { livePp } from './pp.js?v=20261108e';
-import { keysAt } from './keys.js?v=20261108e';
-import { ORDER, rectOf, fullRectOf, WIDGETS, styleInfo } from './layout.js?v=20261108e';
-import { lookFor, styleData } from './styles.js?v=20261108e';
-import { drawModIcons, drawModBadges } from './mods.js?v=20261108e';
-import { drawFlashlight } from './flashlight.js?v=20261108e';
+import { FIELD_W, FIELD_H } from './catch.js?v=20261108f';
+import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261108f';
+import { hudAt, scoreShownAt } from './score.js?v=20261108f';
+import { plateAt, explosionsAt } from './plate.js?v=20261108f';
+import { drawArgonHud, drawArgonPart } from './argon.js?v=20261108f';
+import { healthAt } from './health.js?v=20261108f';
+import { livePp } from './pp.js?v=20261108f';
+import { keysAt } from './keys.js?v=20261108f';
+import { ORDER, rectOf, fullRectOf, WIDGETS, styleInfo } from './layout.js?v=20261108f';
+import { lookFor, styleData } from './styles.js?v=20261108f';
+import { drawModIcons, drawModBadges } from './mods.js?v=20261108f';
+import { drawFlashlight } from './flashlight.js?v=20261108f';
 
 const ZONE = 120;  // room below the field for the catcher, in field units
 const PAD = 12;
@@ -679,13 +679,6 @@ function drawCustom(ctx, W, H, scene, t, { layout, tosu, keys, skin, bg, guides,
 
   ctx.shadowBlur = 0;
   ctx.shadowColor = 'transparent';
-
-  if (rect('keys') && keys && layout.keys.style === 'boxes') {
-    const [x, y, w] = rect('keys');
-    const size = w, gap = (10 / 56) * size;
-    if (skin?.get('inputoverlay-key')) drawStableKeys(ctx, W, H, skin, keys, t, H / 768);
-    else drawKeyColumn(ctx, keysAt(keys, t), x, y, size, gap, u, false);
-  }
 
   if (guides) drawGuides(ctx, W, H, layout, guides, u);   // preview only: outlines while arranging
   ctx.shadowBlur = 0;

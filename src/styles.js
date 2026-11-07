@@ -2,9 +2,9 @@
 // (credited in layout.js and CREDITS.md) in this site's own code; no overlay code or images are copied. A draw function
 // works in the style's natural size (see layout.js): the caller translates and scales the canvas to fit.
 
-import { tosuTokens } from './tosu.js?v=20261108e';
-import { hudAt } from './score.js?v=20261108e';
-import { keysAt } from './keys.js?v=20261108e';
+import { tosuTokens } from './tosu.js?v=20261108f';
+import { hudAt } from './score.js?v=20261108f';
+import { keysAt } from './keys.js?v=20261108f';
 
 const SANS = '"Exo 2", "Torus", "Segoe UI", system-ui, -apple-system, sans-serif';
 const MONO = '"Roboto Mono", ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace';
@@ -173,18 +173,6 @@ const LOOKS = {
   },
 
   hits: {
-    // this site's own four counters
-    plain(ctx, d, W, H) {
-      const cells = [['fruits', d.v.n300, '#7ee0a0'], ['drops', d.v.n100, '#6fc3ff'], ['tiny', d.v.n50, '#c8a2ff'], ['miss', d.v.nMiss, '#ff7b8f']];
-      ctx.fillStyle = 'rgba(10,12,18,0.55)'; rr(ctx, 0, 0, W, H, H * 0.2); ctx.fill();
-      const cw = W / cells.length;
-      cells.forEach(([label, n, colour], i) => {
-        const cx = cw * (i + 0.5);
-        text(ctx, String(n), cx, H * 0.56, { size: H * 0.42, family: MONO, align: 'center', shadow: false });
-        ctx.fillStyle = colour; ctx.fillRect(cx - cw * 0.24, H * 0.7, cw * 0.48, Math.max(2, H * 0.05));
-        text(ctx, label, cx, H * 0.92, { size: H * 0.15, weight: 500, family: MONO, fill: 'rgba(255,255,255,0.7)', align: 'center', shadow: false });
-      });
-    },
     // HitCounts (author unknown): bold coloured digits in a row
     hitcounts(ctx, d, W, H) {
       ctx.fillStyle = 'rgba(0,0,0,0.78)'; rr(ctx, 0, 0, W, H, 6); ctx.fill();
@@ -227,15 +215,6 @@ const LOOKS = {
     },
   },
 
-  progress: {
-    bar(ctx, d, W, H) {
-      const barH = Math.max(3, H * 0.2), by = H - barH;
-      ctx.fillStyle = 'rgba(255,255,255,0.25)'; rr(ctx, 0, by, W, barH, barH / 2); ctx.fill();
-      ctx.fillStyle = '#fff'; rr(ctx, 0, by, Math.max(barH, W * Math.min(1, d.progress)), barH, barH / 2); ctx.fill();
-      text(ctx, clock(d.elapsed), 0, H * 0.5, { size: H * 0.5, family: MONO, weight: 600 });
-      text(ctx, clock(d.total), W, H * 0.5, { size: H * 0.5, family: MONO, weight: 600, fill: 'rgba(255,255,255,0.7)', align: 'right' });
-    },
-  },
 };
 
 /** The draw function for a canvas look, or undefined (tosu looks and the key boxes are drawn elsewhere). */
