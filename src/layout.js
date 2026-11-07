@@ -7,7 +7,7 @@ export const AUTHORS = {
   Dartandr: { github: 'https://github.com/Dartandr' },
   uwuclxdy: { github: 'https://github.com/uwuclxdy' },
   zeronic: { github: 'https://github.com/just-zeronic' },
-  HosizoraN: { github: 'https://github.com/shinomimi' },
+  HosizoraN: { github: 'https://github.com/HosizoraN' },
 };
 
 const K = 1.222;      // the tosu overlays are drawn 1.222x (or 1.7x) larger than their browser-source size
@@ -25,10 +25,10 @@ export const WIDGETS = {
   title: {
     label: 'Map details', at: [6, 8], on: true,
     styles: [
-      { id: 'cpol', label: 'CPOL', credit: 'ArtistTitleDifficulty, author unknown', w: 800 * K, h: 90 * K, tosu: true, pad: [0, 0, 0.27, 0] },
+      { id: 'cpol', label: 'ArtistTitleDifficulty', credit: 'ArtistTitleDifficulty by unknown', w: 800 * K, h: 90 * K, tosu: true, pad: [0, 0, 0.27, 0] },
       { id: 'kerli1', label: 'Kerli 1', credit: 'Kerli 1 by Dartandr', author: 'Dartandr', w: 794, h: 124 },
       { id: 'recomfortaa', label: 'reComfortaa', credit: 'reComfortaa by Dartandr', author: 'Dartandr', w: 900, h: 130 },
-      { id: 'mapdisplay', label: 'Map Display', credit: 'Map Display, author unknown', w: 1040, h: 86 },
+      { id: 'mapdisplay', label: 'Map Display', credit: 'Map Display by unknown', w: 1040, h: 86 },
     ],
   },
   pp: {
@@ -36,37 +36,37 @@ export const WIDGETS = {
     styles: [
       { id: 'ingame3', label: 'InGame3', credit: 'InGame3 by Dartandr', author: 'Dartandr', w: 190 * K, h: 100 * K, tosu: true, pad: [0, 0, 0.26, 0.4] },
       { id: 'ingame1', label: 'InGame1', credit: 'InGame1 by Dartandr', author: 'Dartandr', w: 260, h: 150 },
-      { id: 'triangles', label: 'Triangles', credit: 'Triangles Lazer PP by uwuclxdy', author: 'uwuclxdy', w: 200, h: 90 },
-      { id: 'vertigo', label: 'Vertigo', credit: 'vertigo by zeronic', author: 'zeronic', w: 170, h: 220 },
+      { id: 'triangles', label: 'Triangles Lazer PP', credit: 'Triangles Lazer PP by uwuclxdy', author: 'uwuclxdy', w: 200, h: 90 },
+      { id: 'vertigo', label: 'vertigo', credit: 'vertigo by zeronic', author: 'zeronic', w: 170, h: 220 },
     ],
   },
   acc: {
     label: 'Accuracy and rank', at: [1920 - 8 - 340 * 1.7, 0], on: true,
-    styles: [{ id: 'cpol', label: 'CPOL', credit: 'AccuracyPP, author unknown', w: 340 * 1.7, h: 80 * 1.7, tosu: true, pad: [0.5, 0.12, 0, 0.5] }],
+    styles: [{ id: 'cpol', label: 'AccuracyPP', credit: 'AccuracyPP by unknown', w: 340 * 1.7, h: 80 * 1.7, tosu: true, pad: [0.5, 0.12, 0, 0.5] }],
   },
   combo: {
     label: 'Combo', at: [4, 1080 - 12 - 44 * 1.7], on: true,
-    styles: [{ id: 'cpol', label: 'CPOL', credit: 'Combo, author unknown', w: 420 * 1.7, h: 44 * 1.7, tosu: true, pad: [0, 0.3, 0.4, 0.1] }],
+    styles: [{ id: 'cpol', label: 'Combo', credit: 'Combo by unknown', w: 420 * 1.7, h: 44 * 1.7, tosu: true, pad: [0, 0.3, 0.4, 0.1] }],
   },
   keys: {
     label: 'Key presses', at: [1920 - 56 - 8, 540 - (4 * 56 + 3 * 10) / 2 + 36], on: true,
     styles: [
-      { id: 'boxes', label: 'Boxes', credit: 'this site', w: 56, h: 3 * 56 + 2 * 10 },
-      { id: 'bars', label: 'Bars', credit: 'KeyOverlay by HosizoraN', author: 'HosizoraN', w: 182, h: 186 },
+      { id: 'boxes', label: 'Boxes (this site)', credit: 'this site', w: 56, h: 3 * 56 + 2 * 10 },
+      { id: 'bars', label: 'KeyOverlay', credit: 'KeyOverlay by HosizoraN', author: 'HosizoraN', w: 182, h: 186 },
     ],
   },
   hits: {
     label: 'Hit counts', at: [1920 - 420 - 90, 1080 - 130], on: false,
     styles: [
-      { id: 'plain', label: 'Plain', credit: 'this site', w: 420, h: 84 },
-      { id: 'hitcounts', label: 'HitCounts', credit: 'HitCounts, author unknown', w: 350, h: 44 },
+      { id: 'plain', label: 'Plain (this site)', credit: 'this site', w: 420, h: 84 },
+      { id: 'hitcounts', label: 'HitCounts', credit: 'HitCounts by unknown', w: 350, h: 44 },
       { id: 'kerli2', label: 'Kerli 2', credit: 'Kerli 2 by Dartandr', author: 'Dartandr', w: 360, h: 190 },
-      { id: 'classic', label: 'Classic', credit: 'classic by Dartandr', author: 'Dartandr', w: 330, h: 44 },
+      { id: 'classic', label: 'classic', credit: 'classic by Dartandr', author: 'Dartandr', w: 330, h: 44 },
     ],
   },
   progress: {
     label: 'Progress bar', at: [(1920 - 720) / 2, 14], on: false,
-    styles: [{ id: 'bar', label: 'Bar', credit: 'this site', w: 720, h: 28 }],
+    styles: [{ id: 'bar', label: 'Bar (this site)', credit: 'this site', w: 720, h: 28 }],
   },
 };
 
