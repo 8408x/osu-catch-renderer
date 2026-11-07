@@ -2,11 +2,11 @@
 // (credited in layout.js and CREDITS.md) in this site's own code; no overlay code or images are copied. A draw function
 // works in the style's natural size (see layout.js): the caller translates and scales the canvas to fit.
 
-import { tosuTokens } from './tosu.js?v=20261108x';
-import { hudAt } from './score.js?v=20261108x';
-import { healthAt } from './health.js?v=20261108x';
-import { livePp, ppAtAccuracy } from './pp.js?v=20261108x';
-import { keysAt } from './keys.js?v=20261108x';
+import { tosuTokens } from './tosu.js?v=20261108z';
+import { hudAt } from './score.js?v=20261108z';
+import { healthAt } from './health.js?v=20261108z';
+import { livePp, ppAtAccuracy } from './pp.js?v=20261108z';
+import { keysAt } from './keys.js?v=20261108z';
 
 const SANS = '"Exo 2", "Torus", "Segoe UI", system-ui, -apple-system, sans-serif';
 const MONO = '"Roboto Mono", ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace';
@@ -133,8 +133,56 @@ function blob(ctx, W, H, corner) {
   ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(W, 0); ctx.bezierCurveTo(W * 0.92, H * 0.5, W * 0.55, H, 0, H); ctx.closePath(); ctx.fill();
   ctx.restore();
 }
+const playedOn = (d) => { const dt = d?.scene?.play?.date; return dt instanceof Date && !Number.isNaN(+dt) ? dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''; };
+const finalAcc = (p) => { const n = (p?.n300 ?? 0) + (p?.n100 ?? 0) + (p?.n50 ?? 0), tot = n + (p?.nKatu ?? 0) + (p?.nMiss ?? 0); return tot ? ((n / tot) * 100).toFixed(2) : '0.00'; };
 
 const LOOKS = {
+  player: {
+    // VictimCrasherOverlay: the top-left patch with the player's name
+    victim(ctx, d, W, H) {
+      blob(ctx, W, H, 'tl');
+      text(ctx, 'player:', 16, 46, { size: 20, weight: 600 });
+      text(ctx, d.player || d.title, 16, 84, { size: 36, weight: 800, maxW: W - 90 });
+    },
+    // Name tag: a round initial and the name, with the date the replay was played
+    tag(ctx, d, W, H) {
+      ctx.fillStyle = 'rgba(14,14,18,0.86)'; rr(ctx, 0, 0, W, H, H / 2); ctx.fill();
+      ctx.fillStyle = '#ff6b8a'; ctx.beginPath(); ctx.arc(H / 2, H / 2, H / 2 - 8, 0, Math.PI * 2); ctx.fill();
+      text(ctx, (d.player || '?').slice(0, 1).toUpperCase(), H / 2, H / 2 + 11, { size: 32, weight: 800, align: 'center', shadow: false });
+      text(ctx, d.player || 'player', H + 4, H / 2 + (playedOn(d) ? 2 : 11), { size: 32, weight: 700, shadow: false, maxW: W - H - 20 });
+      text(ctx, playedOn(d), H + 4, H / 2 + 26, { size: 16, weight: 400, fill: 'rgba(255,255,255,0.6)', shadow: false });
+    },
+    // Result card: the name over the play's final score, combo, accuracy and hit counts, as saved in the replay
+    result(ctx, d, W, H) {
+      const p = d.scene.play ?? {};
+      ctx.fillStyle = 'rgba(14,14,18,0.88)'; rr(ctx, 0, 0, W, H, 14); ctx.fill();
+      ctx.fillStyle = '#ff6b8a'; rr(ctx, 0, 0, 8, H, 4); ctx.fill();
+      text(ctx, d.player || 'player', 28, 42, { size: 34, weight: 800, shadow: false, maxW: W - 200 });
+      text(ctx, playedOn(d), W - 20, 38, { size: 16, weight: 400, fill: 'rgba(255,255,255,0.6)', align: 'right', shadow: false });
+      text(ctx, grouped(p.score ?? 0), 28, 90, { size: 38, weight: 600, shadow: false });
+      text(ctx, `${p.maxCombo ?? 0}x   ·   ${finalAcc(p)}%`, 28, 124, { size: 22, weight: 500, fill: 'rgba(255,255,255,0.8)', shadow: false });
+      [[p.n300, '#3ddc4b', 'fruit'], [p.n100, '#4cb8ff', 'drop'], [p.n50, '#ffd23f', 'tiny'], [p.nMiss, '#ff4d4d', 'miss']].forEach(([n, c, label], i) => {
+        const cx = 28 + i * 105;
+        ctx.fillStyle = c; rr(ctx, cx, 142, 6, 36, 3); ctx.fill();
+        text(ctx, String(n ?? 0), cx + 14, 163, { size: 24, weight: 700, shadow: false });
+        text(ctx, label, cx + 14, 178, { size: 12, weight: 400, fill: 'rgba(255,255,255,0.55)', shadow: false });
+      });
+    },
+    // Played-by strip: a slim line, "played by NAME  ·  date"
+    strip(ctx, d, W, H) {
+      ctx.fillStyle = 'rgba(14,14,18,0.8)'; rr(ctx, 0, 0, W, H, H / 2); ctx.fill();
+      text(ctx, 'played by', 18, H / 2 + 7, { size: 18, weight: 400, fill: 'rgba(255,255,255,0.65)', shadow: false });
+      text(ctx, d.player || 'player', 112, H / 2 + 8, { size: 24, weight: 700, shadow: false, maxW: W - 260 });
+      text(ctx, playedOn(d), W - 18, H / 2 + 6, { size: 16, weight: 400, fill: 'rgba(255,255,255,0.55)', align: 'right', shadow: false });
+    },
+    // Big name: the name in large type with a small "player" label and an accent line
+    big(ctx, d, W, H) {
+      text(ctx, 'PLAYER', 4, 22, { size: 16, weight: 600, fill: '#ff8fa3', maxW: W });
+      text(ctx, d.player || 'player', 2, 74, { size: 58, weight: 800, maxW: W - 8 });
+      ctx.fillStyle = '#ff6b8a'; ctx.fillRect(4, H - 6, Math.min(W - 8, 120), 4);
+    },
+  },
+
   title: {
     // paradox by mofuries: a round cover, artist and title, the difficulty with its length, and a row of stat chips
     paradox(ctx, d, W, H) {
@@ -152,12 +200,6 @@ const LOOKS = {
         ctx.fillStyle = star ? '#2a39e0' : 'rgba(34,30,56,0.85)'; rr(ctx, xx, 126, w - (star ? 0 : 6), 36, 9); ctx.fill();
         text(ctx, `${label} ${v}`, xx + (w - (star ? 0 : 6)) / 2, 152, { size: 22, weight: star ? 700 : 400, align: 'center', shadow: false });
       });
-    },
-    // VictimCrasherOverlay: the top-left patch with the player's name
-    victim(ctx, d, W, H) {
-      blob(ctx, W, H, 'tl');
-      text(ctx, 'player:', 16, 46, { size: 20, weight: 600 });
-      text(ctx, d.player || d.title, 16, 84, { size: 36, weight: 800, maxW: W - 90 });
     },
     // Kerli 1 by Dartandr: the title over four underlined difficulty values
     kerli1(ctx, d, W, H) {

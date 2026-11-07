@@ -37,8 +37,17 @@ export const WIDGETS = {
       { id: 'kerli1', label: 'Kerli 1', credit: 'Kerli 1 by Dartandr', author: 'Dartandr', w: 794, h: 124 },
       { id: 'recomfortaa', label: 'reComfortaa', credit: 'reComfortaa by Dartandr', author: 'Dartandr', w: 900, h: 130 },
       { id: 'mapdisplay', label: 'Map Display', credit: 'Map Display by unknown', w: 1040, h: 86 },
-      { id: 'victim', label: 'VictimCrasherOverlay', credit: 'VictimCrasherOverlay by VictimCrasher', author: 'VictimCrasher', w: 400, h: 110 },
       { id: 'paradox', label: 'paradox', credit: 'paradox by mofuries', author: 'mofuries', w: 700, h: 170 },
+    ],
+  },
+  player: {
+    label: 'Player card', at: [6, 120], on: false,
+    styles: [
+      { id: 'tag', label: 'Name tag', credit: 'Name tag', w: 380, h: 84 },
+      { id: 'victim', label: 'VictimCrasherOverlay', credit: 'VictimCrasherOverlay by VictimCrasher', author: 'VictimCrasher', w: 400, h: 110 },
+      { id: 'result', label: 'Result card', credit: 'Result card', w: 460, h: 192 },
+      { id: 'strip', label: 'Played-by strip', credit: 'Played-by strip', w: 470, h: 44 },
+      { id: 'big', label: 'Big name', credit: 'Big name', w: 520, h: 96 },
     ],
   },
   pp: {
@@ -132,7 +141,7 @@ export const WIDGETS = {
 };
 
 /** Draw and hit-test order, back to front. */
-export const ORDER = ['title', 'pp', 'acc', 'combo', 'score', 'health', 'hits', 'progress', 'keys'];
+export const ORDER = ['title', 'player', 'pp', 'acc', 'combo', 'score', 'health', 'hits', 'progress', 'keys'];
 
 export const styleInfo = (id, styleId) => WIDGETS[id].styles.find((x) => x.id === styleId) ?? WIDGETS[id].styles[0];
 
@@ -240,7 +249,7 @@ export const PRESETS = [
   { id: 'paradox', name: 'paradox (mofuries)', build: () => fromRows([
     ['title', 'paradox', 8, 8], ['progress', 'paradox', 765, 4], ['acc', 'paradox', 1372, 8], ['combo', 'paradox', 8, 975], ['keys', 'bars', 1738, 400]]) },
   { id: 'victim', name: 'VictimCrasherOverlay', build: () => fromRows([
-    ['health', 'victim', 0, 0], ['title', 'victim', 0, 0], ['acc', 'victim', 1580, 0], ['combo', 'victim', 0, 950],
+    ['health', 'victim', 0, 0], ['player', 'victim', 0, 0], ['acc', 'victim', 1580, 0], ['combo', 'victim', 0, 950],
     ['pp', 'victim', 1620, 790], ['hits', 'victim', 1640, 820], ['keys', 'stable', 1859, 460]]) },
 ];
 

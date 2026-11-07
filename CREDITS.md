@@ -32,6 +32,8 @@ These looks are recreated natively on the canvas, as this site's own code, from 
 | Hit counts | HitCounts | unknown |
 | Key presses | KeyOverlay | HosizoraN |
 | Full HUD (preset) | SimpleOverlay | HosizoraN (https://github.com/shinomimi) |
+| Player card | VictimCrasherOverlay | VictimCrasher (https://github.com/VictimCrasher) |
+| Player card | Name tag, Result card, Played-by strip, Big name | original designs for this site, no overlay code used |
 | Full HUD (preset) | paradox | mofuries (https://github.com/mofuries) |
 | Full HUD (preset) | Souei-Overlay | -Souei |
 | Full HUD (preset) | VictimCrasherOverlay | VictimCrasher (https://github.com/VictimCrasher) |
