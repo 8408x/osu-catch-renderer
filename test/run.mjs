@@ -852,6 +852,22 @@ if (!canvasLib) {
     assert.deepEqual(px(320 + 35, 240).slice(1, 3), [0, 0], 'inside it: no green or blue (tinted red)');
   });
 
+  await test('storyboard: replaces the still background image entirely', async () => {
+    const { drawFrame } = await import('../src/render.js');
+    const { parseStoryboard, Storyboard } = await import('../src/storyboard.js');
+    const def = await loadDefaultSkin(env, bytesOf);
+    const sc = buildScene(parseOsu(OSU), 0); const frames = []; for (let t = 0; t <= 6000; t += 50) frames.push({ t, x: 200, dash: false });
+    const tr = new ReplayTrack(frames); evaluateCatches(sc, tr);
+    const white = canvasLib.createCanvas(64, 64); { const g = white.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, 64, 64); }
+    const sb = new Storyboard(parseStoryboard(['[Events]\nSprite,Foreground,Centre,"x.png",320,240\n F,0,0,100000,0,1']), new Map(), (w, h) => canvasLib.createCanvas(w, h));
+    const cv = canvasLib.createCanvas(640, 360), ctx = cv.getContext('2d');
+    const corner = () => [...ctx.getImageData(5, 5, 1, 1).data].slice(0, 3);
+    drawFrame(ctx, 640, 360, sc, tr, 1000, { skin: def, bg: white, bgDim: 0 });
+    assert.deepEqual(corner(), [255, 255, 255], 'without a storyboard the picture shows');
+    drawFrame(ctx, 640, 360, sc, tr, 1000, { skin: def, bg: white, bgDim: 0, sb });
+    assert.ok(corner()[0] < 40, 'with a storyboard the still picture is gone');
+  });
+
   await test('render: the osu!lazer (Argon) HUD draws its digits, health bar, pp and combo, and reacts to a miss', async () => {
     const { drawFrame } = await import('../src/render.js');
     const { loadArgonFonts } = await import('../src/argon.js');

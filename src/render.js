@@ -7,16 +7,16 @@
 //   - droplets use 0.8x and tiny droplets 0.4x of that; sprites are capped at 160 px
 //   - catcher sprite = texture size x 0.35 x catcher scale, hung from the plate line 16 px down
 
-import { FIELD_W, FIELD_H } from './catch.js?v=20261107m';
-import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261107m';
-import { hudAt, scoreShownAt } from './score.js?v=20261107m';
-import { plateAt, explosionsAt } from './plate.js?v=20261107m';
-import { drawArgonHud } from './argon.js?v=20261107m';
-import { healthAt } from './health.js?v=20261107m';
-import { livePp } from './pp.js?v=20261107m';
-import { keysAt } from './keys.js?v=20261107m';
-import { drawModIcons, drawModBadges } from './mods.js?v=20261107m';
-import { drawFlashlight } from './flashlight.js?v=20261107m';
+import { FIELD_W, FIELD_H } from './catch.js?v=20261107n';
+import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261107n';
+import { hudAt, scoreShownAt } from './score.js?v=20261107n';
+import { plateAt, explosionsAt } from './plate.js?v=20261107n';
+import { drawArgonHud } from './argon.js?v=20261107n';
+import { healthAt } from './health.js?v=20261107n';
+import { livePp } from './pp.js?v=20261107n';
+import { keysAt } from './keys.js?v=20261107n';
+import { drawModIcons, drawModBadges } from './mods.js?v=20261107n';
+import { drawFlashlight } from './flashlight.js?v=20261107n';
 
 const ZONE = 120;  // room below the field for the catcher, in field units
 const PAD = 12;
@@ -588,7 +588,7 @@ export function drawFrame(ctx, W, H, scene, track, t, opts = {}) {
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, W, H);
 
-  if (bg) drawBackground(ctx, W, H, bg, sb ? 0 : bgDim);
+  if (bg && !(sb && !bg.videoWidth)) drawBackground(ctx, W, H, bg, sb ? 0 : bgDim);   // a storyboard replaces the still background image (a video still plays under it)
   if (sb) {                                                // the storyboard's Background / Pass / Foreground layers, then the dim over all of it
     sb.drawUnder(ctx, W, H, t);
     ctx.setTransform(1, 0, 0, 1, 0, 0);

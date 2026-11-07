@@ -153,6 +153,6 @@ GitHub Pages lets browsers cache the JavaScript modules for ten minutes. Every `
 
 ## Storyboards
 
-A map's storyboard (the `.osb` in the `.osz` plus the storyboard lines of the difficulty) is drawn between the background and the playfield, and the Overlay layer on top of the fruit. Supported: Sprite and Animation objects, the Background / Pass / Foreground / Overlay layers, the commands F, S, V, R, M, MX, MY, C and P (flip H/V and additive A), all 35 easings, and Loop groups. The *Storyboard* checkbox turns it off. The background dim also darkens the storyboard (as in the game), so lower it to see the storyboard clearly.
+A map's storyboard (the `.osb` in the `.osz` plus the storyboard lines of the difficulty) replaces the still background image (a background video still plays beneath it) and is drawn beneath the playfield, and the Overlay layer on top of the fruit. Supported: Sprite and Animation objects, the Background / Pass / Foreground / Overlay layers, the commands F, S, V, R, M, MX, MY, C and P (flip H/V and additive A), all 35 easings, and Loop groups. The *Storyboard* checkbox turns it off. The background dim also darkens the storyboard (as in the game), so lower it to see the storyboard clearly.
 
 Not supported yet: Trigger (T) groups (HitSound / Passing / Failing), the Fail layer, storyboard sound samples, `@2x` images, and 4:3 clipping of non-widescreen storyboards. Storyboard images are read from the `.osz` (up to 1500 of them), so a storyboard needs the `.osz` rather than a lone `.osu`.
