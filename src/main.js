@@ -1,28 +1,28 @@
-import './ui.js?v=20261109n';
-import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261109n';
-import { parseOsu } from './osu.js?v=20261109n';
-import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261109n';
-import { compareWithReplay } from './score.js?v=20261109n';
-import { nightcoreBeats } from './nightcore.js?v=20261109n';
-import { ReplayTrack } from './replay.js?v=20261109n';
-import { drawFrame, loadOverlayFonts } from './render.js?v=20261109n';
-import { loadArgonFonts } from './argon.js?v=20261109n';
-import { TosuOverlays } from './tosu.js?v=20261109n';
-import { exportMp4, webCodecsAvailable } from './encode.js?v=20261109n';
-import { VERSION } from './version.js?v=20261109n';
-import { md5 } from './md5.js?v=20261109n';
-import { resolveRange } from './range.js?v=20261109n';
-import { initLayoutEditor } from './layoutui.js?v=20261109n';
-import { drawCard } from './card.js?v=20261109n';
-import { lookupPlayer } from './avatar.js?v=20261109n';
-import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261109n';
-import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261109n';
-import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261109n';
-import { BackgroundVideo } from './bgvideo.js?v=20261109n';
-import { buildKeys } from './keys.js?v=20261109n';
-import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261109n';
-import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261109n';
-import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261109n';
+import './ui.js?v=20261109o';
+import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261109o';
+import { parseOsu } from './osu.js?v=20261109o';
+import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261109o';
+import { compareWithReplay } from './score.js?v=20261109o';
+import { nightcoreBeats } from './nightcore.js?v=20261109o';
+import { ReplayTrack } from './replay.js?v=20261109o';
+import { drawFrame, loadOverlayFonts } from './render.js?v=20261109o';
+import { loadArgonFonts } from './argon.js?v=20261109o';
+import { TosuOverlays } from './tosu.js?v=20261109o';
+import { exportMp4, webCodecsAvailable } from './encode.js?v=20261109o';
+import { VERSION } from './version.js?v=20261109o';
+import { md5 } from './md5.js?v=20261109o';
+import { resolveRange } from './range.js?v=20261109o';
+import { initLayoutEditor } from './layoutui.js?v=20261109o';
+import { drawCard } from './card.js?v=20261109o';
+import { lookupPlayer } from './avatar.js?v=20261109o';
+import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261109o';
+import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261109o';
+import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261109o';
+import { BackgroundVideo } from './bgvideo.js?v=20261109o';
+import { buildKeys } from './keys.js?v=20261109o';
+import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261109o';
+import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261109o';
+import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261109o';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('stage');
@@ -239,6 +239,12 @@ function refresh() {
       const cmp = compareWithReplay(hud, state.replay);
       msgs.push(cmp.ok ? ['ok', "The catches match the replay's own counts (fruits, droplets, misses, max combo)."]
         : ['warn', `Our catch check differs from the replay's own counts, so the HUD may be off: ${cmp.diffs.join('; ')}.`]);
+      if (!cmp.ok) {                                          // the objects that were decided by a hair: where a mismatch like this comes from
+        const half = scene.catchWidth / 2;
+        const close = scene.objects.map((o, i) => ({ o, i, margin: half - Math.abs(o.offset) })).filter((c) => Math.abs(c.margin) < 3)
+          .sort((a, b) => Math.abs(a.margin) - Math.abs(b.margin)).slice(0, 8);
+        if (close.length) msgs.push(['dim', `Closest calls (catcher half-width ${half.toFixed(3)}): ${close.map(({ o, i, margin }) => `#${i} ${o.kind} at ${(o.t / 1000).toFixed(3)}s ${o.caught ? 'caught' : 'missed'} by ${Math.abs(margin).toFixed(3)} px`).join('; ')}.`]);
+      }
       state.t = scene.startTime;
     }
   } else if (replay && beatmap) {
