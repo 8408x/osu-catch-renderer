@@ -4,6 +4,9 @@
 export class ReplayTrack {
   /** @param {{t:number,x:number,dash:boolean}[]} frames sorted by time */
   constructor(frames) {
+    // Some replays hold two frames with the same time. The game acts on the first one, so the
+    // later duplicate is dropped (otherwise the catcher jumps away from a fruit that was caught).
+    frames = frames.filter((f, i) => i === 0 || f.t !== frames[i - 1].t);
     this.frames = frames;
     // which way the catcher faces after reaching each frame (osu!lazer: last direction it moved in)
     this.dir = [];
