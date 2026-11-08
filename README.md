@@ -232,4 +232,4 @@ Pick a **Card style** (osu!lazer, osu!stable or Simple) in the Render tab. The c
 
 ### Online leaderboard
 
-With "Online leaderboard on the outro" ticked, the osu!lazer outro shows the map's real osu!catch top scores (fetched through the Worker, `/scores?checksum=<beatmap md5>`) and puts the replay at the place its score would take. This needs the updated `worker/osu-lookup.js` pasted into Cloudflare. Without it, or for maps that aren't on osu!, the card keeps the combo graph.
+With "Online leaderboard on the outro" ticked, the osu!lazer outro shows the map's real osu!catch top scores (fetched through the Worker, `/scores?checksum=<beatmap md5>`) and adds the replay as the last row. It shows a real place only when that player has a score on the board with the same combo and accuracy, because a replay file's score (stable scoring) can't be compared with the board's (lazer scoring). This needs the updated `worker/osu-lookup.js` pasted into Cloudflare. Without it, or for maps that aren't on osu!, the card keeps the combo graph.

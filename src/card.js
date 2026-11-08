@@ -3,10 +3,10 @@
 // Three looks: 'lazer' (the loading screen and results screen of osu!lazer), 'stable' (osu!stable's loading
 // screen and ranking panel) and 'simple' (a plain centred card). Layouts follow those screens; no artwork is copied.
 
-import { getAvatar, getProfile, getBoard } from './avatar.js?v=20261109x';
-import { styleData } from './styles.js?v=20261109x';
-import { hudAt } from './score.js?v=20261109x';
-import { modEntries } from './mods.js?v=20261109x';
+import { getAvatar, getProfile, getBoard } from './avatar.js?v=20261109y';
+import { styleData } from './styles.js?v=20261109y';
+import { hudAt } from './score.js?v=20261109y';
+import { modEntries } from './mods.js?v=20261109y';
 
 const SANS = '"Exo 2", "Torus", system-ui, "Segoe UI", sans-serif';
 const MONO = '"JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, monospace';
@@ -117,18 +117,16 @@ function boardRows(scene, n = 9) {
   const b = getBoard(), pl = scene.play ?? {};
   if (!b?.scores?.length) return null;
   const list = b.scores.map((x) => ({ ...x }));
-  const name = (scene.player || '').toLowerCase();
-  let mi = list.findIndex((x) => x.score === (pl.score ?? 0) && String(x.username).toLowerCase() === name);
-  if (mi >= 0) list[mi].mine = true;
-  else {
-    const me = { username: scene.player || 'You', score: pl.score ?? 0, accuracy: accuracy(pl) / 100, max_combo: pl.maxCombo ?? 0, mine: true };
-    mi = list.findIndex((x) => x.score < me.score);
-    if (mi < 0) { mi = list.length; me.rank = list.length >= 50 ? 0 : list.length + 1; } else me.rank = mi + 1;
-    list.splice(mi, 0, me);
-    for (let i = mi + 1; i < list.length; i++) list[i].rank = i + 1;
+  const name = (scene.player || '').toLowerCase(), acc = accuracy(pl) / 100;
+  // The replay file's score comes from stable's scoring, the board's from lazer's, so scores cannot be compared.
+  // The replay counts as on the board only when the same player has a score with the same combo and accuracy.
+  const mi = list.findIndex((x) => String(x.username).toLowerCase() === name && x.max_combo === (pl.maxCombo ?? -1) && Math.abs((x.accuracy ?? 0) - acc) < 0.0006);
+  if (mi >= 0) {
+    list[mi].mine = true;
+    return mi < n ? list.slice(0, n) : [...list.slice(0, n - 1), list[mi]];
   }
-  if (mi < n) return list.slice(0, n);
-  return [...list.slice(0, n - 1), list[mi]];
+  const me = { username: scene.player || 'You', score: pl.score ?? 0, accuracy: acc, max_combo: pl.maxCombo ?? 0, mine: true, rank: null };
+  return [...list.slice(0, n - 1), me];
 }
 
 function drawBoard(ctx, x, y, w, h, u, scene) {
@@ -141,8 +139,8 @@ function drawBoard(ctx, x, y, w, h, u, scene) {
     const ry = top + i * rh, cy = ry + rh / 2;
     if (r.mine) { rr(ctx, x + 14 * u, ry + 2 * u, w - 28 * u, rh - 4 * u, 12 * u); ctx.fillStyle = 'rgba(255,102,170,0.28)'; ctx.fill(); ctx.strokeStyle = '#ff66aa'; ctx.lineWidth = 2 * u; ctx.stroke(); }
     const fs = Math.min(26 * u, rh * 0.52);
-    ctx.textAlign = 'left'; ctx.font = FONT(700, fs); ctx.fillStyle = r.rank <= 3 ? ['#ffd23f', '#dfe5f2', '#ffa05a'][r.rank - 1] : 'rgba(255,255,255,0.7)';
-    ctx.fillText(r.rank ? `#${r.rank}` : '#50+', x + 32 * u, cy + fs * 0.35);
+    ctx.textAlign = 'left'; ctx.font = FONT(700, fs); ctx.fillStyle = r.rank && r.rank <= 3 ? ['#ffd23f', '#dfe5f2', '#ffa05a'][r.rank - 1] : 'rgba(255,255,255,0.7)';
+    ctx.fillText(r.rank ? `#${r.rank}` : '—', x + 32 * u, cy + fs * 0.35);
     ctx.fillStyle = '#fff'; ctx.font = FONT(r.mine ? 800 : 600, fs);
     const nameX = x + 110 * u, scoreR = x + w - 32 * u, accR = scoreR - 390 * u;
     ctx.fillText(fitText(ctx, r.username, accR - nameX - 130 * u), nameX, cy + fs * 0.35);
