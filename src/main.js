@@ -1,28 +1,28 @@
-import './ui.js?v=20261109t';
-import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261109t';
-import { parseOsu } from './osu.js?v=20261109t';
-import { buildScene, evaluateCatches, findJudgeShift, resolveColours } from './catch.js?v=20261109t';
-import { compareWithReplay } from './score.js?v=20261109t';
-import { nightcoreBeats } from './nightcore.js?v=20261109t';
-import { ReplayTrack } from './replay.js?v=20261109t';
-import { drawFrame, loadOverlayFonts } from './render.js?v=20261109t';
-import { loadArgonFonts } from './argon.js?v=20261109t';
-import { TosuOverlays } from './tosu.js?v=20261109t';
-import { exportMp4, webCodecsAvailable } from './encode.js?v=20261109t';
-import { VERSION } from './version.js?v=20261109t';
-import { md5 } from './md5.js?v=20261109t';
-import { resolveRange } from './range.js?v=20261109t';
-import { initLayoutEditor } from './layoutui.js?v=20261109t';
-import { drawCard } from './card.js?v=20261109t';
-import { lookupPlayer } from './avatar.js?v=20261109t';
-import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261109t';
-import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261109t';
-import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261109t';
-import { BackgroundVideo } from './bgvideo.js?v=20261109t';
-import { buildKeys } from './keys.js?v=20261109t';
-import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261109t';
-import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261109t';
-import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261109t';
+import './ui.js?v=20261109u';
+import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261109u';
+import { parseOsu } from './osu.js?v=20261109u';
+import { buildScene, evaluateCatches, findJudgeShift, resolveColours } from './catch.js?v=20261109u';
+import { compareWithReplay } from './score.js?v=20261109u';
+import { nightcoreBeats } from './nightcore.js?v=20261109u';
+import { ReplayTrack } from './replay.js?v=20261109u';
+import { drawFrame, loadOverlayFonts } from './render.js?v=20261109u';
+import { loadArgonFonts } from './argon.js?v=20261109u';
+import { TosuOverlays } from './tosu.js?v=20261109u';
+import { exportMp4, webCodecsAvailable } from './encode.js?v=20261109u';
+import { VERSION } from './version.js?v=20261109u';
+import { md5 } from './md5.js?v=20261109u';
+import { resolveRange } from './range.js?v=20261109u';
+import { initLayoutEditor } from './layoutui.js?v=20261109u';
+import { drawCard } from './card.js?v=20261109u';
+import { lookupPlayer } from './avatar.js?v=20261109u';
+import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261109u';
+import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261109u';
+import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261109u';
+import { BackgroundVideo } from './bgvideo.js?v=20261109u';
+import { buildKeys } from './keys.js?v=20261109u';
+import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261109u';
+import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261109u';
+import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261109u';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('stage');
@@ -788,6 +788,23 @@ $('seek').addEventListener('input', () => {
   updateClock();
 });
 
+// A sensible bitrate for the chosen size and frame rate (Mbps, 30 fps table; 60 fps needs about half as much again).
+const BITRATE_30 = { 240: 1, 360: 1.5, 480: 2.5, 720: 5, 1080: 8, 1440: 16, 2160: 35 };
+function suggestMbps(height, fps) {
+  const steps = Object.keys(BITRATE_30).map(Number);
+  const key = steps.reduce((best, k) => (Math.abs(k - height) < Math.abs(best - height) ? k : best), steps[0]);
+  return Math.round(BITRATE_30[key] * (fps >= 60 ? 1.5 : 1) * 2) / 2;
+}
+function applySuggestedBitrate() {
+  const { h } = size(); const fps = Number($('fps').value) || 60;
+  if ($('mbps').dataset.edited !== '1') $('mbps').value = suggestMbps(h, fps);
+  const hint = $('mbpshint'); if (hint) hint.textContent = `suggested ${suggestMbps(h, fps)}`;
+}
+$('mbps').addEventListener('input', () => { $('mbps').dataset.edited = '1'; applySuggestedBitrate(); });
+$('res').addEventListener('change', applySuggestedBitrate);
+$('fps').addEventListener('change', applySuggestedBitrate);
+{ const { h } = size(); if (Number($('mbps').value) !== suggestMbps(h, Number($('fps').value) || 60)) $('mbps').dataset.edited = '1'; }   // a value restored from an earlier visit is the user's choice
+applySuggestedBitrate();
 $('res').addEventListener('change', () => { autoCap = AUTO_CAPS[0]; setSize(); });
 $('prevres').addEventListener('change', () => { autoCap = AUTO_CAPS[0]; setSize(); });
 
@@ -946,7 +963,7 @@ async function renderCurrent(job = null) {
     endTime: range.to,
     rate: sc.rate,
     fps: Number($('fps').value),
-    bitrate: Math.max(1, Number($('mbps').value) || 12) * 1e6,
+    bitrate: Math.max(0.5, Number($('mbps').value) || suggestMbps(size().h, Number($('fps').value) || 60)) * 1e6,
     makeAudio: useMusic || useHits
       ? (durationSec) => buildAudio(clip, durationSec, { useMusic, useHits, volume, hitVolume, nightcore, music })
       : undefined,

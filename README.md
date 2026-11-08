@@ -218,6 +218,10 @@ The secret lives only in Cloudflare. Never put it in the site or the repo.
 
 Layout tab → Copy share link. Anyone who opens the link gets your widget positions, sizes, opacity and looks (not your replay or picture).
 
+## Resolution and file size
+
+Pick anything from 240p to 4K (3840 × 2160) in the Render tab. The bitrate box fills in a sensible value for the size and frame rate (for example 1 Mbps at 240p, 5 Mbps at 720p30, 35 Mbps at 4K30, one and a half times that at 60 fps) and shows it next to the label; type your own number to override it, and it is remembered. File size is about bitrate × length, so a 3.5 minute video at 720p60 (7.5 Mbps) is roughly 200 MB, and at 240p about 25 MB. Very large sizes at 60 fps may not be supported by your browser's video encoder; the page tells you if so, and a lower resolution or 30 fps will work.
+
 ## Intro and outro cards
 
 In the Render tab, turn on Intro card (the player's picture, name, rank and the map) and/or Outro card (accuracy, max combo, score, pp and hit counts). They add a few silent seconds before and after the gameplay; the music stays in step with the gameplay.
