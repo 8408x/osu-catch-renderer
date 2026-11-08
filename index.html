@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="app-version" content="20261109u">
+  <meta name="app-version" content="20261109v">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>osu!catch Replay Renderer</title>
   <style>
@@ -360,6 +360,8 @@
             <input id="mbps" type="number" min="0.5" max="100" step="0.5" value="7.5">
           </label>
           <div class="grid2" style="margin-top:10px">
+            <label class="field"><span>Card style</span><select id="cardstyle"><option value="lazer">osu!lazer</option><option value="stable">osu!stable</option><option value="simple">Simple</option></select></label>
+            <div class="row"><button id="previewintro" type="button">Show intro</button> <button id="previewoutro" type="button">Show outro</button></div>
             <label class="toggle"><input id="introon" type="checkbox"> Intro card <small>(player and map)</small></label>
             <label class="field"><span>Intro seconds</span><input id="introsec" type="number" min="1" max="10" step="1" value="4"></label>
             <label class="toggle"><input id="outroon" type="checkbox"> Outro card <small>(the result)</small></label>
@@ -396,6 +398,6 @@
 <div class="dropveil" id="dropveil"><div>Drop files to load them<small>.osr replay · .osz map set · .osu · .osk skin · image · song</small></div></div>
 
 <script src="vendor/lzma-d-min.js"></script>
-<script type="module" src="src/main.js?v=20261109u"></script>
+<script type="module" src="src/main.js?v=20261109v"></script>
 </body>
 </html>

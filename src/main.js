@@ -1,28 +1,28 @@
-import './ui.js?v=20261109u';
-import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261109u';
-import { parseOsu } from './osu.js?v=20261109u';
-import { buildScene, evaluateCatches, findJudgeShift, resolveColours } from './catch.js?v=20261109u';
-import { compareWithReplay } from './score.js?v=20261109u';
-import { nightcoreBeats } from './nightcore.js?v=20261109u';
-import { ReplayTrack } from './replay.js?v=20261109u';
-import { drawFrame, loadOverlayFonts } from './render.js?v=20261109u';
-import { loadArgonFonts } from './argon.js?v=20261109u';
-import { TosuOverlays } from './tosu.js?v=20261109u';
-import { exportMp4, webCodecsAvailable } from './encode.js?v=20261109u';
-import { VERSION } from './version.js?v=20261109u';
-import { md5 } from './md5.js?v=20261109u';
-import { resolveRange } from './range.js?v=20261109u';
-import { initLayoutEditor } from './layoutui.js?v=20261109u';
-import { drawCard } from './card.js?v=20261109u';
-import { lookupPlayer } from './avatar.js?v=20261109u';
-import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261109u';
-import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261109u';
-import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261109u';
-import { BackgroundVideo } from './bgvideo.js?v=20261109u';
-import { buildKeys } from './keys.js?v=20261109u';
-import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261109u';
-import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261109u';
-import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261109u';
+import './ui.js?v=20261109v';
+import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261109v';
+import { parseOsu } from './osu.js?v=20261109v';
+import { buildScene, evaluateCatches, findJudgeShift, resolveColours } from './catch.js?v=20261109v';
+import { compareWithReplay } from './score.js?v=20261109v';
+import { nightcoreBeats } from './nightcore.js?v=20261109v';
+import { ReplayTrack } from './replay.js?v=20261109v';
+import { drawFrame, loadOverlayFonts } from './render.js?v=20261109v';
+import { loadArgonFonts } from './argon.js?v=20261109v';
+import { TosuOverlays } from './tosu.js?v=20261109v';
+import { exportMp4, webCodecsAvailable } from './encode.js?v=20261109v';
+import { VERSION } from './version.js?v=20261109v';
+import { md5 } from './md5.js?v=20261109v';
+import { resolveRange } from './range.js?v=20261109v';
+import { initLayoutEditor } from './layoutui.js?v=20261109v';
+import { drawCard } from './card.js?v=20261109v';
+import { lookupPlayer } from './avatar.js?v=20261109v';
+import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261109v';
+import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261109v';
+import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261109v';
+import { BackgroundVideo } from './bgvideo.js?v=20261109v';
+import { buildKeys } from './keys.js?v=20261109v';
+import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261109v';
+import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261109v';
+import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261109v';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('stage');
@@ -721,14 +721,46 @@ function seekPreview(t) {
   updateClock();
 }
 
+// The title cards in the preview: the same drawing as the export. They sit in front of and behind the map while it plays.
+const cardSecs = (kind) => ($(kind + 'on').checked ? Math.min(10, Math.max(1, Number($(kind + 'sec').value) || (kind === 'intro' ? 4 : 5))) : 0);
+function paintCard(kind, progress) {
+  if (!state.scene) return;
+  drawCard(ctx, canvas.width, canvas.height, { kind, scene: state.scene, bg: state.bg, progress, style: $('cardstyle').value });
+}
+let introMs = 0, outroMs = 0, outroBegan = null;   // card lengths for this playback, and when (in elapsed ms) the outro started
 let lastTick = 0, slowAcc = 0, slowN = 0, lastUi = 0;
 function tick(now) {
   if (!playing) return;
   const sc = state.scene;
   const elapsedMs = previewSource ? (audioCtx.currentTime - audioT0) * 1000 : now - playClock;
-  state.t = playFrom + elapsedMs * sc.rate;
+  if (elapsedMs < 0 && introMs) {                    // the intro card, before the map starts
+    state.t = playFrom;
+    paintCard('intro', Math.min(1, (introMs + elapsedMs) / introMs));
+    $('clock').textContent = 'Intro';
+    requestAnimationFrame(tick);
+    return;
+  }
   const rng = activeRange(), stopAt = rng ? Math.min(rng.to, sc.endTime) : sc.endTime;   // a set range ends the preview where the render would
-  if (state.t >= stopAt) { state.t = stopAt; stopPreview(); }
+  if (outroBegan !== null) {                         // the outro card, after the last object
+    state.t = stopAt;
+    const p = (elapsedMs - outroBegan) / outroMs;
+    if (p >= 1) { stopPreview(); drawAt(state.t); updateClock(); return; }
+    paintCard('outro', Math.max(0, p));
+    $('clock').textContent = 'Outro';
+    requestAnimationFrame(tick);
+    return;
+  }
+  state.t = playFrom + elapsedMs * sc.rate;
+  if (state.t >= stopAt) {
+    state.t = stopAt;
+    if (outroMs) {
+      outroBegan = elapsedMs;
+      if (previewSource) { try { previewSource.stop(); } catch { /* ended already */ } }
+      requestAnimationFrame(tick);
+      return;
+    }
+    stopPreview();
+  }
   drawAt(state.t);
   if (now - lastUi > 100 || !playing) { lastUi = now; $('seek').value = String(Math.floor(state.t)); updateClock(); }   // the slider and clock need no 60 Hz updates
   // auto preview quality: a window of 45 frames averaging over 25 ms (under 40 fps) drops the preview one resolution step
@@ -769,17 +801,30 @@ $('play').addEventListener('click', async () => {
   }
   if (!playing || token !== playToken) return;       // paused or seeked while the sound was being prepared
   playFrom = state.t;
+  const atStart = state.t <= (rng ? rng.from : sc.startTime) + 1;
+  introMs = atStart ? cardSecs('intro') * 1000 : 0;
+  outroMs = cardSecs('outro') * 1000; outroBegan = null;
   if (buffer) {
     previewSource = audioCtx.createBufferSource();
     previewSource.buffer = buffer;
     previewSource.connect(audioCtx.destination);
-    audioT0 = audioCtx.currentTime;
-    previewSource.start(0, Math.max(0, (state.t - sc.startTime) / sc.rate / 1000));
+    audioT0 = audioCtx.currentTime + introMs / 1000;
+    previewSource.start(audioT0, Math.max(0, (state.t - sc.startTime) / sc.rate / 1000));
   }
-  playClock = performance.now();
+  playClock = performance.now() + introMs;
   lastTick = 0; slowAcc = 0; slowN = 0;
   requestAnimationFrame(tick);
 });
+
+for (const kind of ['intro', 'outro']) {
+  $('preview' + kind).addEventListener('click', () => {
+    if (!state.scene) return;
+    stopPreview();
+    paintCard(kind, 0.5);
+    $('clock').textContent = kind === 'intro' ? 'Intro' : 'Outro';
+  });
+}
+$('cardstyle').addEventListener('change', () => { if (state.scene && !playing) { drawAt(state.t); updateClock(); } });
 
 $('seek').addEventListener('input', () => {
   stopPreview();
@@ -815,7 +860,7 @@ function setBusy(busy) {
   $('exportall').disabled = busy || !state.scene;
   $('cancel').disabled = !busy;
   for (const id of ['rangefrom', 'rangeto', 'rangefromnow', 'rangetonow', 'rangeclear', 'replaypick']) $(id).disabled = busy;
-  for (const id of ['osr', 'osu', 'audio', 'skin', 'useDefault', 'res', 'fps', 'mbps', 'introon', 'introsec', 'outroon', 'outrosec', 'volume', 'usehits', 'hitvolume', 'showwidth', 'showhud', 'showlight', 'hudstyle', 'showbg', 'bgdim', 'bgfile', 'play', 'seek', 'prevres']) $(id).disabled = busy;
+  for (const id of ['osr', 'osu', 'audio', 'skin', 'useDefault', 'res', 'fps', 'mbps', 'introon', 'introsec', 'outroon', 'outrosec', 'cardstyle', 'volume', 'usehits', 'hitvolume', 'showwidth', 'showhud', 'showlight', 'hudstyle', 'showbg', 'bgdim', 'bgfile', 'play', 'seek', 'prevres']) $(id).disabled = busy;
   $('showvideo').disabled = busy || !state.bgv;
   $('showsb').disabled = busy || !state.sb;
   $('usemusic').disabled = busy || !currentMusic()?.bytes;
@@ -969,7 +1014,7 @@ async function renderCurrent(job = null) {
       : undefined,
     introSec: $('introon').checked ? Math.min(10, Math.max(1, Number($('introsec').value) || 4)) : 0,
     outroSec: $('outroon').checked ? Math.min(10, Math.max(1, Number($('outrosec').value) || 5)) : 0,
-    drawCard: ($('introon').checked || $('outroon').checked) ? (kind, progress) => drawCard(ctx, canvas.width, canvas.height, { kind, scene: sc, bg: state.bg, progress }) : undefined,
+    drawCard: ($('introon').checked || $('outroon').checked) ? (kind, progress) => drawCard(ctx, canvas.width, canvas.height, { kind, scene: sc, bg: state.bg, progress, style: $('cardstyle').value }) : undefined,
     signal: abort.signal,
     onStatus: (text) => { stage = text; $('status').textContent = prefix + text; },
     onProgress: (p) => {

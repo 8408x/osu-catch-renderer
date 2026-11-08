@@ -225,3 +225,7 @@ Pick anything from 240p to 4K (3840 × 2160) in the Render tab. The bitrate box 
 ## Intro and outro cards
 
 In the Render tab, turn on Intro card (the player's picture, name, rank and the map) and/or Outro card (accuracy, max combo, score, pp and hit counts). They add a few silent seconds before and after the gameplay; the music stays in step with the gameplay.
+
+## Intro and outro cards
+
+Pick a **Card style** (osu!lazer, osu!stable or Simple) in the Render tab. The cards show in the preview too: press Play from the start and the intro runs before the map, the outro after the last object. "Show intro" / "Show outro" display them without playing. The exported video uses the same drawing, so what you see is what you get.

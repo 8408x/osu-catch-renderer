@@ -44,7 +44,7 @@ function initReadouts() {
 
 /** Remember the plain choices people set once (not files). Applied after main.js has attached its listeners. */
 function restoreChoices() {
-  for (const id of ['hudstyle', 'prevres', 'res', 'fps', 'mbps', 'bgdim', 'volume', 'hitvolume']) {
+  for (const id of ['hudstyle', 'cardstyle', 'prevres', 'res', 'fps', 'mbps', 'bgdim', 'volume', 'hitvolume']) {
     const el = $(id);
     if (!el) continue;
     const saved = store.get(`v.${id}`);
