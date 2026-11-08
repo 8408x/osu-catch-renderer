@@ -2,12 +2,13 @@
 // (credited in layout.js and CREDITS.md) in this site's own code; no overlay code or images are copied. A draw function
 // works in the style's natural size (see layout.js): the caller translates and scales the canvas to fit.
 
-import { tosuTokens } from './tosu.js?v=20261109y';
-import { hudAt } from './score.js?v=20261109y';
-import { getAvatar, getProfile } from './avatar.js?v=20261109y';
-import { healthAt } from './health.js?v=20261109y';
-import { livePp, ppAtAccuracy } from './pp.js?v=20261109y';
-import { keysAt } from './keys.js?v=20261109y';
+import { countUp } from './countup.js?v=20261109z';
+import { tosuTokens } from './tosu.js?v=20261109z';
+import { hudAt } from './score.js?v=20261109z';
+import { getAvatar, getProfile } from './avatar.js?v=20261109z';
+import { healthAt } from './health.js?v=20261109z';
+import { livePp, ppAtAccuracy } from './pp.js?v=20261109z';
+import { keysAt } from './keys.js?v=20261109z';
 
 const SANS = '"Exo 2", "Torus", "Segoe UI", system-ui, -apple-system, sans-serif';
 const MONO = '"Roboto Mono", ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace';
@@ -27,7 +28,7 @@ export function styleData(scene, t, bg, keys) {
     player: scene.player ?? '',
     profile: getProfile(),
     key: keys ? keysAt(keys, t) : null,
-    pp: tok.ppIfMapEndsNow, ppFc: tok.ppIfRestFced,
+    pp: Math.round(tok.ppShown), ppFc: tok.ppIfRestFced,
     title: m.title ?? '', artist: m.artistUnicode ?? m.artist ?? '', diff: m.version ?? '', mapper: m.creator ?? '',
     cs: m.cs ?? 0, ar: m.ar ?? 0, od: m.od ?? 0, hp: m.hp ?? 0, bpm: m.bpm ?? 0, length: m.lengthMs ?? 0, stars: scene.diff?.star ?? 0,
     progress: tok.pct,

@@ -233,3 +233,7 @@ Pick a **Card style** (osu!lazer, osu!stable or Simple) in the Render tab. The c
 ### Online leaderboard
 
 With "Online leaderboard on the outro" ticked, the osu!lazer outro shows the map's real osu!catch top scores (fetched through the Worker, `/scores?checksum=<beatmap md5>`) and adds the replay as the last row. It shows a real place only when that player has a score on the board with the same combo and accuracy, because a replay file's score (stable scoring) can't be compared with the board's (lazer scoring). This needs the updated `worker/osu-lookup.js` pasted into Cloudflare. Without it, or for maps that aren't on osu!, the card keeps the combo graph.
+
+### Smooth numbers
+
+Many community overlays roll their numbers (CountUp, about half a second) instead of jumping. "Smooth numbers" in the Render tab does the same for the pp counter (InGame3 also shows two decimals, like the real overlay). Frames are computed from the last second of the play, so seeking and exporting give the same result. Turn it off for faster exports.

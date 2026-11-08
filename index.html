@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="app-version" content="20261109y">
+  <meta name="app-version" content="20261109z">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>osu!catch Replay Renderer</title>
   <style>
@@ -366,6 +366,7 @@
           <label class="field" style="margin-top:10px"><span>Bitrate (Mbps) <small id="mbpshint" style="font-weight:400;opacity:.7"></small></span>
             <input id="mbps" type="number" min="0.5" max="100" step="0.5" value="7.5">
           </label>
+          <label class="toggle" style="margin-top:10px"><input id="smoothnum" type="checkbox" checked> <span>Smooth numbers <small>the pp counter rolls up like the community overlays (a bit slower export)</small></span></label>
           <label class="toggle" style="margin-top:10px"><input id="fastdraft" type="checkbox"> <span>Fast draft <small>skips the storyboard, background video, hit lighting and tosu overlay images; much quicker</small></span></label>
         </div>
         <div class="group">
@@ -415,6 +416,6 @@
 <div class="dropveil" id="dropveil"><div>Drop files to load them<small>.osr replay · .osz map set · .osu · .osk skin · image · song</small></div></div>
 
 <script src="vendor/lzma-d-min.js"></script>
-<script type="module" src="src/main.js?v=20261109y"></script>
+<script type="module" src="src/main.js?v=20261109z"></script>
 </body>
 </html>

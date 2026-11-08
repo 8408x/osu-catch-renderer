@@ -1784,4 +1784,18 @@ await test('custom layout: defaults match the old overlay places, bad data is re
   assert.equal(g.x, 0.5);
 });
 
+await test('countUp: rolls to a new value over about half a second and holds still otherwise', async () => {
+  const C = await import('../src/countup.js?v=20261109z');
+  C.setSmoothNumbers(true);
+  const raw = (t) => (t < 5000 ? 100 : 200);
+  assert.equal(C.countUp(raw, 4000), 100);
+  const mid = C.countUp(raw, 5100);
+  assert.ok(mid > 100 && mid < 200, `mid-roll value ${mid}`);
+  assert.ok(C.countUp(raw, 5100) < C.countUp(raw, 5300));
+  assert.ok(Math.abs(C.countUp(raw, 5700) - 200) < 0.2);
+  C.setSmoothNumbers(false);
+  assert.equal(C.countUp(raw, 5100), 200);
+  C.setSmoothNumbers(true);
+});
+
 console.log(`\n${passed} tests passed${process.exitCode ? ' (with failures)' : ''}`);

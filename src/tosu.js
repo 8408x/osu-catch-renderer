@@ -5,8 +5,9 @@
 // are needed for a whole song. Chromium, Edge and Firefox can rasterise this; where it is not possible the caller falls
 // back to the canvas drawing.
 
-import { hudAt } from './score.js?v=20261109y';
-import { livePp } from './pp.js?v=20261109y';
+import { hudAt } from './score.js?v=20261109z';
+import { livePp } from './pp.js?v=20261109z';
+import { countUp } from './countup.js?v=20261109z';
 
 const CIRCUMFERENCE = 30 * Math.PI * 2;                 // the progress ring's circle, as in the overlay's App.js
 const OSU_GRADE = ['SSH', 'SS', 'SH', 'S', 'A', 'B', 'C', 'D', 'F', ''];   // lib/consts.js
@@ -73,6 +74,7 @@ export function tosuTokens(scene, t) {
     acc: (v.acc * 100).toFixed(2),
     grade: gradeToken(v.acc, mods),
     ppIfMapEndsNow: scene.diff && scene.hud ? Math.round(livePp(scene.diff, scene, v, t)) : 0,
+    ppShown: scene.diff && scene.hud ? countUp((at) => livePp(scene.diff, scene, hudAt(scene.hud, at), at), t) : 0,   // InGame3 counts up to two decimals
     ppIfRestFced: scene.diff ? Math.round(scene.maxPp) : 0,
     combo: v.combo,
     maxCombo: scene.diff?.maxCombo ?? 0,
@@ -108,7 +110,7 @@ export function accHtml(k) {
 
 /** InGame3's pp counter: the live pp, and the "if FC" bubble that appears once there is a miss. */
 export function ppHtml(k) {
-  return `<div class="base" id="base"><div class="pp"><span id="pp">${k.ppIfMapEndsNow}</span>pp</div></div>`
+  return `<div class="base" id="base"><div class="pp"><span id="pp">${k.ppShown.toFixed(2)}</span>pp</div></div>`
     + `<div class="ifFcpp" style="opacity:${k.fcing ? 0 : 1}"><span id="ifFcpp">${k.ppIfRestFced}</span>pp</div>`;
 }
 
@@ -122,7 +124,7 @@ function keysOf(k) {
   return {
     title: [k.time, Math.round(k.pct * 400), k.titleRoman, k.artistUnicode, k.creator, k.diffName, k.mods].join('|'),
     acc: [k.acc, k.grade].join('|'),
-    pp: [k.ppIfMapEndsNow, k.fcing ? '' : k.ppIfRestFced].join('|'),
+    pp: [k.ppShown.toFixed(2), k.fcing ? '' : k.ppIfRestFced].join('|'),
     combo: [k.combo, k.maxCombo, k.fcing ? '' : k.currentMaxCombo].join('|'),
   };
 }
