@@ -2,12 +2,12 @@
 // (credited in layout.js and CREDITS.md) in this site's own code; no overlay code or images are copied. A draw function
 // works in the style's natural size (see layout.js): the caller translates and scales the canvas to fit.
 
-import { tosuTokens } from './tosu.js?v=20261109m';
-import { hudAt } from './score.js?v=20261109m';
-import { getAvatar, getProfile } from './avatar.js?v=20261109m';
-import { healthAt } from './health.js?v=20261109m';
-import { livePp, ppAtAccuracy } from './pp.js?v=20261109m';
-import { keysAt } from './keys.js?v=20261109m';
+import { tosuTokens } from './tosu.js?v=20261109n';
+import { hudAt } from './score.js?v=20261109n';
+import { getAvatar, getProfile } from './avatar.js?v=20261109n';
+import { healthAt } from './health.js?v=20261109n';
+import { livePp, ppAtAccuracy } from './pp.js?v=20261109n';
+import { keysAt } from './keys.js?v=20261109n';
 
 const SANS = '"Exo 2", "Torus", "Segoe UI", system-ui, -apple-system, sans-serif';
 const MONO = '"Roboto Mono", ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace';
@@ -170,14 +170,20 @@ function flagBox(ctx, img, x, y, w, h, r) {
   ctx.save(); rr(ctx, x, y, w, h, r); ctx.clip(); ctx.drawImage(img, x, y, w, h); ctx.restore();
   ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 1; rr(ctx, x, y, w, h, r); ctx.stroke();
 }
-/** The osu!catch mode icon: a ring with three dots in it, in a box of `size` px. */
-function catchIcon(ctx, cx, cy, size, colour) {
+/** A game mode's icon (osu, taiko, fruits, mania): a ring with a symbol inside it, in a box of `size` px. */
+function modeIcon(ctx, mode, cx, cy, size, colour) {
   const u = size / 12;
-  ctx.save(); ctx.fillStyle = colour;
-  ctx.beginPath(); ctx.arc(cx, cy, 6 * u, 0, Math.PI * 2); ctx.arc(cx, cy, 4.98 * u, 0, Math.PI * 2, true); ctx.fill();
-  for (const [dx, dy] of [[-0.73, -1.95], [1.5, 0], [-0.73, 1.95]]) { ctx.beginPath(); ctx.arc(cx + dx * u, cy + dy * u, 0.96 * u, 0, Math.PI * 2); ctx.fill(); }
+  ctx.save(); ctx.fillStyle = colour; ctx.translate(cx, cy);
+  ctx.beginPath(); ctx.arc(0, 0, 6 * u, 0, Math.PI * 2); ctx.arc(0, 0, 4.98 * u, 0, Math.PI * 2, true); ctx.fill();
+  const dot = (x, y, r) => { ctx.beginPath(); ctx.arc(x * u, y * u, r * u, 0, Math.PI * 2); ctx.fill(); };
+  const bar = (x, h) => { ctx.beginPath(); ctx.roundRect((x - 0.64) * u, (-h / 2) * u, 1.28 * u, h * u, 0.64 * u); ctx.fill(); };
+  if (mode === 'fruits') { dot(-0.73, -1.95, 0.96); dot(1.5, 0, 0.96); dot(-0.73, 1.95, 0.96); }
+  else if (mode === 'mania') { bar(0, 7.7); bar(-2.04, 4.1); bar(2.04, 4.1); }
+  else if (mode === 'taiko') { ctx.beginPath(); ctx.arc(0, 0, 3.83 * u, 0, Math.PI * 2); ctx.fill(); ctx.globalCompositeOperation = 'destination-out'; ctx.fillRect(-0.64 * u, -4 * u, 1.28 * u, 8 * u); }
+  else dot(0, 0, 3.83);
   ctx.restore();
 }
+const catchIcon = (ctx, cx, cy, size, colour) => modeIcon(ctx, 'fruits', cx, cy, size, colour);
 /** A heart, drawn inside a box `size` wide. */
 function heart(ctx, cx, cy, size, colour) {
   const k = size / 2;
@@ -284,9 +290,11 @@ const LOOKS = {
       if (groups.length || pr.is_supporter) { ctx.fillStyle = '#000'; rr(ctx, bx, by + 6, 2, 4, 1); ctx.fill(); bx += 6; }
       for (const g of groups) {
         const label = String(g.identifier || g.name || '').toUpperCase();
-        ctx.font = `700 12px ${SANS}`; const tw = ctx.measureText(label).width + 16;
+        ctx.font = `700 12px ${SANS}`; const lw = ctx.measureText(label).width, modes = Array.isArray(g.playmodes) ? g.playmodes : [];
+        const tw = lw + 16 + (modes.length ? 4 + modes.length * 12 + (modes.length - 1) * 2 : 0);
         ctx.fillStyle = 'rgba(23,28,26,0.75)'; rr(ctx, bx, by, tw, 16, 8); ctx.fill();
         text(ctx, label, bx + 8, by + 12, { size: 12, weight: 700, fill: g.colour || '#fff', shadow: false });
+        modes.forEach((mo, i) => modeIcon(ctx, mo, bx + 8 + lw + 4 + 6 + i * 14, by + 8, 12, '#fff'));
         bx += tw + 4;
       }
       if (pr.is_supporter) { ctx.fillStyle = '#EB549C'; rr(ctx, bx, by, 40, 16, 8); ctx.fill(); heart(ctx, bx + 20, by + 8, 9.6, '#fff'); }
