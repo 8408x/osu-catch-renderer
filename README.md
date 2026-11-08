@@ -237,3 +237,7 @@ With "Online leaderboard on the outro" ticked, the osu!lazer outro shows the map
 ### Smooth numbers
 
 Many community overlays roll their numbers (CountUp, about half a second) instead of jumping. "Smooth numbers" in the Render tab does the same for the pp counter (InGame3 also shows two decimals, like the real overlay). Frames are computed from the last second of the play, so seeking and exporting give the same result. Turn it off for faster exports.
+
+### Full combo splash
+
+Like tosu's Fullcombo overlay, a "FULL COMBO" splash plays as the last object lands when the play had no misses (tiny droplets don't count). It is drawn by this site, not copied from the overlay. Turn it off with "Full combo splash" in the Look tab's Layers. The HitErrorMeter overlay is not included because osu!catch has no hit timing to measure.

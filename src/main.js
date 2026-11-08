@@ -1,29 +1,29 @@
-import './ui.js?v=20261109z';
-import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261109z';
-import { parseOsu } from './osu.js?v=20261109z';
-import { buildScene, evaluateCatches, findJudgeShift, resolveColours } from './catch.js?v=20261109z';
-import { compareWithReplay } from './score.js?v=20261109z';
-import { nightcoreBeats } from './nightcore.js?v=20261109z';
-import { ReplayTrack } from './replay.js?v=20261109z';
-import { drawFrame, loadOverlayFonts } from './render.js?v=20261109z';
-import { loadArgonFonts } from './argon.js?v=20261109z';
-import { TosuOverlays } from './tosu.js?v=20261109z';
-import { exportMp4, webCodecsAvailable } from './encode.js?v=20261109z';
-import { VERSION } from './version.js?v=20261109z';
-import { md5 } from './md5.js?v=20261109z';
-import { resolveRange } from './range.js?v=20261109z';
-import { initLayoutEditor } from './layoutui.js?v=20261109z';
-import { setSmoothNumbers } from './countup.js?v=20261109z';
-import { drawCard } from './card.js?v=20261109z';
-import { lookupPlayer, loadBoard } from './avatar.js?v=20261109z';
-import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261109z';
-import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261109z';
-import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261109z';
-import { BackgroundVideo } from './bgvideo.js?v=20261109z';
-import { buildKeys } from './keys.js?v=20261109z';
-import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261109z';
-import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261109z';
-import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261109z';
+import './ui.js?v=20261110a';
+import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261110a';
+import { parseOsu } from './osu.js?v=20261110a';
+import { buildScene, evaluateCatches, findJudgeShift, resolveColours } from './catch.js?v=20261110a';
+import { compareWithReplay } from './score.js?v=20261110a';
+import { nightcoreBeats } from './nightcore.js?v=20261110a';
+import { ReplayTrack } from './replay.js?v=20261110a';
+import { drawFrame, loadOverlayFonts } from './render.js?v=20261110a';
+import { loadArgonFonts } from './argon.js?v=20261110a';
+import { TosuOverlays } from './tosu.js?v=20261110a';
+import { exportMp4, webCodecsAvailable } from './encode.js?v=20261110a';
+import { VERSION } from './version.js?v=20261110a';
+import { md5 } from './md5.js?v=20261110a';
+import { resolveRange } from './range.js?v=20261110a';
+import { initLayoutEditor } from './layoutui.js?v=20261110a';
+import { setSmoothNumbers } from './countup.js?v=20261110a';
+import { drawCard } from './card.js?v=20261110a';
+import { lookupPlayer, loadBoard } from './avatar.js?v=20261110a';
+import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261110a';
+import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261110a';
+import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261110a';
+import { BackgroundVideo } from './bgvideo.js?v=20261110a';
+import { buildKeys } from './keys.js?v=20261110a';
+import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261110a';
+import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261110a';
+import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261110a';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('stage');
@@ -118,6 +118,7 @@ function drawAt(t, fromExport = false) {
     showCatchWidth: $('showwidth').checked,
     showHud: $('showhud').checked,
     hitLighting: $('showlight').checked && !(fromExport && draftExport),
+    fullCombo: $('showfc').checked,
     style: $('hudstyle').value,
     argon: state.argon,
     tosu: fromExport && draftExport ? null : state.tosu,
@@ -661,6 +662,7 @@ $('useDefault').addEventListener('click', () => {
 $('showwidth').addEventListener('change', () => drawAt(state.t));
 $('showhud').addEventListener('change', () => drawAt(state.t));
 $('showlight').addEventListener('change', () => drawAt(state.t));
+$('showfc').addEventListener('change', () => drawAt(state.t));
 for (const id of ['hudstyle', 'showbg', 'bgdim', 'showvideo', 'showsb']) $(id).addEventListener('input', () => drawAt(state.t));
 
 $('bgfile').addEventListener('change', async (e) => {
@@ -863,7 +865,7 @@ function setBusy(busy) {
   $('exportall').disabled = busy || !state.scene;
   $('cancel').disabled = !busy;
   for (const id of ['rangefrom', 'rangeto', 'rangefromnow', 'rangetonow', 'rangeclear', 'replaypick']) $(id).disabled = busy;
-  for (const id of ['osr', 'osu', 'audio', 'skin', 'useDefault', 'res', 'fps', 'mbps', 'introon', 'introsec', 'outroon', 'outrosec', 'cardstyle', 'showboard', 'smoothnum', 'volume', 'usehits', 'hitvolume', 'showwidth', 'showhud', 'showlight', 'hudstyle', 'showbg', 'bgdim', 'bgfile', 'play', 'seek', 'prevres']) $(id).disabled = busy;
+  for (const id of ['osr', 'osu', 'audio', 'skin', 'useDefault', 'res', 'fps', 'mbps', 'introon', 'introsec', 'outroon', 'outrosec', 'cardstyle', 'showboard', 'smoothnum', 'volume', 'usehits', 'hitvolume', 'showwidth', 'showhud', 'showlight', 'showfc', 'hudstyle', 'showbg', 'bgdim', 'bgfile', 'play', 'seek', 'prevres']) $(id).disabled = busy;
   $('showvideo').disabled = busy || !state.bgv;
   $('showsb').disabled = busy || !state.sb;
   $('usemusic').disabled = busy || !currentMusic()?.bytes;
