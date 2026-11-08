@@ -2,14 +2,14 @@
 // from a parsed beatmap, following osu!lazer's JuiceStream / SliderEventGenerator logic,
 // and works out which objects a given replay caught.
 
-import { createPath } from './slider.js?v=20261109q';
-import { LegacyRandom, statelessInt, statelessSingle } from './rng.js?v=20261109q';
-import { buildCatcherFx } from './catcher.js?v=20261109q';
-import { buildHud } from './score.js?v=20261109q';
-import { buildHealth } from './health.js?v=20261109q';
-import { buildDifficulty, maxPerformance } from './pp.js?v=20261109q';
-import { buildPlate } from './plate.js?v=20261109q';
-import { makeSampler, bananaSamples } from './hitsounds.js?v=20261109q';
+import { createPath } from './slider.js?v=20261109r';
+import { LegacyRandom, statelessInt, statelessSingle } from './rng.js?v=20261109r';
+import { buildCatcherFx } from './catcher.js?v=20261109r';
+import { buildHud } from './score.js?v=20261109r';
+import { buildHealth } from './health.js?v=20261109r';
+import { buildDifficulty, maxPerformance } from './pp.js?v=20261109r';
+import { buildPlate } from './plate.js?v=20261109r';
+import { makeSampler, bananaSamples } from './hitsounds.js?v=20261109r';
 
 export const FIELD_W = 512;
 export const FIELD_H = 384;
@@ -126,7 +126,8 @@ function juiceStreamObjects(h, bm, timing) {
         for (let t = between; t < since; t += between) {
           out.push({
             t: last.time + t,
-            x: xAt(last.progress + (t / since) * (e.progress - last.progress)),
+            // lazer keeps the raw (unclamped) path position; only the final x is clamped
+            x: h.x + path.positionAt(last.progress + (t / since) * (e.progress - last.progress)).x,
             kind: 'tiny',
           });
         }
@@ -269,7 +270,7 @@ export function buildScene(bm, mods = 0) {
       nested.sort((a, b) => a.t - b.t);                           // HitObject.nestedHitObjects.Sort
       for (const o of nested) {
         let x = o.x;
-        if (o.kind === 'tiny') x = clamp(x + clamp(rng.nextRange(-20, 20), -o.x, FIELD_W - o.x), 0, FIELD_W);
+        if (o.kind === 'tiny') x = clamp(x + Math.min(Math.max(rng.nextRange(-20, 20), -o.x), FIELD_W - o.x), 0, FIELD_W);
         else if (o.kind === 'droplet') rng.next();                // stable's droplet rotation draw
         const samples = o.kind === 'fruit' ? sounds.nodes[Math.min(o.node, sounds.nodes.length - 1)]
           : o.kind === 'droplet' ? sounds.droplets : [];

@@ -1,8 +1,8 @@
 // The title cards that can open and close an exported video: who played what, and how it went.
 // Pure drawing; encode.js asks for one frame at a time and main.js hands it the scene.
 
-import { getAvatar, getProfile } from './avatar.js?v=20261109q';
-import { styleData } from './styles.js?v=20261109q';
+import { getAvatar, getProfile } from './avatar.js?v=20261109r';
+import { styleData } from './styles.js?v=20261109r';
 
 const SANS = '"Exo 2", "Torus", system-ui, "Segoe UI", sans-serif';
 const FONT = (w, px) => `${w} ${px}px ${SANS}`;
