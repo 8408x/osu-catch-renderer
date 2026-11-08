@@ -2,12 +2,12 @@
 // (credited in layout.js and CREDITS.md) in this site's own code; no overlay code or images are copied. A draw function
 // works in the style's natural size (see layout.js): the caller translates and scales the canvas to fit.
 
-import { tosuTokens } from './tosu.js?v=20261109h';
-import { hudAt } from './score.js?v=20261109h';
-import { getAvatar, getProfile } from './avatar.js?v=20261109h';
-import { healthAt } from './health.js?v=20261109h';
-import { livePp, ppAtAccuracy } from './pp.js?v=20261109h';
-import { keysAt } from './keys.js?v=20261109h';
+import { tosuTokens } from './tosu.js?v=20261109i';
+import { hudAt } from './score.js?v=20261109i';
+import { getAvatar, getProfile } from './avatar.js?v=20261109i';
+import { healthAt } from './health.js?v=20261109i';
+import { livePp, ppAtAccuracy } from './pp.js?v=20261109i';
+import { keysAt } from './keys.js?v=20261109i';
 
 const SANS = '"Exo 2", "Torus", "Segoe UI", system-ui, -apple-system, sans-serif';
 const MONO = '"Roboto Mono", ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace';
@@ -170,6 +170,15 @@ function flagBox(ctx, img, x, y, w, h, r) {
   ctx.save(); rr(ctx, x, y, w, h, r); ctx.clip(); ctx.drawImage(img, x, y, w, h); ctx.restore();
   ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 1; rr(ctx, x, y, w, h, r); ctx.stroke();
 }
+/** An osu!catch mode icon: a ring with a fruit (a round body with a leaf) and two droplets inside. */
+function catchIcon(ctx, cx, cy, r, colour, ringW) {
+  ctx.save(); ctx.strokeStyle = colour; ctx.fillStyle = colour; ctx.lineWidth = ringW;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, cy + r * 0.12, r * 0.38, 0, Math.PI * 2); ctx.fill();                     // the fruit
+  ctx.beginPath(); ctx.ellipse(cx + r * 0.2, cy - r * 0.38, r * 0.2, r * 0.1, -0.6, 0, Math.PI * 2); ctx.fill();   // its leaf
+  for (const sx of [-1, 1]) { ctx.beginPath(); ctx.arc(cx + sx * r * 0.62, cy + r * 0.3, r * 0.14, 0, Math.PI * 2); ctx.fill(); }   // droplets
+  ctx.restore();
+}
 const withCommas = (n) => Math.round(n).toLocaleString('en-US');
 
 const LOOKS = {
@@ -239,9 +248,7 @@ const LOOKS = {
       const hg = ctx.createLinearGradient(354, 12, 406, 64); hg.addColorStop(0, '#ff8fb1'); hg.addColorStop(0.5, '#9bd6ff'); hg.addColorStop(1, '#ffd08a');
       ctx.strokeStyle = hg; ctx.stroke();
       text(ctx, pr.level != null ? String(Math.floor(pr.level)) : (pr.country_code || ''), 380, 44, { size: 18, weight: 400, align: 'center', shadow: false });
-      // the round "status" icon
-      ctx.lineWidth = 2.5; ctx.strokeStyle = '#e8ecff'; ctx.beginPath(); ctx.arc(36, 92, 12, 0, Math.PI * 2); ctx.stroke();
-      ctx.fillStyle = '#e8ecff'; for (const [bx2, bh] of [[31, 8], [36, 14], [41, 8]]) rr(ctx, bx2 - 1.5, 92 - bh / 2, 3, bh, 1.5), ctx.fill();
+      catchIcon(ctx, 36, 92, 13, '#e8ecff', 2.5);                                              // the game mode: catch
       text(ctx, pr.rank ? `#${withCommas(pr.rank)}` : '#-', 66, 100, { size: 24, weight: 600, fill: '#6fe0d6', shadow: false });
       const accText = pr.hit_accuracy != null ? `${pr.hit_accuracy.toFixed(2)}%` : `${finalAcc(d.scene.play)}%`;
       text(ctx, 'pp', 250, 90, { size: 11, weight: 400, fill: 'rgba(255,255,255,0.6)', align: 'center', shadow: false });
@@ -269,8 +276,7 @@ const LOOKS = {
       line(`Accuracy: ${pr.hit_accuracy != null ? pr.hit_accuracy.toFixed(2) : finalAcc(d.scene.play)}%`, 94);
       line(`Play Count: ${pr.play_count != null ? withCommas(pr.play_count) : '-'}${pr.level != null ? ` (Lv${Math.floor(pr.level)})` : ''}`, 118);
       text(ctx, pr.rank ? `#${withCommas(pr.rank)}` : '#-', w - 20, h - 12, { size: 38, weight: 800, fill: 'rgba(255,255,255,0.42)', align: 'right', shadow: false });
-      ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(w - 36, 32, 20, 0, Math.PI * 2); ctx.stroke();
-      ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.beginPath(); ctx.arc(w - 36, 32, 14, 0, Math.PI * 2); ctx.fill();
+      catchIcon(ctx, w - 36, 32, 22, 'rgba(255,255,255,0.4)', 5);                                // the game mode: catch
       ctx.restore();
     },
     // Big name: the name in large type with a small "player" label and an accent line
