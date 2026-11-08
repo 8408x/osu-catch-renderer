@@ -2,14 +2,14 @@
 // from a parsed beatmap, following osu!lazer's JuiceStream / SliderEventGenerator logic,
 // and works out which objects a given replay caught.
 
-import { createPath } from './slider.js?v=20261109o';
-import { LegacyRandom, statelessInt, statelessSingle } from './rng.js?v=20261109o';
-import { buildCatcherFx } from './catcher.js?v=20261109o';
-import { buildHud } from './score.js?v=20261109o';
-import { buildHealth } from './health.js?v=20261109o';
-import { buildDifficulty, maxPerformance } from './pp.js?v=20261109o';
-import { buildPlate } from './plate.js?v=20261109o';
-import { makeSampler, bananaSamples } from './hitsounds.js?v=20261109o';
+import { createPath } from './slider.js?v=20261109p';
+import { LegacyRandom, statelessInt, statelessSingle } from './rng.js?v=20261109p';
+import { buildCatcherFx } from './catcher.js?v=20261109p';
+import { buildHud } from './score.js?v=20261109p';
+import { buildHealth } from './health.js?v=20261109p';
+import { buildDifficulty, maxPerformance } from './pp.js?v=20261109p';
+import { buildPlate } from './plate.js?v=20261109p';
+import { makeSampler, bananaSamples } from './hitsounds.js?v=20261109p';
 
 export const FIELD_W = 512;
 export const FIELD_H = 384;
@@ -315,7 +315,9 @@ export function evaluateCatches(scene, track) {
   const half = scene.catchWidth / 2;
   let caught = 0, total = 0, bananas = 0, bananasCaught = 0;
   for (const o of scene.objects) {
-    const cx = track.xAt(o.t);
+    // Replay frames are whole milliseconds and the game judges at a whole-millisecond clock, so
+    // an object at 22383.4 ms is checked against the catcher at 22383 ms, not an in-between spot.
+    const cx = track.xAt(Math.floor(o.t));
     o.caught = o.x >= cx - half && o.x <= cx + half;
     o.offset = o.x - cx;
     if (o.kind === 'banana') { bananas++; if (o.caught) bananasCaught++; }
