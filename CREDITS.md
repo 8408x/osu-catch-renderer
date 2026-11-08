@@ -63,3 +63,6 @@ These looks are recreated natively on the canvas, as this site's own code, from 
 
 Most of these overlays carry no licence, so permission from the author is needed before any of their code or images is copied. Three do carry one:
 ANON OVERLAY is CC BY-ND (no adaptations), EvosOverlay is GPL-3.0, and BTMC Key Overlay and PP Blossom are MIT.
+
+
+Player pictures are fetched in your browser from a.ppy.sh (osu!) when you enter a user id; nothing is stored on any server.
