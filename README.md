@@ -104,6 +104,7 @@ Rules it follows, checked against osu!lazer's catch code and against real replay
 
 - The catcher's position is read at the object's whole millisecond (an object at 22383.4 ms is checked at 22383 ms).
 - If a replay has two frames with the same time, the first one is used.
+- Some replays are recorded a few milliseconds off the map's clock (for example from the player's own timing offset), which flips the close calls. When the counts don't match, the page tries shifts of up to 20 ms either way and uses the smallest one that makes every count match exactly, and says so. If no shift does, nothing is changed.
 - Catch range, hard rock offsets, tiny droplet positions and the random draws behind them follow lazer.
 
 Most replays match exactly (11 tested: 8 exact, 3 a call or two off). A small difference is expected on very fast maps such as Obsidian, where the catcher crosses the field in a few milliseconds ("hyperwalk"): the game judges each object on a display frame, so one or two calls at the catcher's edge depend on the original player's frame timing and cannot be recovered from the file. When every count is within two of the replay (and the max combo is the same unless the misses differ), the page says "within timing noise" instead of warning. A bigger gap still shows a warning and lists the closest calls.
