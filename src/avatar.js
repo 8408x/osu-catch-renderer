@@ -1,7 +1,7 @@
 // The player's picture for the Player card looks: loaded from the osu! servers by user id, or uploaded by hand.
 
-const KEY = 'ocr.userid', LOOKUP_KEY = 'ocr.lookup';
-/** The site's own lookup Worker (the address is public; the osu! secret lives only in Cloudflare). A saved address overrides it. */
+const KEY = 'ocr.userid';
+/** The site's own lookup Worker (the address is public; the osu! secret lives only in Cloudflare). */
 const DEFAULT_LOOKUP = 'https://osu-lookup.asianrbx.workers.dev';
 let redrawFn = () => {};
 let profile = null;                                   // { username, country_code, rank, ... } from the lookup Worker
@@ -9,7 +9,7 @@ let current = null;                                   // an HTMLImageElement tha
 
 export const getAvatar = () => current;
 export const getProfile = () => profile;
-const lookupBase = () => { try { return (localStorage.getItem(LOOKUP_KEY) || DEFAULT_LOOKUP).trim().replace(/\/+$/, ''); } catch { return DEFAULT_LOOKUP; } };
+const lookupBase = () => DEFAULT_LOOKUP;
 
 /** Look the replay's player up through the user's own Worker: sets the profile (rank, country) and the picture. */
 export async function lookupPlayer(name) {
@@ -68,12 +68,7 @@ export function initAvatar(redraw) {
   const $ = (id) => document.getElementById(id);
   const say = (m) => { $('avatarmsg').textContent = m; };
   const set = (img, msg) => { current = img; say(msg); redraw(); };
-  try { $('avatarid').value = localStorage.getItem(KEY) ?? ''; $('lookupurl').value = localStorage.getItem(LOOKUP_KEY) ?? ''; $('lookupurl').placeholder = DEFAULT_LOOKUP; } catch { /* storage unavailable */ }
-  $('lookupurl').addEventListener('change', () => {
-    try { localStorage.setItem(LOOKUP_KEY, $('lookupurl').value.trim()); } catch { /* ignore */ }
-    const who = document.getElementById('lookupwho')?.dataset.name;
-    if (who) lookupPlayer(who); else $('lookupmsg').textContent = $('lookupurl').value.trim() ? 'Saved. It is used when a replay is loaded.' : '';
-  });
+  try { $('avatarid').value = localStorage.getItem(KEY) ?? ''; } catch { /* storage unavailable */ }
 
   const load = async () => {
     const id = $('avatarid').value.trim();

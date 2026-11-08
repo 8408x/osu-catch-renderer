@@ -197,6 +197,6 @@ The Player card and Name tag can show the player's picture, country and rank. A 
 1. On osu! open Settings → OAuth → New OAuth Application. Callback URL can be anything (e.g. `http://localhost`). Note the Client ID and Client Secret.
 2. In Cloudflare create a Worker and paste in `worker/osu-lookup.js`.
 3. In the Worker's Settings → Variables add `OSU_CLIENT_ID` (text) and `OSU_CLIENT_SECRET` (secret). Optionally add `ALLOW_ORIGIN` set to `https://8408x.github.io`.
-4. The site already points at the Worker in `DEFAULT_LOOKUP` (`src/avatar.js`). If you host your own, change that address, or paste yours into "osu! lookup address" in the Player picture box. The player named in the replay is looked up automatically.
+4. The site already points at the Worker in `DEFAULT_LOOKUP` (`src/avatar.js`). If you host your own, change that address. The player named in the replay is looked up automatically.
 
 The secret lives only in Cloudflare. Never put it in the site or the repo.
