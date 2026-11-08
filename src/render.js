@@ -7,18 +7,18 @@
 //   - droplets use 0.8x and tiny droplets 0.4x of that; sprites are capped at 160 px
 //   - catcher sprite = texture size x 0.35 x catcher scale, hung from the plate line 16 px down
 
-import { FIELD_W, FIELD_H } from './catch.js?v=20261109f';
-import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261109f';
-import { hudAt, scoreShownAt } from './score.js?v=20261109f';
-import { plateAt, explosionsAt } from './plate.js?v=20261109f';
-import { drawArgonHud, drawArgonPart } from './argon.js?v=20261109f';
-import { healthAt } from './health.js?v=20261109f';
-import { livePp } from './pp.js?v=20261109f';
-import { keysAt } from './keys.js?v=20261109f';
-import { ORDER, rectOf, fullRectOf, WIDGETS, styleInfo } from './layout.js?v=20261109f';
-import { lookFor, styleData } from './styles.js?v=20261109f';
-import { drawModIcons, drawModBadges } from './mods.js?v=20261109f';
-import { drawFlashlight } from './flashlight.js?v=20261109f';
+import { FIELD_W, FIELD_H } from './catch.js?v=20261109g';
+import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261109g';
+import { hudAt, scoreShownAt } from './score.js?v=20261109g';
+import { plateAt, explosionsAt } from './plate.js?v=20261109g';
+import { drawArgonHud, drawArgonPart } from './argon.js?v=20261109g';
+import { healthAt } from './health.js?v=20261109g';
+import { livePp } from './pp.js?v=20261109g';
+import { keysAt } from './keys.js?v=20261109g';
+import { ORDER, rectOf, fullRectOf, WIDGETS, styleInfo } from './layout.js?v=20261109g';
+import { lookFor, styleData } from './styles.js?v=20261109g';
+import { drawModIcons, drawModBadges } from './mods.js?v=20261109g';
+import { drawFlashlight } from './flashlight.js?v=20261109g';
 
 const ZONE = 120;  // room below the field for the catcher, in field units
 const PAD = 12;

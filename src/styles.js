@@ -2,12 +2,12 @@
 // (credited in layout.js and CREDITS.md) in this site's own code; no overlay code or images are copied. A draw function
 // works in the style's natural size (see layout.js): the caller translates and scales the canvas to fit.
 
-import { tosuTokens } from './tosu.js?v=20261109f';
-import { hudAt } from './score.js?v=20261109f';
-import { getAvatar, getProfile } from './avatar.js?v=20261109f';
-import { healthAt } from './health.js?v=20261109f';
-import { livePp, ppAtAccuracy } from './pp.js?v=20261109f';
-import { keysAt } from './keys.js?v=20261109f';
+import { tosuTokens } from './tosu.js?v=20261109g';
+import { hudAt } from './score.js?v=20261109g';
+import { getAvatar, getProfile } from './avatar.js?v=20261109g';
+import { healthAt } from './health.js?v=20261109g';
+import { livePp, ppAtAccuracy } from './pp.js?v=20261109g';
+import { keysAt } from './keys.js?v=20261109g';
 
 const SANS = '"Exo 2", "Torus", "Segoe UI", system-ui, -apple-system, sans-serif';
 const MONO = '"Roboto Mono", ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace';
@@ -153,6 +153,20 @@ function avatarCircle(ctx, d, cx, cy, r, initial = true) {
   return true;
 }
 
+/** The player's picture as a rounded square (or a coloured square with the initial when there is none). */
+function avatarSquare(ctx, d, x, y, size, radius) {
+  const img = getAvatar();
+  ctx.save(); rr(ctx, x, y, size, size, radius); ctx.clip();
+  if (img) {
+    const k = Math.max(size / img.naturalWidth, size / img.naturalHeight);
+    ctx.drawImage(img, x + size / 2 - (img.naturalWidth * k) / 2, y + size / 2 - (img.naturalHeight * k) / 2, img.naturalWidth * k, img.naturalHeight * k);
+  } else { ctx.fillStyle = '#ff6b8a'; ctx.fillRect(x, y, size, size); }
+  ctx.restore();
+  if (!img) text(ctx, (d.player || '?').slice(0, 1).toUpperCase(), x + size / 2, y + size * 0.68, { size: size * 0.55, weight: 800, align: 'center', shadow: false });
+}
+const hexPath = (ctx, cx, cy, r) => { ctx.beginPath(); for (let i = 0; i < 6; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 3; ctx[i ? 'lineTo' : 'moveTo'](cx + r * Math.cos(a), cy + r * Math.sin(a)); } ctx.closePath(); };
+const withCommas = (n) => Math.round(n).toLocaleString('en-US');
+
 const LOOKS = {
   player: {
     // VictimCrasherOverlay: the top-left patch with the player's name
@@ -193,6 +207,64 @@ const LOOKS = {
       text(ctx, 'played by', 18 + sx, H / 2 + 7, { size: 18, weight: 400, fill: 'rgba(255,255,255,0.65)', shadow: false });
       text(ctx, d.player || 'player', 112 + sx, H / 2 + 8, { size: 24, weight: 700, shadow: false, maxW: W - 260 - sx });
       text(ctx, playedOn(d), W - 18, H / 2 + 6, { size: 16, weight: 400, fill: 'rgba(255,255,255,0.55)', align: 'right', shadow: false });
+    },
+    // User Card by Belikhun: a banner with the picture, name, title and badges, a level hexagon, and a bar with rank, pp and accuracy
+    usercard(ctx, d, W, H) {
+      const k = W / 420, pr = d.profile ?? {};
+      ctx.save(); ctx.scale(k, k);
+      const w = 420, h = 108, img = getAvatar();
+      ctx.fillStyle = 'rgba(22,34,92,0.94)'; rr(ctx, 0, 0, w, h, 14); ctx.fill();            // the lower bar
+      ctx.save(); rr(ctx, 0, 0, w, 76, 14); ctx.clip();                                       // the banner: the picture, blown up and dimmed
+      ctx.fillStyle = '#2b2f55'; ctx.fillRect(0, 0, w, 76);
+      if (img) { const kk = w / img.naturalWidth; ctx.globalAlpha = 0.45; ctx.drawImage(img, 0, 38 - (img.naturalHeight * kk) / 2, w, img.naturalHeight * kk); ctx.globalAlpha = 1; }
+      const sh = ctx.createLinearGradient(0, 0, w, 0); sh.addColorStop(0, 'rgba(10,10,30,0.55)'); sh.addColorStop(1, 'rgba(10,10,30,0.1)');
+      ctx.fillStyle = sh; ctx.fillRect(0, 0, w, 76);
+      ctx.restore();
+      ctx.strokeStyle = '#4b7bff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(14, 1.5); ctx.arcTo(1.5, 1.5, 1.5, 14, 13); ctx.lineTo(1.5, 62); ctx.stroke();
+      avatarSquare(ctx, d, 6, 6, 64, 10);
+      text(ctx, d.player || 'player', 80, 28, { size: 20, weight: 700, shadow: false, maxW: 250 });
+      if (pr.title) text(ctx, pr.title, 80, 46, { size: 14, weight: 600, shadow: false, maxW: 250 });
+      let bx = 80; const by = pr.title ? 52 : 40;                                            // badge row: country, groups, supporter
+      const pill = (label, fill, ink = '#fff') => { ctx.font = `700 11px ${SANS}`; const tw = ctx.measureText(label).width + 16; ctx.fillStyle = fill; rr(ctx, bx, by, tw, 18, 9); ctx.fill(); text(ctx, label, bx + tw / 2, by + 13, { size: 11, weight: 700, fill: ink, align: 'center', shadow: false }); bx += tw + 5; };
+      if (pr.country_code) pill(pr.country_code, 'rgba(20,20,40,0.75)');
+      for (const g of pr.groups ?? []) pill(g.name, 'rgba(20,20,40,0.75)', g.colour || '#fff');
+      if (pr.is_supporter) pill('\u2665', '#e0559a');
+      hexPath(ctx, 380, 38, 26); ctx.lineWidth = 3;                                           // level hexagon
+      const hg = ctx.createLinearGradient(354, 12, 406, 64); hg.addColorStop(0, '#ff8fb1'); hg.addColorStop(0.5, '#9bd6ff'); hg.addColorStop(1, '#ffd08a');
+      ctx.strokeStyle = hg; ctx.stroke();
+      text(ctx, pr.level != null ? String(Math.floor(pr.level)) : (pr.country_code || ''), 380, 44, { size: 18, weight: 400, align: 'center', shadow: false });
+      // the round "status" icon
+      ctx.lineWidth = 2.5; ctx.strokeStyle = '#e8ecff'; ctx.beginPath(); ctx.arc(36, 92, 12, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = '#e8ecff'; for (const [bx2, bh] of [[31, 8], [36, 14], [41, 8]]) rr(ctx, bx2 - 1.5, 92 - bh / 2, 3, bh, 1.5), ctx.fill();
+      text(ctx, pr.rank ? `#${withCommas(pr.rank)}` : '#-', 66, 100, { size: 24, weight: 600, fill: '#6fe0d6', shadow: false });
+      const accText = pr.hit_accuracy != null ? `${pr.hit_accuracy.toFixed(2)}%` : `${finalAcc(d.scene.play)}%`;
+      text(ctx, 'pp', 250, 90, { size: 11, weight: 400, fill: 'rgba(255,255,255,0.6)', align: 'center', shadow: false });
+      text(ctx, pr.pp ? withCommas(pr.pp) : '-', 250, 104, { size: 14, weight: 700, align: 'center', shadow: false });
+      text(ctx, 'accuracy', 345, 90, { size: 11, weight: 400, fill: 'rgba(255,255,255,0.6)', align: 'center', shadow: false });
+      text(ctx, accText, 345, 104, { size: 14, weight: 700, align: 'center', shadow: false });
+      ctx.restore();
+    },
+    // osuUserStats by HosizoraN: a bordered panel with the picture and flag, name, pp / accuracy / play count, and the rank in big faint type
+    userstats(ctx, d, W, H) {
+      const k = W / 520, pr = d.profile ?? {};
+      ctx.save(); ctx.scale(k, k);
+      const w = 520, h = 126;
+      ctx.fillStyle = 'rgba(52,92,128,0.96)'; rr(ctx, 1.5, 1.5, w - 3, h - 3, 12); ctx.fill();
+      ctx.strokeStyle = '#6aa5dc'; ctx.lineWidth = 3; ctx.stroke();
+      avatarSquare(ctx, d, 12, 10, 106, 8);
+      if (pr.country_code) {                                                                    // the flag, as a small badge of the country code
+        ctx.fillStyle = '#c62f2f'; rr(ctx, 49, 100, 32, 20, 4); ctx.fill();
+        text(ctx, pr.country_code, 65, 115, { size: 12, weight: 800, align: 'center', shadow: false });
+      }
+      text(ctx, d.player || 'player', 130, 42, { size: 36, weight: 800, shadow: false, maxW: 290 });
+      const line = (label, y) => text(ctx, label, 130, y, { size: 22, weight: 700, shadow: false, maxW: 330 });
+      line(`Performance: ${pr.pp ? withCommas(pr.pp) : '-'}pp`, 70);
+      line(`Accuracy: ${pr.hit_accuracy != null ? pr.hit_accuracy.toFixed(2) : finalAcc(d.scene.play)}%`, 94);
+      line(`Play Count: ${pr.play_count != null ? withCommas(pr.play_count) : '-'}${pr.level != null ? ` (Lv${Math.floor(pr.level)})` : ''}`, 118);
+      text(ctx, pr.rank ? `#${withCommas(pr.rank)}` : '#-', w - 20, h - 12, { size: 38, weight: 800, fill: 'rgba(255,255,255,0.42)', align: 'right', shadow: false });
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(w - 36, 32, 20, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.beginPath(); ctx.arc(w - 36, 32, 14, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
     },
     // Big name: the name in large type with a small "player" label and an accent line
     big(ctx, d, W, H) {
