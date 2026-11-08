@@ -48,8 +48,8 @@ export const WIDGETS = {
       { id: 'result', label: 'Result card', credit: 'Result card', w: 460, h: 192 },
       { id: 'strip', label: 'Played-by strip', credit: 'Played-by strip', w: 470, h: 44 },
       { id: 'big', label: 'Big name', credit: 'Big name', w: 520, h: 96 },
-      { id: 'usercard', label: 'User Card', credit: 'User Card by Belikhun', author: 'Belikhun', w: 460, h: 118 },
-      { id: 'userstats', label: 'osuUserStats', credit: 'osuUserStats by HosizoraN', author: 'HosizoraN', w: 520, h: 126 },
+      { id: 'usercard', label: 'User Card', credit: 'User Card by Belikhun', author: 'Belikhun', w: 420, h: 108 },
+      { id: 'userstats', label: 'osuUserStats', credit: 'osuUserStats by HosizoraN', author: 'HosizoraN', w: 520, h: 127 },
     ],
   },
   pp: {

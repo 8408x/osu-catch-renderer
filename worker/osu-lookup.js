@@ -59,7 +59,8 @@ export default {
           id: u.id, username: u.username, country_code: u.country_code ?? u.country?.code ?? '', country_name: u.country?.name ?? '',
           rank: s.global_rank ?? null, country_rank: s.country_rank ?? null, pp: s.pp ?? null, avatar_url: u.avatar_url,
           hit_accuracy: s.hit_accuracy ?? null, play_count: s.play_count ?? null, level: s.level?.current ?? null,
-          title: u.title ?? '', cover_url: u.cover?.url ?? u.cover_url ?? '', is_supporter: !!u.is_supporter, groups: (u.groups ?? []).slice(0, 3).map((g) => ({ name: g.short_name, colour: g.colour })),
+          title: u.title ?? '', cover_url: u.cover?.url ?? u.cover_url ?? '', is_supporter: !!u.is_supporter, profile_colour: u.profile_colour ?? '',
+          groups: (u.groups ?? []).slice(0, 3).map((g) => ({ name: g.name, identifier: g.short_name, colour: g.colour })),
         });
       }
       const m = url.pathname.match(/^\/avatar\/(\d{1,10})$/);

@@ -33,8 +33,8 @@ These looks are recreated natively on the canvas, as this site's own code, from 
 | Key presses | KeyOverlay | HosizoraN |
 | Full HUD (preset) | SimpleOverlay | HosizoraN (https://github.com/shinomimi) |
 | Player card | VictimCrasherOverlay | VictimCrasher (https://github.com/VictimCrasher) |
-| Player card | User Card | Belikhun (https://github.com/Belikhun) |
-| Player card | osuUserStats | HosizoraN (https://github.com/shinomimi) |
+| Player card | User Card (layout, sizes and colours follow the overlay's stylesheet; drawn here from scratch, no code, images or fonts copied) | Belikhun (https://github.com/Belikhun) |
+| Player card | osuUserStats (same: layout and colours follow the overlay; nothing copied) | HosizoraN (https://github.com/shinomimi) |
 | Player card | Name tag, Result card, Played-by strip, Big name | original designs for this site, no overlay code used |
 | Full HUD (preset) | paradox | mofuries (https://github.com/mofuries) |
 | Full HUD (preset) | Souei-Overlay | -Souei |

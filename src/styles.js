@@ -2,12 +2,12 @@
 // (credited in layout.js and CREDITS.md) in this site's own code; no overlay code or images are copied. A draw function
 // works in the style's natural size (see layout.js): the caller translates and scales the canvas to fit.
 
-import { tosuTokens } from './tosu.js?v=20261109i';
-import { hudAt } from './score.js?v=20261109i';
-import { getAvatar, getProfile } from './avatar.js?v=20261109i';
-import { healthAt } from './health.js?v=20261109i';
-import { livePp, ppAtAccuracy } from './pp.js?v=20261109i';
-import { keysAt } from './keys.js?v=20261109i';
+import { tosuTokens } from './tosu.js?v=20261109j';
+import { hudAt } from './score.js?v=20261109j';
+import { getAvatar, getProfile } from './avatar.js?v=20261109j';
+import { healthAt } from './health.js?v=20261109j';
+import { livePp, ppAtAccuracy } from './pp.js?v=20261109j';
+import { keysAt } from './keys.js?v=20261109j';
 
 const SANS = '"Exo 2", "Torus", "Segoe UI", system-ui, -apple-system, sans-serif';
 const MONO = '"Roboto Mono", ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace';
@@ -170,15 +170,51 @@ function flagBox(ctx, img, x, y, w, h, r) {
   ctx.save(); rr(ctx, x, y, w, h, r); ctx.clip(); ctx.drawImage(img, x, y, w, h); ctx.restore();
   ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 1; rr(ctx, x, y, w, h, r); ctx.stroke();
 }
-/** An osu!catch mode icon: a ring with a fruit (a round body with a leaf) and two droplets inside. */
-function catchIcon(ctx, cx, cy, r, colour, ringW) {
-  ctx.save(); ctx.strokeStyle = colour; ctx.fillStyle = colour; ctx.lineWidth = ringW;
-  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
-  ctx.beginPath(); ctx.arc(cx, cy + r * 0.12, r * 0.38, 0, Math.PI * 2); ctx.fill();                     // the fruit
-  ctx.beginPath(); ctx.ellipse(cx + r * 0.2, cy - r * 0.38, r * 0.2, r * 0.1, -0.6, 0, Math.PI * 2); ctx.fill();   // its leaf
-  for (const sx of [-1, 1]) { ctx.beginPath(); ctx.arc(cx + sx * r * 0.62, cy + r * 0.3, r * 0.14, 0, Math.PI * 2); ctx.fill(); }   // droplets
+/** The osu!catch mode icon: a ring with three dots in it, in a box of `size` px. */
+function catchIcon(ctx, cx, cy, size, colour) {
+  const u = size / 12;
+  ctx.save(); ctx.fillStyle = colour;
+  ctx.beginPath(); ctx.arc(cx, cy, 6 * u, 0, Math.PI * 2); ctx.arc(cx, cy, 4.98 * u, 0, Math.PI * 2, true); ctx.fill();
+  for (const [dx, dy] of [[-0.73, -1.95], [1.5, 0], [-0.73, 1.95]]) { ctx.beginPath(); ctx.arc(cx + dx * u, cy + dy * u, 0.96 * u, 0, Math.PI * 2); ctx.fill(); }
   ctx.restore();
 }
+/** A heart, drawn inside a box `size` wide. */
+function heart(ctx, cx, cy, size, colour) {
+  const k = size / 2;
+  ctx.save(); ctx.fillStyle = colour; ctx.beginPath();
+  ctx.moveTo(cx, cy + k * 0.95);
+  ctx.bezierCurveTo(cx - k * 1.7, cy - k * 0.1, cx - k * 0.8, cy - k * 1.15, cx, cy - k * 0.35);
+  ctx.bezierCurveTo(cx + k * 0.8, cy - k * 1.15, cx + k * 1.7, cy - k * 0.1, cx, cy + k * 0.95);
+  ctx.fill(); ctx.restore();
+}
+/** Word-wrapped lines of at most `maxLines`, the last one cut with an ellipsis. */
+function wrapLines(ctx, str, maxW, maxLines) {
+  const words = String(str).split(' '), lines = []; let cur = '';
+  for (const w of words) {
+    const next = cur ? `${cur} ${w}` : w;
+    if (ctx.measureText(next).width <= maxW || !cur) cur = next; else { lines.push(cur); cur = w; }
+  }
+  if (cur) lines.push(cur);
+  if (lines.length > maxLines) { let l = lines.slice(maxLines - 1).join(' '); while (l.length > 1 && ctx.measureText(`${l}\u2026`).width > maxW) l = l.slice(0, -1); lines.length = maxLines; lines[maxLines - 1] = `${l}\u2026`; }
+  return lines;
+}
+/** A pointy-top hexagon with rounded corners through the given vertices. */
+function roundedPoly(ctx, pts, r) {
+  ctx.beginPath();
+  pts.forEach((p, i) => { const n = pts[(i + 1) % pts.length], m = [(p[0] + n[0]) / 2, (p[1] + n[1]) / 2]; if (i === 0) ctx.moveTo(m[0], m[1]); const nn = pts[(i + 2) % pts.length]; ctx.arcTo(n[0], n[1], (n[0] + nn[0]) / 2, (n[1] + nn[1]) / 2, r); });
+  ctx.closePath();
+}
+const mix = (hexA, hexB, f) => { const a = hexA.match(/\w\w/g).map((h) => parseInt(h, 16)), b = hexB.match(/\w\w/g).map((h) => parseInt(h, 16)); return `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * f)).join(',')})`; };
+/** User Card's rank colour by how high the rank sits among catch players (it compares against roughly 250 000 of them). */
+const RANK_TIERS = { iron: ['#bab3ab', '#bab3ab'], bronze: ['#b88f7a', '#855c47'], silver: ['#e0e0eb', '#a3a3c2'], gold: ['#f0e4a8', '#e0c952'], platinum: ['#a8f0ef', '#52e0df'], rhodium: ['#d9f8d3', '#a0cf96'], radiant: ['#97dcff', '#ed82ff'], lustrous: ['#ffe600', '#ed82ff'] };
+function rankTier(rank) {
+  if (!rank) return 'iron'; if (rank <= 100) return 'lustrous';
+  const pc = (rank / 250000) * 100;
+  return pc <= 0.05 ? 'radiant' : pc <= 0.15 ? 'rhodium' : pc <= 0.5 ? 'platinum' : pc <= 1.5 ? 'gold' : pc <= 5 ? 'silver' : pc <= 15 ? 'bronze' : 'iron';
+}
+/** An image drawn to fill a box (CSS "cover"). */
+function coverFill(ctx, img, x, y, w, h) { const k = Math.max(w / img.naturalWidth, h / img.naturalHeight); ctx.drawImage(img, x + w / 2 - (img.naturalWidth * k) / 2, y + h / 2 - (img.naturalHeight * k) / 2, img.naturalWidth * k, img.naturalHeight * k); }
+const playingLine = (d) => `${d.artist} - ${d.title} [${d.diff}]`;
 const withCommas = (n) => Math.round(n).toLocaleString('en-US');
 
 const LOOKS = {
@@ -222,61 +258,104 @@ const LOOKS = {
       text(ctx, d.player || 'player', 112 + sx, H / 2 + 8, { size: 24, weight: 700, shadow: false, maxW: W - 260 - sx });
       text(ctx, playedOn(d), W - 18, H / 2 + 6, { size: 16, weight: 400, fill: 'rgba(255,255,255,0.55)', align: 'right', shadow: false });
     },
-    // User Card by Belikhun: a banner with the picture, name, title and badges, a level hexagon, and a bar with rank, pp and accuracy
+    // User Card by Belikhun (layout, sizes and colours follow the overlay's own stylesheet, drawn on a 420 x 108 card)
     usercard(ctx, d, W, H) {
-      const k = W / 420, pr = d.profile ?? {};
+      const k = W / 420, pr = d.profile ?? {}, img = getAvatar();
+      const bg = '#2e576b';                                                                    // the "playing" colour
       ctx.save(); ctx.scale(k, k);
-      const w = 420, h = 108, img = getAvatar();
-      ctx.fillStyle = 'rgba(22,34,92,0.94)'; rr(ctx, 0, 0, w, h, 14); ctx.fill();            // the lower bar
-      ctx.save(); rr(ctx, 0, 0, w, 76, 14); ctx.clip();                                       // the banner: the picture, blown up and dimmed
-      ctx.fillStyle = '#2b2f55'; ctx.fillRect(0, 0, w, 76);
-      const ban = pr.coverImg ?? img;                                                          // the real profile banner when it loaded
-      if (ban) { const kk = w / ban.naturalWidth; ctx.globalAlpha = pr.coverImg ? 0.9 : 0.45; ctx.drawImage(ban, 0, 38 - (ban.naturalHeight * kk) / 2, w, ban.naturalHeight * kk); ctx.globalAlpha = 1; }
-      const sh = ctx.createLinearGradient(0, 0, w, 0); sh.addColorStop(0, 'rgba(10,10,30,0.55)'); sh.addColorStop(1, 'rgba(10,10,30,0.1)');
-      ctx.fillStyle = sh; ctx.fillRect(0, 0, w, 76);
+      ctx.save(); rr(ctx, 0, 0, 420, 108, 12); ctx.clip();
+      ctx.fillStyle = bg; ctx.fillRect(0, 52, 420, 56);                                        // the lower part, which sits behind the card
       ctx.restore();
-      ctx.strokeStyle = '#4b7bff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(14, 1.5); ctx.arcTo(1.5, 1.5, 1.5, 14, 13); ctx.lineTo(1.5, 62); ctx.stroke();
-      avatarSquare(ctx, d, 6, 6, 64, 10);
-      text(ctx, d.player || 'player', 80, 28, { size: 20, weight: 700, shadow: false, maxW: 250 });
-      if (pr.title) text(ctx, pr.title, 80, 46, { size: 14, weight: 600, shadow: false, maxW: 250 });
-      let bx = 80; const by = pr.title ? 52 : 40;                                            // badge row: country, groups, supporter
-      const pill = (label, fill, ink = '#fff') => { ctx.font = `700 11px ${SANS}`; const tw = ctx.measureText(label).width + 16; ctx.fillStyle = fill; rr(ctx, bx, by, tw, 18, 9); ctx.fill(); text(ctx, label, bx + tw / 2, by + 13, { size: 11, weight: 700, fill: ink, align: 'center', shadow: false }); bx += tw + 5; };
-      if (pr.flagImg) { flagBox(ctx, pr.flagImg, bx, by + 1, 28, 18, 3); bx += 33; } else if (pr.country_code) pill(pr.country_code, 'rgba(20,20,40,0.75)');
-      for (const g of pr.groups ?? []) pill(g.name, 'rgba(20,20,40,0.75)', g.colour || '#fff');
-      if (pr.is_supporter) pill('\u2665', '#e0559a');
-      hexPath(ctx, 380, 38, 26); ctx.lineWidth = 3;                                           // level hexagon
-      const hg = ctx.createLinearGradient(354, 12, 406, 64); hg.addColorStop(0, '#ff8fb1'); hg.addColorStop(0.5, '#9bd6ff'); hg.addColorStop(1, '#ffd08a');
-      ctx.strokeStyle = hg; ctx.stroke();
-      text(ctx, pr.level != null ? String(Math.floor(pr.level)) : (pr.country_code || ''), 380, 44, { size: 18, weight: 400, align: 'center', shadow: false });
-      catchIcon(ctx, 36, 92, 13, '#e8ecff', 2.5);                                              // the game mode: catch
-      text(ctx, pr.rank ? `#${withCommas(pr.rank)}` : '#-', 66, 100, { size: 24, weight: 600, fill: '#6fe0d6', shadow: false });
-      const accText = pr.hit_accuracy != null ? `${pr.hit_accuracy.toFixed(2)}%` : `${finalAcc(d.scene.play)}%`;
-      text(ctx, 'pp', 250, 90, { size: 11, weight: 400, fill: 'rgba(255,255,255,0.6)', align: 'center', shadow: false });
-      text(ctx, pr.pp ? withCommas(pr.pp) : '-', 250, 104, { size: 14, weight: 700, align: 'center', shadow: false });
-      text(ctx, 'accuracy', 345, 90, { size: 11, weight: 400, fill: 'rgba(255,255,255,0.6)', align: 'center', shadow: false });
-      text(ctx, accText, 345, 104, { size: 14, weight: 700, align: 'center', shadow: false });
+      ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.25)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 2; ctx.fillStyle = bg; rr(ctx, 0, 0, 420, 68, 12); ctx.fill(); ctx.restore();
+      ctx.save(); rr(ctx, 0, 0, 420, 68, 12); ctx.clip();
+      if (pr.coverImg) coverFill(ctx, pr.coverImg, 0, 0, 420, 68);
+      ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0, 0, 420, 68);
+      if (pr.profile_colour) { const g = ctx.createLinearGradient(0, 0, 160, 0); g.addColorStop(0, pr.profile_colour); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, 160, 68); }
+      ctx.restore();
+      avatarSquare(ctx, d, 4, 4, 60, 8);
+      const title = pr.title || pr.groups?.[0]?.name || '', groups = pr.groups ?? [];
+      const top = title ? 6.8 : 15.6;
+      text(ctx, d.player || 'player', 71, top + 11.6, { size: 16, weight: 600, maxW: 285 });
+      if (title) text(ctx, title, 71, top + 28.6 + 1.6 - 0.6, { size: 12, weight: 600, maxW: 285 });
+      const by = title ? top + 38.4 : top + 20.8;                                                // badges row, 16 high
+      let bx = 72;
+      if (pr.flagImg) { ctx.save(); rr(ctx, bx, by, 22.2, 16, 4); ctx.clip(); coverFill(ctx, pr.flagImg, bx, by, 22.2, 16); ctx.restore(); bx += 26.2; }
+      else if (pr.country_code) { ctx.fillStyle = 'rgba(23,28,26,0.75)'; rr(ctx, bx, by, 24, 16, 8); ctx.fill(); text(ctx, pr.country_code, bx + 12, by + 12, { size: 10, weight: 700, align: 'center', shadow: false }); bx += 28; }
+      if (groups.length || pr.is_supporter) { ctx.fillStyle = '#000'; rr(ctx, bx, by + 6, 2, 4, 1); ctx.fill(); bx += 6; }
+      for (const g of groups) {
+        const label = String(g.identifier || g.name || '').toUpperCase();
+        ctx.font = `700 12px ${SANS}`; const tw = ctx.measureText(label).width + 16;
+        ctx.fillStyle = 'rgba(23,28,26,0.75)'; rr(ctx, bx, by, tw, 16, 8); ctx.fill();
+        text(ctx, label, bx + 8, by + 12, { size: 12, weight: 700, fill: g.colour || '#fff', shadow: false });
+        bx += tw + 4;
+      }
+      if (pr.is_supporter) { ctx.fillStyle = '#EB549C'; rr(ctx, bx, by, 40, 16, 8); ctx.fill(); heart(ctx, bx + 20, by + 8, 9.6, '#fff'); }
+      { // the level hexagon, 50 x 50 at the right
+        ctx.save(); ctx.translate(366 + (50 - 44 * 1.0638) / 2, 9); ctx.scale(1.0638, 1.0638);
+        const g = ctx.createRadialGradient(39.15, 44.29, 0, 39.15, 44.29, 46.7); g.addColorStop(0, '#FFD966'); g.addColorStop(0.578, '#FF84BF'); g.addColorStop(1, '#84FFFF');
+        ctx.strokeStyle = g; ctx.lineWidth = 3; ctx.lineJoin = 'round';
+        roundedPoly(ctx, [[21.65, 0.6], [41.8, 12.2], [41.8, 34.6], [21.65, 46.2], [1.5, 34.6], [1.5, 12.2]], 7); ctx.stroke();
+        ctx.restore();
+        text(ctx, pr.level != null ? String(Math.floor(pr.level)) : '-', 391, 40, { size: 17, weight: 400, align: 'center', shadow: false });
+      }
+      // the lower part: rank, pp and accuracy, and every 10 seconds (starting with it) the "Playing ..." line instead
+      catchIcon(ctx, 34, 88, 24, '#fff');
+      if (Math.floor(d.elapsed / 10000) % 2 === 0) {
+        ctx.font = `600 12px ${SANS}`;
+        const lines = wrapLines(ctx, `Playing ${playingLine(d)}`, 340, 3), lh = 14.4, y0 = 88 - (lines.length * lh) / 2, dim = mix('2e576b', 'ffffff', 0.5), hl = mix('2e576b', 'ffffff', 0.8);
+        lines.forEach((l, i) => {
+          const y = y0 + 11 + i * lh;
+          if (i === 0 && l.startsWith('Playing')) {
+            text(ctx, 'Playing', 72, y, { size: 12, weight: 600, fill: hl, shadow: false });
+            ctx.font = `600 12px ${SANS}`; const lw = ctx.measureText('Playing').width;
+            text(ctx, l.slice(7), 72 + lw, y, { size: 12, weight: 600, fill: dim, shadow: false });
+          } else text(ctx, l, 72, y, { size: 12, weight: 600, fill: dim, shadow: false });
+        });
+      } else {
+        const tier = RANK_TIERS[rankTier(pr.rank)], rg = ctx.createLinearGradient(68, 0, 234, 0); rg.addColorStop(0, tier[0]); rg.addColorStop(1, tier[1]);
+        text(ctx, pr.rank ? `#${withCommas(pr.rank)}` : '#---', 67, 95, { size: 20, weight: 600, fill: rg, shadow: false });
+        const lab = mix('2e576b', 'ffffff', 0.7);
+        text(ctx, 'pp', 242, 84, { size: 10, weight: 400, fill: lab, shadow: false });
+        text(ctx, pr.pp ? withCommas(pr.pp) : '---', 242, 96, { size: 12, weight: 600, shadow: false });
+        text(ctx, 'accuracy', 333, 84, { size: 10, weight: 400, fill: lab, shadow: false });
+        text(ctx, pr.hit_accuracy != null ? `${pr.hit_accuracy.toFixed(2)}%` : `${finalAcc(d.scene.play)}%`, 333, 96, { size: 12, weight: 600, shadow: false });
+      }
       ctx.restore();
     },
-    // osuUserStats by HosizoraN: a bordered panel with the picture and flag, name, pp / accuracy / play count, and the rank in big faint type
+    // osuUserStats by HosizoraN (a 1300 x 315 panel, drawn here at the same proportions)
     userstats(ctx, d, W, H) {
-      const k = W / 520, pr = d.profile ?? {};
+      const k = W / 1296, pr = d.profile ?? {};
+      const cyc = (d.elapsed / 15000) % 1;                                                      // the overlay fades between its stats and its status line over 15 s
+      const fade = cyc < 0.5 ? 1 : cyc < 0.55 ? 1 - (cyc - 0.5) / 0.05 : cyc < 0.95 ? 0 : (cyc - 0.95) / 0.05;     // 1 = stats
       ctx.save(); ctx.scale(k, k);
-      const w = 520, h = 126;
-      ctx.fillStyle = 'rgba(52,92,128,0.96)'; rr(ctx, 1.5, 1.5, w - 3, h - 3, 12); ctx.fill();
-      ctx.strokeStyle = '#6aa5dc'; ctx.lineWidth = 3; ctx.stroke();
-      avatarSquare(ctx, d, 12, 10, 106, 8);
-      if (pr.flagImg) flagBox(ctx, pr.flagImg, 47, 98, 36, 24, 4);
-      else if (pr.country_code) {                                                               // no flag image: a small badge of the country code
-        ctx.fillStyle = '#c62f2f'; rr(ctx, 49, 100, 32, 20, 4); ctx.fill();
-        text(ctx, pr.country_code, 65, 115, { size: 12, weight: 800, align: 'center', shadow: false });
+      const blue = [63, 124, 169, 0.7, 110, 168, 230], grey = [156, 156, 156, 0.7, 160, 160, 160];
+      const m = blue.map((v, i) => grey[i] + (v - grey[i]) * fade);
+      ctx.fillStyle = 'rgb(39,39,39)'; rr(ctx, 0, 0, 1296, 316, 20); ctx.fill();
+      ctx.fillStyle = `rgba(${m[0]},${m[1]},${m[2]},${m[3]})`; rr(ctx, 0, 0, 1296, 316, 20); ctx.fill();
+      ctx.strokeStyle = `rgb(${m[4]},${m[5]},${m[6]})`; ctx.lineWidth = 8; rr(ctx, 4, 4, 1288, 308, 18); ctx.stroke();
+      catchIcon(ctx, 1148 + 65, 18 + 65, 130, 'rgba(255,255,255,0.3)');
+      avatarSquare(ctx, d, 18, 18, 270, 20);
+      if (pr.flagImg) { ctx.save(); rr(ctx, 123, 236, 60, 47, 10); ctx.clip(); coverFill(ctx, pr.flagImg, 123, 236, 60, 47); ctx.restore(); }
+      else if (pr.country_code) { ctx.fillStyle = '#c62f2f'; rr(ctx, 123, 236, 60, 47, 10); ctx.fill(); text(ctx, pr.country_code, 153, 270, { size: 24, weight: 700, align: 'center', shadow: false }); }
+      const shadowText = (str, x, y, size, weight, alpha = 1, opts = {}) => {
+        ctx.save(); ctx.globalAlpha = alpha; ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 2;
+        text(ctx, str, x, y, { size, weight, shadow: false, ...opts }); ctx.restore();
+      };
+      shadowText(d.player || 'player', 308, 90, 90, 700, 1, { maxW: 800 });
+      const rankColour = pr.rank === 1 ? '#639aff' : pr.rank && pr.rank <= 10 ? '#ffff75' : '#fff';
+      const rank = pr.rank ? `#${pr.rank}` : '#0';
+      ctx.save(); ctx.globalAlpha = 0.5; text(ctx, rank, 1278, 283, { size: 160, weight: 500, fill: rankColour, align: 'right', shadow: false }); ctx.restore();
+      if (fade > 0) {
+        shadowText(`Performance: ${pr.pp ? withCommas(pr.pp) : '0'}pp`, 308, 163, 50, 500, fade);
+        shadowText(`Accuracy: ${pr.hit_accuracy != null ? pr.hit_accuracy.toFixed(2) : finalAcc(d.scene.play)}%`, 308, 227, 50, 500, fade);
+        shadowText(`Play Count: ${pr.play_count != null ? pr.play_count : 0} (Lv${pr.level != null ? Math.round(pr.level) : 0})`, 308, 291, 50, 500, fade);
       }
-      text(ctx, d.player || 'player', 130, 42, { size: 36, weight: 800, shadow: false, maxW: 290 });
-      const line = (label, y) => text(ctx, label, 130, y, { size: 22, weight: 700, shadow: false, maxW: 330 });
-      line(`Performance: ${pr.pp ? withCommas(pr.pp) : '-'}pp`, 70);
-      line(`Accuracy: ${pr.hit_accuracy != null ? pr.hit_accuracy.toFixed(2) : finalAcc(d.scene.play)}%`, 94);
-      line(`Play Count: ${pr.play_count != null ? withCommas(pr.play_count) : '-'}${pr.level != null ? ` (Lv${Math.floor(pr.level)})` : ''}`, 118);
-      text(ctx, pr.rank ? `#${withCommas(pr.rank)}` : '#-', w - 20, h - 12, { size: 38, weight: 800, fill: 'rgba(255,255,255,0.42)', align: 'right', shadow: false });
-      catchIcon(ctx, w - 36, 32, 22, 'rgba(255,255,255,0.4)', 5);                                // the game mode: catch
+      if (fade < 1) {
+        const dt = d.scene?.play?.date instanceof Date ? d.scene.play.date : null, hh = dt ? `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}` : '--:--';
+        shadowText(`${hh} @ ${pr.country_name || pr.country_code || ''}`, 308, 163, 50, 500, 1 - fade);
+        ctx.font = `500 50px ${SANS}`;
+        wrapLines(ctx, `Playing ${playingLine(d)}`, 970, 2).forEach((l, i) => shadowText(l, 308, 227 + i * 64, 50, 500, 1 - fade));
+      }
       ctx.restore();
     },
     // Big name: the name in large type with a small "player" label and an accent line
