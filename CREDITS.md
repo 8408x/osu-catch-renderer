@@ -67,4 +67,4 @@ Most of these overlays carry no licence, so permission from the author is needed
 ANON OVERLAY is CC BY-ND (no adaptations), EvosOverlay is GPL-3.0, and BTMC Key Overlay and PP Blossom are MIT.
 
 
-Player pictures are fetched in your browser from a.ppy.sh (osu!) when you enter a user id; nothing is stored on any server.
+Flags come from flagcdn.com, and player pictures and banners from osu! (a.ppy.sh, assets.ppy.sh), all through the lookup Worker; nothing is stored on any server.

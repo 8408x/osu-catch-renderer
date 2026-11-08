@@ -59,7 +59,7 @@ export default {
           id: u.id, username: u.username, country_code: u.country_code ?? u.country?.code ?? '', country_name: u.country?.name ?? '',
           rank: s.global_rank ?? null, country_rank: s.country_rank ?? null, pp: s.pp ?? null, avatar_url: u.avatar_url,
           hit_accuracy: s.hit_accuracy ?? null, play_count: s.play_count ?? null, level: s.level?.current ?? null,
-          title: u.title ?? '', is_supporter: !!u.is_supporter, groups: (u.groups ?? []).slice(0, 3).map((g) => ({ name: g.short_name, colour: g.colour })),
+          title: u.title ?? '', cover_url: u.cover?.url ?? u.cover_url ?? '', is_supporter: !!u.is_supporter, groups: (u.groups ?? []).slice(0, 3).map((g) => ({ name: g.short_name, colour: g.colour })),
         });
       }
       const m = url.pathname.match(/^\/avatar\/(\d{1,10})$/);
@@ -68,7 +68,20 @@ export default {
         if (!res.ok) return json({ error: 'no picture' }, 404);
         return new Response(res.body, { headers: { ...cors, 'Content-Type': res.headers.get('Content-Type') || 'image/png', 'Cache-Control': 'public, max-age=86400' } });
       }
-      return json({ ok: true, routes: ['/user?name=NAME', '/avatar/ID'] });
+      const f = url.pathname.match(/^\/flag\/([a-zA-Z]{2})$/);
+      if (f) {
+        const res = await fetch(`https://flagcdn.com/w160/${f[1].toLowerCase()}.png`);
+        if (!res.ok) return json({ error: 'no flag' }, 404);
+        return new Response(res.body, { headers: { ...cors, 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=604800' } });
+      }
+      if (url.pathname === '/cover') {
+        const target = url.searchParams.get('u') || '';
+        if (!/^https:\/\/assets\.ppy\.sh\/[\w\-./]+$/.test(target)) return json({ error: 'not an osu! cover' }, 400);
+        const res = await fetch(target);
+        if (!res.ok) return json({ error: 'no cover' }, 404);
+        return new Response(res.body, { headers: { ...cors, 'Content-Type': res.headers.get('Content-Type') || 'image/jpeg', 'Cache-Control': 'public, max-age=86400' } });
+      }
+      return json({ ok: true, routes: ['/user?name=NAME', '/avatar/ID', '/flag/CC', '/cover?u=URL'] });
     } catch (err) {
       return json({ error: String(err.message || err) }, 500);
     }

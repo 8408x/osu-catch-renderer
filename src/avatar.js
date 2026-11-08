@@ -26,6 +26,10 @@ export async function lookupPlayer(name) {
     profile = j;
     try { current = await loadImage(`${base}/avatar/${j.id}`); } catch { /* keep the picture that was already set */ }
     say(`Found ${j.username}${j.rank ? ` (#${j.rank.toLocaleString('en-US')})` : ''}.`);
+    redrawFn();
+    const extra = (key, src) => src && loadImage(src).then((img) => { if (profile === j) { j[key] = img; redrawFn(); } }, () => {});   // the flag and the profile banner are optional
+    extra('flagImg', j.country_code && `${base}/flag/${j.country_code}`);
+    extra('coverImg', j.cover_url && `${base}/cover?u=${encodeURIComponent(j.cover_url)}`);
   } catch (err) {
     say(`Lookup failed: ${err.message}`);
   }

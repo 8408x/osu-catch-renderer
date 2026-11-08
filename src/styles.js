@@ -2,12 +2,12 @@
 // (credited in layout.js and CREDITS.md) in this site's own code; no overlay code or images are copied. A draw function
 // works in the style's natural size (see layout.js): the caller translates and scales the canvas to fit.
 
-import { tosuTokens } from './tosu.js?v=20261109g';
-import { hudAt } from './score.js?v=20261109g';
-import { getAvatar, getProfile } from './avatar.js?v=20261109g';
-import { healthAt } from './health.js?v=20261109g';
-import { livePp, ppAtAccuracy } from './pp.js?v=20261109g';
-import { keysAt } from './keys.js?v=20261109g';
+import { tosuTokens } from './tosu.js?v=20261109h';
+import { hudAt } from './score.js?v=20261109h';
+import { getAvatar, getProfile } from './avatar.js?v=20261109h';
+import { healthAt } from './health.js?v=20261109h';
+import { livePp, ppAtAccuracy } from './pp.js?v=20261109h';
+import { keysAt } from './keys.js?v=20261109h';
 
 const SANS = '"Exo 2", "Torus", "Segoe UI", system-ui, -apple-system, sans-serif';
 const MONO = '"Roboto Mono", ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace';
@@ -165,6 +165,11 @@ function avatarSquare(ctx, d, x, y, size, radius) {
   if (!img) text(ctx, (d.player || '?').slice(0, 1).toUpperCase(), x + size / 2, y + size * 0.68, { size: size * 0.55, weight: 800, align: 'center', shadow: false });
 }
 const hexPath = (ctx, cx, cy, r) => { ctx.beginPath(); for (let i = 0; i < 6; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 3; ctx[i ? 'lineTo' : 'moveTo'](cx + r * Math.cos(a), cy + r * Math.sin(a)); } ctx.closePath(); };
+/** A flag image in a rounded box. */
+function flagBox(ctx, img, x, y, w, h, r) {
+  ctx.save(); rr(ctx, x, y, w, h, r); ctx.clip(); ctx.drawImage(img, x, y, w, h); ctx.restore();
+  ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 1; rr(ctx, x, y, w, h, r); ctx.stroke();
+}
 const withCommas = (n) => Math.round(n).toLocaleString('en-US');
 
 const LOOKS = {
@@ -216,7 +221,8 @@ const LOOKS = {
       ctx.fillStyle = 'rgba(22,34,92,0.94)'; rr(ctx, 0, 0, w, h, 14); ctx.fill();            // the lower bar
       ctx.save(); rr(ctx, 0, 0, w, 76, 14); ctx.clip();                                       // the banner: the picture, blown up and dimmed
       ctx.fillStyle = '#2b2f55'; ctx.fillRect(0, 0, w, 76);
-      if (img) { const kk = w / img.naturalWidth; ctx.globalAlpha = 0.45; ctx.drawImage(img, 0, 38 - (img.naturalHeight * kk) / 2, w, img.naturalHeight * kk); ctx.globalAlpha = 1; }
+      const ban = pr.coverImg ?? img;                                                          // the real profile banner when it loaded
+      if (ban) { const kk = w / ban.naturalWidth; ctx.globalAlpha = pr.coverImg ? 0.9 : 0.45; ctx.drawImage(ban, 0, 38 - (ban.naturalHeight * kk) / 2, w, ban.naturalHeight * kk); ctx.globalAlpha = 1; }
       const sh = ctx.createLinearGradient(0, 0, w, 0); sh.addColorStop(0, 'rgba(10,10,30,0.55)'); sh.addColorStop(1, 'rgba(10,10,30,0.1)');
       ctx.fillStyle = sh; ctx.fillRect(0, 0, w, 76);
       ctx.restore();
@@ -226,7 +232,7 @@ const LOOKS = {
       if (pr.title) text(ctx, pr.title, 80, 46, { size: 14, weight: 600, shadow: false, maxW: 250 });
       let bx = 80; const by = pr.title ? 52 : 40;                                            // badge row: country, groups, supporter
       const pill = (label, fill, ink = '#fff') => { ctx.font = `700 11px ${SANS}`; const tw = ctx.measureText(label).width + 16; ctx.fillStyle = fill; rr(ctx, bx, by, tw, 18, 9); ctx.fill(); text(ctx, label, bx + tw / 2, by + 13, { size: 11, weight: 700, fill: ink, align: 'center', shadow: false }); bx += tw + 5; };
-      if (pr.country_code) pill(pr.country_code, 'rgba(20,20,40,0.75)');
+      if (pr.flagImg) { flagBox(ctx, pr.flagImg, bx, by + 1, 28, 18, 3); bx += 33; } else if (pr.country_code) pill(pr.country_code, 'rgba(20,20,40,0.75)');
       for (const g of pr.groups ?? []) pill(g.name, 'rgba(20,20,40,0.75)', g.colour || '#fff');
       if (pr.is_supporter) pill('\u2665', '#e0559a');
       hexPath(ctx, 380, 38, 26); ctx.lineWidth = 3;                                           // level hexagon
@@ -252,7 +258,8 @@ const LOOKS = {
       ctx.fillStyle = 'rgba(52,92,128,0.96)'; rr(ctx, 1.5, 1.5, w - 3, h - 3, 12); ctx.fill();
       ctx.strokeStyle = '#6aa5dc'; ctx.lineWidth = 3; ctx.stroke();
       avatarSquare(ctx, d, 12, 10, 106, 8);
-      if (pr.country_code) {                                                                    // the flag, as a small badge of the country code
+      if (pr.flagImg) flagBox(ctx, pr.flagImg, 47, 98, 36, 24, 4);
+      else if (pr.country_code) {                                                               // no flag image: a small badge of the country code
         ctx.fillStyle = '#c62f2f'; rr(ctx, 49, 100, 32, 20, 4); ctx.fill();
         text(ctx, pr.country_code, 65, 115, { size: 12, weight: 800, align: 'center', shadow: false });
       }
