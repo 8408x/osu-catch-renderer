@@ -15,12 +15,20 @@ let token = null;                                  // { value, expires } kept be
 
 async function getToken(env) {
   if (token && token.expires > Date.now() + 60_000) return token.value;
+  const id = String(env.OSU_CLIENT_ID ?? '').trim();
+  const secret = String(env.OSU_CLIENT_SECRET ?? '').trim();
+  if (!/^\d+$/.test(id)) throw new Error(`OSU_CLIENT_ID must be the numeric Client ID from osu! (got ${id ? id.length + ' characters, not all digits' : 'nothing'}). Is the ID and secret in the right boxes?`);
+  if (!secret) throw new Error('OSU_CLIENT_SECRET is empty.');
   const res = await fetch('https://osu.ppy.sh/oauth/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ client_id: Number(env.OSU_CLIENT_ID), client_secret: env.OSU_CLIENT_SECRET, grant_type: 'client_credentials', scope: 'public' }),
+    body: JSON.stringify({ client_id: Number(id), client_secret: secret, grant_type: 'client_credentials', scope: 'public' }),
   });
-  if (!res.ok) throw new Error(`osu! refused the login (${res.status}). Check OSU_CLIENT_ID and OSU_CLIENT_SECRET.`);
+  if (!res.ok) {
+    let why = '';
+    try { const e = await res.json(); why = ` ${e.error ?? ''} ${e.error_description ?? e.hint ?? e.message ?? ''}`.trimEnd(); } catch {}
+    throw new Error(`osu! refused the login (${res.status}).${why} Client ID length ${id.length}, secret length ${secret.length}.`);
+  }
   const j = await res.json();
   token = { value: j.access_token, expires: Date.now() + j.expires_in * 1000 };
   return token.value;
@@ -33,7 +41,7 @@ export default {
       'Access-Control-Allow-Methods': 'GET, OPTIONS',
       'Cross-Origin-Resource-Policy': 'cross-origin',
     };
-    const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=600' } });
+    const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': status === 200 ? 'public, max-age=600' : 'no-store' } });
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
     const url = new URL(request.url);
     try {
