@@ -5,15 +5,24 @@ let current = null;                                   // an HTMLImageElement tha
 
 export const getAvatar = () => current;
 
-/** Try the osu! avatar server. crossOrigin keeps the canvas clean: an image the server will not share fails here instead of breaking the export. */
-function fromId(id) {
+function loadImage(src) {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.crossOrigin = 'anonymous';
+    img.crossOrigin = 'anonymous';                      // an image the server will not share fails here instead of tainting the export canvas
     img.onload = () => (img.naturalWidth ? resolve(img) : reject(new Error('empty')));
     img.onerror = () => reject(new Error('blocked or not found'));
-    img.src = `https://a.ppy.sh/${id}?${Date.now() % 100000}`;
+    img.src = src;
   });
+}
+
+/** The osu! avatar server first, then the same picture through wsrv.nl, a free image proxy that allows other sites to use its images. */
+async function fromId(id) {
+  const sources = [`https://a.ppy.sh/${id}`, `https://wsrv.nl/?url=${encodeURIComponent(`a.ppy.sh/${id}`)}&w=256&h=256&fit=cover`];
+  let last;
+  for (const src of sources) {
+    try { return await loadImage(src); } catch (err) { last = err; }
+  }
+  throw last;
 }
 
 function fromFile(file) {
@@ -39,7 +48,7 @@ export function initAvatar(redraw) {
     if (!id) { set(null, ''); return; }
     if (!/^\d{1,10}$/.test(id)) { say('A user id is a number, like 2 (the digits at the end of the profile link).'); return; }
     say('Loading…');
-    try { set(await fromId(id), 'Loaded from the osu! servers.'); }
+    try { set(await fromId(id), 'Loaded.'); }
     catch { set(null, 'Could not load that picture here. Upload one instead.'); }
   };
   $('avatarload').addEventListener('click', load);
