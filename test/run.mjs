@@ -21,7 +21,7 @@ const { md5 } = await import('../src/md5.js');
 const { parseOsr, parseReplayFrames, modsToString } = await import('../src/osr.js');
 const { parseOsu } = await import('../src/osu.js');
 const { createPath } = await import('../src/slider.js');
-const { buildScene, evaluateCatches, modRate, resolveColours, DEFAULT_COLOURS } = await import('../src/catch.js');
+const { buildScene, evaluateCatches, findJudgeShift, modRate, resolveColours, DEFAULT_COLOURS } = await import('../src/catch.js');
 const { ReplayTrack } = await import('../src/replay.js');
 const { parseSkinIni, readOsk, Skin, loadDefaultSkin, loadOskSkin, describeSkin } = await import('../src/skin.js');
 const { zipSync, strToU8 } = await import('../vendor/fflate.mjs');
@@ -1342,6 +1342,18 @@ await test('score: replay count cross-check', () => {
   assert.ok(bad.near, 'one fruit off is timing noise');
   assert.ok(!SC.compareWithReplay(totals, { n300: 9, n100: 1, n50: 1, nKatu: 1, nMiss: 1, maxCombo: 2 }).near, 'a big gap is a real mismatch');
   assert.ok(!SC.compareWithReplay(totals, { n300: 1, n100: 1, n50: 1, nKatu: 1, nMiss: 1, maxCombo: 50 }).near, 'a combo gap with equal misses is real');
+});
+
+await test('findJudgeShift: only a shift that makes every count match is used', () => {
+  // the catcher stands at 100 until 1000 ms, then at 300; the catcher jumps at 1000 ms
+  const track = { xAt: (t) => (t < 1000 ? 100 : 300) };
+  const mkObj = (x, t) => ({ kind: 'fruit', x, t, caught: false });
+  const scene = { catchWidth: 20, objects: [mkObj(100, 995), mkObj(300, 1005)] };
+  const want = (n300, nMiss, maxCombo) => ({ n300, n100: 0, n50: 0, nKatu: 0, nMiss, maxCombo });
+  assert.equal(findJudgeShift(scene, track, want(2, 0, 2)), 0, 'plain check already right: no shift');
+  const late = { catchWidth: 20, objects: [mkObj(100, 1003), mkObj(300, 1010)] };       // plain check: 1st missed
+  assert.equal(findJudgeShift(late, track, want(2, 0, 2)), -4, 'shifts earlier until it matches, smallest first');
+  assert.equal(findJudgeShift(late, track, want(5, 0, 5)), 0, 'no shift can explain it: left alone');
 });
 
 await test('skin.ini [Fonts] prefixes and spacing', () => {

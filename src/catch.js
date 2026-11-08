@@ -2,14 +2,14 @@
 // from a parsed beatmap, following osu!lazer's JuiceStream / SliderEventGenerator logic,
 // and works out which objects a given replay caught.
 
-import { createPath } from './slider.js?v=20261109s';
-import { LegacyRandom, statelessInt, statelessSingle } from './rng.js?v=20261109s';
-import { buildCatcherFx } from './catcher.js?v=20261109s';
-import { buildHud } from './score.js?v=20261109s';
-import { buildHealth } from './health.js?v=20261109s';
-import { buildDifficulty, maxPerformance } from './pp.js?v=20261109s';
-import { buildPlate } from './plate.js?v=20261109s';
-import { makeSampler, bananaSamples } from './hitsounds.js?v=20261109s';
+import { createPath } from './slider.js?v=20261109t';
+import { LegacyRandom, statelessInt, statelessSingle } from './rng.js?v=20261109t';
+import { buildCatcherFx } from './catcher.js?v=20261109t';
+import { buildHud, compareWithReplay } from './score.js?v=20261109t';
+import { buildHealth } from './health.js?v=20261109t';
+import { buildDifficulty, maxPerformance } from './pp.js?v=20261109t';
+import { buildPlate } from './plate.js?v=20261109t';
+import { makeSampler, bananaSamples } from './hitsounds.js?v=20261109t';
 
 export const FIELD_W = 512;
 export const FIELD_H = 384;
@@ -312,13 +312,14 @@ export function buildScene(bm, mods = 0) {
  * then work out the catcher's hyperdash timeline and trails (scene.fx).
  * Bananas are counted separately from fruits and droplets.
  */
-export function evaluateCatches(scene, track) {
+export function evaluateCatches(scene, track, shiftMs = 0) {
   const half = scene.catchWidth / 2;
+  scene.judgeShift = shiftMs;
   let caught = 0, total = 0, bananas = 0, bananasCaught = 0;
   for (const o of scene.objects) {
     // Replay frames are whole milliseconds and the game judges at a whole-millisecond clock, so
     // an object at 22383.4 ms is checked against the catcher at 22383 ms, not an in-between spot.
-    const cx = track.xAt(Math.floor(o.t));
+    const cx = track.xAt(Math.floor(o.t) + shiftMs);
     o.caught = o.x >= cx - half && o.x <= cx + half;
     o.offset = o.x - cx;
     if (o.kind === 'banana') { bananas++; if (o.caught) bananasCaught++; }
@@ -331,4 +332,22 @@ export function evaluateCatches(scene, track) {
   scene.maxPp = maxPerformance(scene, scene.diff);
   scene.plate = buildPlate(scene, track);
   return { caught, total, bananas, bananasCaught, hud: scene.hud.totals };
+}
+
+
+/**
+ * Some replays are recorded a few milliseconds off the map's clock (the player's own timing offset), which
+ * flips the close calls. When the plain check differs from the replay's counts, try small shifts and return
+ * the smallest one that makes every count match exactly; 0 when none does (so replays that already match
+ * or can't be explained are left alone).
+ */
+export function findJudgeShift(scene, track, replay, maxShift = 20) {
+  const half = scene.catchWidth / 2;
+  const totalsAt = (shift) => {
+    for (const o of scene.objects) o.caught = o.x >= track.xAt(Math.floor(o.t) + shift) - half && o.x <= track.xAt(Math.floor(o.t) + shift) + half;
+    return buildHud(scene).totals;
+  };
+  if (compareWithReplay(totalsAt(0), replay).ok) return 0;
+  for (let d = 1; d <= maxShift; d++) for (const sh of [d, -d]) if (compareWithReplay(totalsAt(sh), replay).ok) return sh;
+  return 0;
 }

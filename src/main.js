@@ -1,28 +1,28 @@
-import './ui.js?v=20261109s';
-import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261109s';
-import { parseOsu } from './osu.js?v=20261109s';
-import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261109s';
-import { compareWithReplay } from './score.js?v=20261109s';
-import { nightcoreBeats } from './nightcore.js?v=20261109s';
-import { ReplayTrack } from './replay.js?v=20261109s';
-import { drawFrame, loadOverlayFonts } from './render.js?v=20261109s';
-import { loadArgonFonts } from './argon.js?v=20261109s';
-import { TosuOverlays } from './tosu.js?v=20261109s';
-import { exportMp4, webCodecsAvailable } from './encode.js?v=20261109s';
-import { VERSION } from './version.js?v=20261109s';
-import { md5 } from './md5.js?v=20261109s';
-import { resolveRange } from './range.js?v=20261109s';
-import { initLayoutEditor } from './layoutui.js?v=20261109s';
-import { drawCard } from './card.js?v=20261109s';
-import { lookupPlayer } from './avatar.js?v=20261109s';
-import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261109s';
-import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261109s';
-import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261109s';
-import { BackgroundVideo } from './bgvideo.js?v=20261109s';
-import { buildKeys } from './keys.js?v=20261109s';
-import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261109s';
-import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261109s';
-import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261109s';
+import './ui.js?v=20261109t';
+import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261109t';
+import { parseOsu } from './osu.js?v=20261109t';
+import { buildScene, evaluateCatches, findJudgeShift, resolveColours } from './catch.js?v=20261109t';
+import { compareWithReplay } from './score.js?v=20261109t';
+import { nightcoreBeats } from './nightcore.js?v=20261109t';
+import { ReplayTrack } from './replay.js?v=20261109t';
+import { drawFrame, loadOverlayFonts } from './render.js?v=20261109t';
+import { loadArgonFonts } from './argon.js?v=20261109t';
+import { TosuOverlays } from './tosu.js?v=20261109t';
+import { exportMp4, webCodecsAvailable } from './encode.js?v=20261109t';
+import { VERSION } from './version.js?v=20261109t';
+import { md5 } from './md5.js?v=20261109t';
+import { resolveRange } from './range.js?v=20261109t';
+import { initLayoutEditor } from './layoutui.js?v=20261109t';
+import { drawCard } from './card.js?v=20261109t';
+import { lookupPlayer } from './avatar.js?v=20261109t';
+import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261109t';
+import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261109t';
+import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261109t';
+import { BackgroundVideo } from './bgvideo.js?v=20261109t';
+import { buildKeys } from './keys.js?v=20261109t';
+import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261109t';
+import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261109t';
+import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261109t';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('stage');
@@ -234,9 +234,11 @@ function refresh() {
       state.scene = scene;
       state.track = new ReplayTrack(replay.frames);
       state.keys = buildKeys(replay.frames);
-      const { caught, total, bananas, bananasCaught, hud } = evaluateCatches(scene, state.track);
+      const shift = findJudgeShift(scene, state.track, state.replay);   // 0 unless a small timing offset makes every count match
+      const { caught, total, bananas, bananasCaught, hud } = evaluateCatches(scene, state.track, shift);
       msgs.push(['dim', `${scene.objects.length} objects, ${caught}/${total} fruits and droplets${bananas ? ` and ${bananasCaught}/${bananas} bananas` : ''} caught in this replay (rough check against the real result).`]);
       const cmp = compareWithReplay(hud, state.replay);
+      if (shift) msgs.push(['dim', `This replay was recorded ${Math.abs(shift)} ms ${shift > 0 ? 'late' : 'early'} against the map's clock (often the player's own timing offset). Catches are judged with that shift so they match the replay's counts exactly.`]);
       msgs.push(cmp.ok ? ['ok', "The catches match the replay's own counts (fruits, droplets, misses, max combo)."]
         : cmp.near ? ['ok', `The catches are within timing noise of the replay's own counts (${cmp.diffs.join('; ')}). The game judges each object on a display frame, so a call or two at the catcher's edge can differ; the HUD is still right.`]
         : ['warn', `Our catch check differs from the replay's own counts, so the HUD may be off: ${cmp.diffs.join('; ')}.`]);
