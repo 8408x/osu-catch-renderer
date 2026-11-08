@@ -1,28 +1,28 @@
-import './ui.js?v=20261109v';
-import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261109v';
-import { parseOsu } from './osu.js?v=20261109v';
-import { buildScene, evaluateCatches, findJudgeShift, resolveColours } from './catch.js?v=20261109v';
-import { compareWithReplay } from './score.js?v=20261109v';
-import { nightcoreBeats } from './nightcore.js?v=20261109v';
-import { ReplayTrack } from './replay.js?v=20261109v';
-import { drawFrame, loadOverlayFonts } from './render.js?v=20261109v';
-import { loadArgonFonts } from './argon.js?v=20261109v';
-import { TosuOverlays } from './tosu.js?v=20261109v';
-import { exportMp4, webCodecsAvailable } from './encode.js?v=20261109v';
-import { VERSION } from './version.js?v=20261109v';
-import { md5 } from './md5.js?v=20261109v';
-import { resolveRange } from './range.js?v=20261109v';
-import { initLayoutEditor } from './layoutui.js?v=20261109v';
-import { drawCard } from './card.js?v=20261109v';
-import { lookupPlayer } from './avatar.js?v=20261109v';
-import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261109v';
-import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261109v';
-import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261109v';
-import { BackgroundVideo } from './bgvideo.js?v=20261109v';
-import { buildKeys } from './keys.js?v=20261109v';
-import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261109v';
-import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261109v';
-import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261109v';
+import './ui.js?v=20261109w';
+import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261109w';
+import { parseOsu } from './osu.js?v=20261109w';
+import { buildScene, evaluateCatches, findJudgeShift, resolveColours } from './catch.js?v=20261109w';
+import { compareWithReplay } from './score.js?v=20261109w';
+import { nightcoreBeats } from './nightcore.js?v=20261109w';
+import { ReplayTrack } from './replay.js?v=20261109w';
+import { drawFrame, loadOverlayFonts } from './render.js?v=20261109w';
+import { loadArgonFonts } from './argon.js?v=20261109w';
+import { TosuOverlays } from './tosu.js?v=20261109w';
+import { exportMp4, webCodecsAvailable } from './encode.js?v=20261109w';
+import { VERSION } from './version.js?v=20261109w';
+import { md5 } from './md5.js?v=20261109w';
+import { resolveRange } from './range.js?v=20261109w';
+import { initLayoutEditor } from './layoutui.js?v=20261109w';
+import { drawCard } from './card.js?v=20261109w';
+import { lookupPlayer, loadBoard } from './avatar.js?v=20261109w';
+import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261109w';
+import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261109w';
+import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261109w';
+import { BackgroundVideo } from './bgvideo.js?v=20261109w';
+import { buildKeys } from './keys.js?v=20261109w';
+import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261109w';
+import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261109w';
+import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261109w';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('stage');
@@ -229,7 +229,7 @@ function refresh() {
     } else {
       scene.colours = resolveColours(beatmap, state.skin);
       scene.player = replay.player;
-      { const w = document.getElementById('lookupwho'); if (w) w.dataset.name = replay.player; lookupPlayer(replay.player); }
+      { const w = document.getElementById('lookupwho'); if (w) w.dataset.name = replay.player; lookupPlayer(replay.player); if ($('showboard')?.checked) loadBoard(replay.beatmapMd5); }
       scene.play = { date: replay.date, score: replay.score, maxCombo: replay.maxCombo, n300: replay.n300, n100: replay.n100, n50: replay.n50, nKatu: replay.nKatu, nMiss: replay.nMiss };
       state.scene = scene;
       state.track = new ReplayTrack(replay.frames);
@@ -725,7 +725,7 @@ function seekPreview(t) {
 const cardSecs = (kind) => ($(kind + 'on').checked ? Math.min(10, Math.max(1, Number($(kind + 'sec').value) || (kind === 'intro' ? 4 : 5))) : 0);
 function paintCard(kind, progress) {
   if (!state.scene) return;
-  drawCard(ctx, canvas.width, canvas.height, { kind, scene: state.scene, bg: state.bg, progress, style: $('cardstyle').value });
+  drawCard(ctx, canvas.width, canvas.height, { kind, scene: state.scene, bg: state.bg, progress, style: $('cardstyle').value, board: $('showboard').checked });
 }
 let introMs = 0, outroMs = 0, outroBegan = null;   // card lengths for this playback, and when (in elapsed ms) the outro started
 let lastTick = 0, slowAcc = 0, slowN = 0, lastUi = 0;
@@ -824,6 +824,7 @@ for (const kind of ['intro', 'outro']) {
     $('clock').textContent = kind === 'intro' ? 'Intro' : 'Outro';
   });
 }
+$('showboard').addEventListener('change', () => { if ($('showboard').checked && state.replay) loadBoard(state.replay.beatmapMd5); });
 $('cardstyle').addEventListener('change', () => { if (state.scene && !playing) { drawAt(state.t); updateClock(); } });
 
 $('seek').addEventListener('input', () => {
@@ -860,7 +861,7 @@ function setBusy(busy) {
   $('exportall').disabled = busy || !state.scene;
   $('cancel').disabled = !busy;
   for (const id of ['rangefrom', 'rangeto', 'rangefromnow', 'rangetonow', 'rangeclear', 'replaypick']) $(id).disabled = busy;
-  for (const id of ['osr', 'osu', 'audio', 'skin', 'useDefault', 'res', 'fps', 'mbps', 'introon', 'introsec', 'outroon', 'outrosec', 'cardstyle', 'volume', 'usehits', 'hitvolume', 'showwidth', 'showhud', 'showlight', 'hudstyle', 'showbg', 'bgdim', 'bgfile', 'play', 'seek', 'prevres']) $(id).disabled = busy;
+  for (const id of ['osr', 'osu', 'audio', 'skin', 'useDefault', 'res', 'fps', 'mbps', 'introon', 'introsec', 'outroon', 'outrosec', 'cardstyle', 'showboard', 'volume', 'usehits', 'hitvolume', 'showwidth', 'showhud', 'showlight', 'hudstyle', 'showbg', 'bgdim', 'bgfile', 'play', 'seek', 'prevres']) $(id).disabled = busy;
   $('showvideo').disabled = busy || !state.bgv;
   $('showsb').disabled = busy || !state.sb;
   $('usemusic').disabled = busy || !currentMusic()?.bytes;
@@ -1014,7 +1015,7 @@ async function renderCurrent(job = null) {
       : undefined,
     introSec: $('introon').checked ? Math.min(10, Math.max(1, Number($('introsec').value) || 4)) : 0,
     outroSec: $('outroon').checked ? Math.min(10, Math.max(1, Number($('outrosec').value) || 5)) : 0,
-    drawCard: ($('introon').checked || $('outroon').checked) ? (kind, progress) => drawCard(ctx, canvas.width, canvas.height, { kind, scene: sc, bg: state.bg, progress, style: $('cardstyle').value }) : undefined,
+    drawCard: ($('introon').checked || $('outroon').checked) ? (kind, progress) => drawCard(ctx, canvas.width, canvas.height, { kind, scene: sc, bg: state.bg, progress, style: $('cardstyle').value, board: $('showboard').checked }) : undefined,
     signal: abort.signal,
     onStatus: (text) => { stage = text; $('status').textContent = prefix + text; },
     onProgress: (p) => {

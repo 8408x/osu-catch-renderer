@@ -229,3 +229,7 @@ In the Render tab, turn on Intro card (the player's picture, name, rank and the 
 ## Intro and outro cards
 
 Pick a **Card style** (osu!lazer, osu!stable or Simple) in the Render tab. The cards show in the preview too: press Play from the start and the intro runs before the map, the outro after the last object. "Show intro" / "Show outro" display them without playing. The exported video uses the same drawing, so what you see is what you get.
+
+### Online leaderboard
+
+With "Online leaderboard on the outro" ticked, the osu!lazer outro shows the map's real osu!catch top scores (fetched through the Worker, `/scores?checksum=<beatmap md5>`) and puts the replay at the place its score would take. This needs the updated `worker/osu-lookup.js` pasted into Cloudflare. Without it, or for maps that aren't on osu!, the card keeps the combo graph.

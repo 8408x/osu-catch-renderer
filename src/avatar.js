@@ -104,3 +104,25 @@ export function initAvatar(redraw) {
   if (saved) loadImage(saved).then((img) => { custom = true; set(img, 'Using your uploaded picture.'); }, () => {});   // an uploaded picture comes back on the next visit
   else if ($('avatarid').value) load();              // the saved id is tried again on the next visit
 }
+
+let board = null;                                     // { beatmap_id, scores: [...] } for the loaded replay's map, or null
+export const getBoard = () => board;
+/** The map's real osu!catch leaderboard (top 50) through the lookup Worker; resolves to the board or null, and says why in #boardmsg. */
+export async function loadBoard(md5) {
+  board = null;
+  const msg = document.getElementById('boardmsg');
+  const say = (m) => { if (msg) msg.textContent = m; };
+  if (!md5) { say(''); redrawFn(); return null; }
+  say('Loading the leaderboard…');
+  try {
+    const res = await fetch(`${lookupBase()}/scores?checksum=${md5}`);
+    const j = await res.json();
+    if (!res.ok) throw new Error(j.error || res.status);
+    board = j;
+    say(`Leaderboard loaded: ${j.scores.length} scores.`);
+  } catch (err) {
+    say(`No leaderboard: ${err.message}. (If the Worker is old, re-paste worker/osu-lookup.js in Cloudflare.)`);
+  }
+  redrawFn();
+  return board;
+}

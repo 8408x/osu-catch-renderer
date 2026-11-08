@@ -9,6 +9,7 @@
 //
 // Routes:
 //   GET /user?name=NAME    ->  { id, username, country_code, country_name, rank, country_rank, pp, avatar_url }
+//   GET /scores?checksum=MD5  ->  { beatmap_id, scores: [{ rank, user_id, username, country_code, score, accuracy, max_combo, mods, pp, n300, n100, n50, nkatu, nmiss, date }] }  (osu!catch top 50)
 //   GET /avatar/ID         ->  the player's picture, with the headers a canvas needs
 
 let token = null;                                  // { value, expires } kept between requests while the Worker stays warm
@@ -63,6 +64,29 @@ export default {
           groups: (u.groups ?? []).slice(0, 3).map((g) => ({ name: g.name, identifier: g.short_name, colour: g.colour, playmodes: g.playmodes ?? null })),
         });
       }
+      if (url.pathname === '/scores') {
+        const sum = (url.searchParams.get('checksum') || '').toLowerCase();
+        if (!/^[0-9a-f]{32}$/.test(sum)) return json({ error: 'checksum must be the beatmap md5' }, 400);
+        const auth = { headers: { Authorization: `Bearer ${await getToken(env)}`, Accept: 'application/json' } };
+        const bm = await fetch(`https://osu.ppy.sh/api/v2/beatmaps/lookup?checksum=${sum}`, auth);
+        if (bm.status === 404) return json({ error: 'this map is not on osu! (no leaderboard)' }, 404);
+        if (!bm.ok) return json({ error: `osu! answered ${bm.status}` }, 502);
+        const b = await bm.json();
+        const res = await fetch(`https://osu.ppy.sh/api/v2/beatmaps/${b.id}/scores?mode=fruits&type=global`, auth);
+        if (!res.ok) return json({ error: `osu! answered ${res.status}` }, 502);
+        const j = await res.json();
+        return json({
+          beatmap_id: b.id, status: b.status,
+          scores: (j.scores ?? []).slice(0, 50).map((x, i) => ({
+            rank: i + 1, user_id: x.user_id ?? x.user?.id, username: x.user?.username ?? '', country_code: x.user?.country_code ?? '',
+            score: x.classic_total_score ?? x.legacy_total_score ?? x.total_score ?? x.score ?? 0, accuracy: x.accuracy ?? 0, max_combo: x.max_combo ?? 0,
+            mods: (x.mods ?? []).map((m) => (typeof m === 'string' ? m : m.acronym)), pp: x.pp ?? null,
+            n300: x.statistics?.great ?? x.statistics?.count_300 ?? 0, n100: x.statistics?.large_tick_hit ?? x.statistics?.count_100 ?? 0,
+            n50: x.statistics?.small_tick_hit ?? x.statistics?.count_50 ?? 0, nkatu: x.statistics?.small_tick_miss ?? x.statistics?.count_katu ?? 0, nmiss: x.statistics?.miss ?? x.statistics?.count_miss ?? 0,
+            date: x.ended_at ?? x.created_at ?? '',
+          })),
+        });
+      }
       const m = url.pathname.match(/^\/avatar\/(\d{1,10})$/);
       if (m) {
         const res = await fetch(`https://a.ppy.sh/${m[1]}`);
@@ -82,7 +106,7 @@ export default {
         if (!res.ok) return json({ error: 'no cover' }, 404);
         return new Response(res.body, { headers: { ...cors, 'Content-Type': res.headers.get('Content-Type') || 'image/jpeg', 'Cache-Control': 'public, max-age=86400' } });
       }
-      return json({ ok: true, routes: ['/user?name=NAME', '/avatar/ID', '/flag/CC', '/cover?u=URL'] });
+      return json({ ok: true, routes: ['/user?name=NAME', '/scores?checksum=MD5', '/avatar/ID', '/flag/CC', '/cover?u=URL'] });
     } catch (err) {
       return json({ error: String(err.message || err) }, 500);
     }

@@ -3,10 +3,10 @@
 // Three looks: 'lazer' (the loading screen and results screen of osu!lazer), 'stable' (osu!stable's loading
 // screen and ranking panel) and 'simple' (a plain centred card). Layouts follow those screens; no artwork is copied.
 
-import { getAvatar, getProfile } from './avatar.js?v=20261109v';
-import { styleData } from './styles.js?v=20261109v';
-import { hudAt } from './score.js?v=20261109v';
-import { modEntries } from './mods.js?v=20261109v';
+import { getAvatar, getProfile, getBoard } from './avatar.js?v=20261109w';
+import { styleData } from './styles.js?v=20261109w';
+import { hudAt } from './score.js?v=20261109w';
+import { modEntries } from './mods.js?v=20261109w';
 
 const SANS = '"Exo 2", "Torus", system-ui, "Segoe UI", sans-serif';
 const MONO = '"JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, monospace';
@@ -110,6 +110,49 @@ function comboSeries(scene, n = 200) {
   return out;
 }
 
+// ---------- the online leaderboard ----------
+
+/** The rows to show: the top of the board, and the replay's own score at the place it takes (or already holds). */
+function boardRows(scene, n = 9) {
+  const b = getBoard(), pl = scene.play ?? {};
+  if (!b?.scores?.length) return null;
+  const list = b.scores.map((x) => ({ ...x }));
+  const name = (scene.player || '').toLowerCase();
+  let mi = list.findIndex((x) => x.score === (pl.score ?? 0) && String(x.username).toLowerCase() === name);
+  if (mi >= 0) list[mi].mine = true;
+  else {
+    const me = { username: scene.player || 'You', score: pl.score ?? 0, accuracy: accuracy(pl) / 100, max_combo: pl.maxCombo ?? 0, mine: true };
+    mi = list.findIndex((x) => x.score < me.score);
+    if (mi < 0) { mi = list.length; me.rank = list.length >= 50 ? 0 : list.length + 1; } else me.rank = mi + 1;
+    list.splice(mi, 0, me);
+    for (let i = mi + 1; i < list.length; i++) list[i].rank = i + 1;
+  }
+  if (mi < n) return list.slice(0, n);
+  return [...list.slice(0, n - 1), list[mi]];
+}
+
+function drawBoard(ctx, x, y, w, h, u, scene) {
+  const rows = boardRows(scene);
+  rr(ctx, x, y, w, h, 26 * u); ctx.fillStyle = 'rgba(21,19,30,0.86)'; ctx.fill();
+  ctx.textAlign = 'left'; ctx.font = FONT(600, 26 * u); ctx.fillStyle = 'rgba(255,255,255,0.65)'; ctx.fillText('GLOBAL RANKING', x + 32 * u, y + 50 * u);
+  if (!rows) { ctx.font = FONT(500, 28 * u); ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillText('No leaderboard for this map', x + 32 * u, y + 110 * u); return; }
+  const top = y + 74 * u, rh = (h - 90 * u) / Math.max(rows.length, 1);
+  rows.forEach((r, i) => {
+    const ry = top + i * rh, cy = ry + rh / 2;
+    if (r.mine) { rr(ctx, x + 14 * u, ry + 2 * u, w - 28 * u, rh - 4 * u, 12 * u); ctx.fillStyle = 'rgba(255,102,170,0.28)'; ctx.fill(); ctx.strokeStyle = '#ff66aa'; ctx.lineWidth = 2 * u; ctx.stroke(); }
+    const fs = Math.min(26 * u, rh * 0.52);
+    ctx.textAlign = 'left'; ctx.font = FONT(700, fs); ctx.fillStyle = r.rank <= 3 ? ['#ffd23f', '#dfe5f2', '#ffa05a'][r.rank - 1] : 'rgba(255,255,255,0.7)';
+    ctx.fillText(r.rank ? `#${r.rank}` : '#50+', x + 32 * u, cy + fs * 0.35);
+    ctx.fillStyle = '#fff'; ctx.font = FONT(r.mine ? 800 : 600, fs);
+    const nameX = x + 110 * u, scoreR = x + w - 32 * u, accR = scoreR - 390 * u;
+    ctx.fillText(fitText(ctx, r.username, accR - nameX - 130 * u), nameX, cy + fs * 0.35);
+    ctx.textAlign = 'right'; ctx.font = FONT(500, fs * 0.9); ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.fillText(`${((r.accuracy ?? 0) * 100).toFixed(2)}%`, accR, cy + fs * 0.33);
+    ctx.fillText(`${commas(r.max_combo ?? 0)}x`, accR + 130 * u, cy + fs * 0.33);
+    ctx.font = FONT(800, fs, MONO); ctx.fillStyle = '#fff'; ctx.fillText(commas(r.score ?? 0), scoreR, cy + fs * 0.33);
+  });
+}
+
 // ---------- lazer ----------
 
 function lazerIntro(ctx, W, H, o) {
@@ -201,8 +244,9 @@ function lazerOutro(ctx, W, H, o) {
   const sub = [pr.country_code, pr.rank ? `#${commas(pr.rank)}` : '', when ? `played ${when}` : ''].filter(Boolean).join('  ·  ');
   ctx.font = FONT(500, 32 * u); ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillText(sub, rx + 170 * u, ay + 44 * u);
   modPills(ctx, rx, py + 250 * u, modList(scene.mods), u, 'left');
-  // combo over the map
+  // combo over the map, or the online leaderboard
   const gy = py + 350 * u, gh = 440 * u;
+  if (o.board && getBoard()) { drawBoard(ctx, rx, gy, rw, gh + 150 * u, u, scene); ctx.restore(); return; }
   rr(ctx, rx, gy, rw, gh, 26 * u); ctx.fillStyle = 'rgba(21,19,30,0.86)'; ctx.fill();
   ctx.textAlign = 'left'; ctx.font = FONT(600, 26 * u); ctx.fillStyle = 'rgba(255,255,255,0.65)'; ctx.fillText('COMBO', rx + 32 * u, gy + 50 * u);
   const series = comboSeries(scene), top = Math.max(1, ...series), gx0 = rx + 32 * u, gx1 = rx + rw - 32 * u, gy0 = gy + gh - 40 * u, gy1 = gy + 90 * u;
