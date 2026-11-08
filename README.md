@@ -200,3 +200,7 @@ The Player card and Name tag can show the player's picture, country and rank. A 
 4. The site already points at the Worker in `DEFAULT_LOOKUP` (`src/avatar.js`). If you host your own, change that address. The player named in the replay is looked up automatically.
 
 The secret lives only in Cloudflare. Never put it in the site or the repo.
+
+## Sharing a layout
+
+Layout tab → Copy share link. Anyone who opens the link gets your widget positions, sizes, opacity and looks (not your replay or picture).

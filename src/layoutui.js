@@ -1,8 +1,8 @@
 // The Layout tab and dragging on the preview. Owns the layout object (saved in localStorage); main.js hands it to
 // drawFrame. Pure UI: nothing here draws a frame.
 
-import { PRESETS, parseLayoutFile, layoutFileText, WIDGETS, AUTHORS, styleInfo, ORDER, MIN_SCALE, MAX_SCALE, defaultLayout, normalizeLayout, rectOf, hitTest, clampPosition, snapPosition } from './layout.js?v=20261109k';
-import { initAvatar } from './avatar.js?v=20261109k';
+import { PRESETS, parseLayoutFile, layoutFileText, layoutToCode, layoutFromCode, WIDGETS, AUTHORS, styleInfo, ORDER, MIN_SCALE, MAX_SCALE, defaultLayout, normalizeLayout, rectOf, hitTest, clampPosition, snapPosition } from './layout.js?v=20261109l';
+import { initAvatar } from './avatar.js?v=20261109l';
 
 const ICONS = {
   github: '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.89-1.17-.89-1.17-.73-.5.05-.49.05-.49.8.06 1.23.83 1.23.83.71 1.22 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.65-.89-3.65-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>',
@@ -60,6 +60,7 @@ export function initLayoutEditor({ canvas, pane, editable, redraw }) {
         <button type="button" class="ghost small" id="presetdel">Delete saved</button>
         <button type="button" class="ghost small" id="presetexport">Export file</button>
         <button type="button" class="ghost small" id="presetimport">Import file</button>
+        <button type="button" class="ghost small" id="presetshare">Copy share link</button>
         <input type="file" id="presetfile" accept=".json,application/json" hidden>
       </div>
       <p class="note" id="presetmsg" style="margin:6px 0 0"></p>
@@ -212,7 +213,19 @@ export function initLayoutEditor({ canvas, pane, editable, redraw }) {
     applyLayout(l);
     say(`Imported ${f.name}.`);
   });
+  $('presetshare').addEventListener('click', async () => {
+    const url = `${location.origin}${location.pathname}#layout=${layoutToCode(layout)}`;
+    try { await navigator.clipboard.writeText(url); say('Link copied. Anyone who opens it gets this layout.'); }
+    catch { window.prompt('Copy this link:', url); say('Share this link to give someone this layout.'); }
+  });
   fillPresets();
+  // a shared link brings its layout along: #layout=...
+  const shared = /[#&]layout=([\w-]+)/.exec(location.hash);
+  if (shared) {
+    const l = layoutFromCode(shared[1]);
+    if (l) { Object.assign(layout, l); ui.selected = ORDER.find((id) => layout[id].on) ?? ORDER[0]; save(layout); sync(); const hs = document.getElementById('hudstyle'); if (hs && hs.value !== 'overlay') hs.value = 'custom'; say('Loaded the layout from the link you opened.'); }
+    else say('That link\'s layout could not be read.');
+  }
 
   // keep the widget's top-left where it was; only pull it back if the new look would leave the frame
   const fitStyle = () => {

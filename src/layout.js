@@ -265,3 +265,21 @@ export function parseLayoutFile(text) {
 }
 
 export const layoutFileText = (layout) => JSON.stringify({ app: 'osu-catch-renderer', version: 1, layout }, null, 2);
+
+/** A layout as a short text for a share link: each widget as [on, x, y, scale, opacity, look], then base64url. */
+export function layoutToCode(layout) {
+  const r = (n) => Math.round(n * 1000) / 1000, o = {};
+  for (const id of ORDER) { const c = layout[id]; o[id] = [c.on ? 1 : 0, r(c.x), r(c.y), r(c.s), r(c.a ?? 1), c.style]; }
+  return btoa(JSON.stringify(o)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/** The reverse of layoutToCode; a normalised layout, or null when the text is not one. */
+export function layoutFromCode(code) {
+  try {
+    const raw = JSON.parse(atob(String(code).replace(/-/g, '+').replace(/_/g, '/')));
+    if (!raw || typeof raw !== 'object') return null;
+    const l = {};
+    for (const id of ORDER) { const a = raw[id]; if (Array.isArray(a)) l[id] = { on: a[0] === 1, x: a[1], y: a[2], s: a[3], a: a[4], style: a[5] }; }
+    return Object.keys(l).length ? normalizeLayout(l) : null;
+  } catch { return null; }
+}
