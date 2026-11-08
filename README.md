@@ -96,6 +96,18 @@ Runs parser, juice stream, catch-logic, skin, .osz, mirror-download (mocked netw
 - Hyperdash fruits (and droplets) glow, found with lazer's detection. After the catcher catches one it tints red until the next object or until the replay's catcher reaches the target, leaves red trails and an after-image; normal dashes leave white trails.
 - No dotnet was available while building, so the random generators are checked against an independent Python implementation (`test/rng_ref.py`) rather than against the real game. Compare a few showers and hypers with the real game before trusting them.
 
+## How exactly the catches match the replay
+
+The page re-plays the catcher from the replay's frames and checks every fruit, droplet and tiny droplet against it, then compares its totals with the counts saved in the replay (fruits, droplets, tiny droplets caught and missed, misses, max combo).
+
+Rules it follows, checked against osu!lazer's catch code and against real replays:
+
+- The catcher's position is read at the object's whole millisecond (an object at 22383.4 ms is checked at 22383 ms).
+- If a replay has two frames with the same time, the first one is used.
+- Catch range, hard rock offsets, tiny droplet positions and the random draws behind them follow lazer.
+
+Most replays match exactly (11 tested: 8 exact, 3 a call or two off). A small difference is expected on very fast maps such as Obsidian, where the catcher crosses the field in a few milliseconds ("hyperwalk"): the game judges each object on a display frame, so one or two calls at the catcher's edge depend on the original player's frame timing and cannot be recovered from the file. When every count is within two of the replay (and the max combo is the same unless the misses differ), the page says "within timing noise" instead of warning. A bigger gap still shows a warning and lists the closest calls.
+
 ## Combo and accuracy HUD
 
 - The **Show the HUD / overlay** tick (default on) draws one of two HUDs, picked in the **Overlay style** menu (below). Score, HP and the live pp follow osu!lazer's rules either way.
