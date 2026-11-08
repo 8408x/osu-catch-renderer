@@ -4,7 +4,7 @@
 // and the output has perfectly even frame timing.
 
 import { Muxer, StreamTarget } from '../vendor/mp4-muxer.mjs';
-import { SAMPLE_RATE } from './audio.js?v=20261109l';
+import { SAMPLE_RATE } from './audio.js?v=20261109m';
 
 // Tried in order; the first one this browser can encode wins.
 const CANDIDATES = [
@@ -111,8 +111,11 @@ async function encodeAudioTrack({ channels, sampleRate }, picked, muxer, signal,
  * @param {(p:number)=>void} [o.onProgress] 0..1
  * @param {(text:string)=>void} [o.onStatus] stage text ("Preparing music…")
  * @param {AbortSignal} [o.signal]
+ * @param {number} [o.introSec] seconds of title card before the gameplay (silent)
+ * @param {number} [o.outroSec] seconds of result card after it (silent)
+ * @param {(kind:'intro'|'outro', progress:number)=>void|Promise<void>} [o.drawCard] paints a title card frame
  */
-export async function exportMp4({ canvas, drawAt, startTime, endTime, rate = 1, fps = 60, bitrate = 12_000_000, makeAudio, onProgress, onStatus, signal }) {
+export async function exportMp4({ canvas, drawAt, startTime, endTime, rate = 1, fps = 60, bitrate = 12_000_000, makeAudio, onProgress, onStatus, signal, introSec = 0, outroSec = 0, drawCard }) {
   if (!webCodecsAvailable()) throw new Error('This browser has no WebCodecs video encoder. Use a current Chrome, Edge or Safari.');
   const { width, height } = canvas;
   if (width % 2 || height % 2) throw new Error('Video width and height must be even numbers.');
@@ -127,14 +130,20 @@ export async function exportMp4({ canvas, drawAt, startTime, endTime, rate = 1, 
     if (!audioPicked) throw new Error('This browser cannot encode audio. Use a current Chrome or Edge, or render without music.');
   }
 
-  const total = Math.max(1, Math.ceil(((endTime - startTime) / rate / 1000) * fps));
-  const durationSec = total / fps;
+  const mainFrames = Math.max(1, Math.ceil(((endTime - startTime) / rate / 1000) * fps));
+  const introFrames = drawCard ? Math.round(introSec * fps) : 0, outroFrames = drawCard ? Math.round(outroSec * fps) : 0;
+  const total = introFrames + mainFrames + outroFrames;
+  const durationSec = mainFrames / fps;
 
   let audio = null;
   if (makeAudio) {
     onStatus?.('Preparing music…');
     await yieldToUI(); // let the status text paint; the DSP below blocks the page for a few seconds
     audio = await makeAudio(durationSec);
+    if (introFrames || outroFrames) {                                        // silence under the cards: the music keeps its place under the gameplay
+      const lead = Math.round((introFrames / fps) * audio.sampleRate), len = Math.round((total / fps) * audio.sampleRate);
+      audio = { ...audio, channels: audio.channels.map((ch) => { const out = new Float32Array(len); out.set(ch.subarray(0, Math.max(0, Math.min(ch.length, len - lead))), lead); return out; }) };
+    }
     if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError');
   }
 
@@ -164,7 +173,9 @@ export async function exportMp4({ canvas, drawAt, startTime, endTime, rate = 1, 
       if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError');
       if (encoderError) throw encoderError;
 
-      await drawAt(startTime + (i / fps) * 1000 * rate);
+      if (i < introFrames) await drawCard('intro', (i + 0.5) / introFrames);
+      else if (i >= introFrames + mainFrames) await drawCard('outro', (i - introFrames - mainFrames + 0.5) / outroFrames);
+      else await drawAt(startTime + ((i - introFrames) / fps) * 1000 * rate);
 
       const frame = new VideoFrame(canvas, { timestamp: Math.round(i * frameUs), duration: Math.round(frameUs) });
       encoder.encode(frame, { keyFrame: i % (fps * 2) === 0 });

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="app-version" content="20261109l">
+  <meta name="app-version" content="20261109m">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>osu!catch Replay Renderer</title>
   <style>
@@ -355,6 +355,12 @@
           <label class="field" style="margin-top:10px"><span>Bitrate (Mbps)</span>
             <input id="mbps" type="number" min="1" max="80" step="1" value="12">
           </label>
+          <div class="grid2" style="margin-top:10px">
+            <label class="toggle"><input id="introon" type="checkbox"> Intro card <small>(player and map)</small></label>
+            <label class="field"><span>Intro seconds</span><input id="introsec" type="number" min="1" max="10" step="1" value="4"></label>
+            <label class="toggle"><input id="outroon" type="checkbox"> Outro card <small>(the result)</small></label>
+            <label class="field"><span>Outro seconds</span><input id="outrosec" type="number" min="1" max="10" step="1" value="5"></label>
+          </div>
           <label class="toggle" style="margin-top:10px"><input id="fastdraft" type="checkbox"> Fast draft <small>(skips the storyboard, background video, hit lighting and tosu overlay images; much quicker)</small></label>
         </div>
         <div class="group">
@@ -386,6 +392,6 @@
 <div class="dropveil" id="dropveil"><div>Drop files to load them<small>.osr replay · .osz map set · .osu · .osk skin · image · song</small></div></div>
 
 <script src="vendor/lzma-d-min.js"></script>
-<script type="module" src="src/main.js?v=20261109l"></script>
+<script type="module" src="src/main.js?v=20261109m"></script>
 </body>
 </html>

@@ -1,27 +1,28 @@
-import './ui.js?v=20261109l';
-import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261109l';
-import { parseOsu } from './osu.js?v=20261109l';
-import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261109l';
-import { compareWithReplay } from './score.js?v=20261109l';
-import { nightcoreBeats } from './nightcore.js?v=20261109l';
-import { ReplayTrack } from './replay.js?v=20261109l';
-import { drawFrame, loadOverlayFonts } from './render.js?v=20261109l';
-import { loadArgonFonts } from './argon.js?v=20261109l';
-import { TosuOverlays } from './tosu.js?v=20261109l';
-import { exportMp4, webCodecsAvailable } from './encode.js?v=20261109l';
-import { VERSION } from './version.js?v=20261109l';
-import { md5 } from './md5.js?v=20261109l';
-import { resolveRange } from './range.js?v=20261109l';
-import { initLayoutEditor } from './layoutui.js?v=20261109l';
-import { lookupPlayer } from './avatar.js?v=20261109l';
-import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261109l';
-import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261109l';
-import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261109l';
-import { BackgroundVideo } from './bgvideo.js?v=20261109l';
-import { buildKeys } from './keys.js?v=20261109l';
-import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261109l';
-import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261109l';
-import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261109l';
+import './ui.js?v=20261109m';
+import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261109m';
+import { parseOsu } from './osu.js?v=20261109m';
+import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261109m';
+import { compareWithReplay } from './score.js?v=20261109m';
+import { nightcoreBeats } from './nightcore.js?v=20261109m';
+import { ReplayTrack } from './replay.js?v=20261109m';
+import { drawFrame, loadOverlayFonts } from './render.js?v=20261109m';
+import { loadArgonFonts } from './argon.js?v=20261109m';
+import { TosuOverlays } from './tosu.js?v=20261109m';
+import { exportMp4, webCodecsAvailable } from './encode.js?v=20261109m';
+import { VERSION } from './version.js?v=20261109m';
+import { md5 } from './md5.js?v=20261109m';
+import { resolveRange } from './range.js?v=20261109m';
+import { initLayoutEditor } from './layoutui.js?v=20261109m';
+import { drawCard } from './card.js?v=20261109m';
+import { lookupPlayer } from './avatar.js?v=20261109m';
+import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261109m';
+import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261109m';
+import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261109m';
+import { BackgroundVideo } from './bgvideo.js?v=20261109m';
+import { buildKeys } from './keys.js?v=20261109m';
+import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261109m';
+import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261109m';
+import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261109m';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('stage');
@@ -788,7 +789,7 @@ function setBusy(busy) {
   $('exportall').disabled = busy || !state.scene;
   $('cancel').disabled = !busy;
   for (const id of ['rangefrom', 'rangeto', 'rangefromnow', 'rangetonow', 'rangeclear', 'replaypick']) $(id).disabled = busy;
-  for (const id of ['osr', 'osu', 'audio', 'skin', 'useDefault', 'res', 'fps', 'mbps', 'volume', 'usehits', 'hitvolume', 'showwidth', 'showhud', 'showlight', 'hudstyle', 'showbg', 'bgdim', 'bgfile', 'play', 'seek', 'prevres']) $(id).disabled = busy;
+  for (const id of ['osr', 'osu', 'audio', 'skin', 'useDefault', 'res', 'fps', 'mbps', 'introon', 'introsec', 'outroon', 'outrosec', 'volume', 'usehits', 'hitvolume', 'showwidth', 'showhud', 'showlight', 'hudstyle', 'showbg', 'bgdim', 'bgfile', 'play', 'seek', 'prevres']) $(id).disabled = busy;
   $('showvideo').disabled = busy || !state.bgv;
   $('showsb').disabled = busy || !state.sb;
   $('usemusic').disabled = busy || !currentMusic()?.bytes;
@@ -940,6 +941,9 @@ async function renderCurrent(job = null) {
     makeAudio: useMusic || useHits
       ? (durationSec) => buildAudio(clip, durationSec, { useMusic, useHits, volume, hitVolume, nightcore, music })
       : undefined,
+    introSec: $('introon').checked ? Math.min(10, Math.max(1, Number($('introsec').value) || 4)) : 0,
+    outroSec: $('outroon').checked ? Math.min(10, Math.max(1, Number($('outrosec').value) || 5)) : 0,
+    drawCard: ($('introon').checked || $('outroon').checked) ? (kind, progress) => drawCard(ctx, canvas.width, canvas.height, { kind, scene: sc, bg: state.bg, progress }) : undefined,
     signal: abort.signal,
     onStatus: (text) => { stage = text; $('status').textContent = prefix + text; },
     onProgress: (p) => {

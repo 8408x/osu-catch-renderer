@@ -204,3 +204,7 @@ The secret lives only in Cloudflare. Never put it in the site or the repo.
 ## Sharing a layout
 
 Layout tab → Copy share link. Anyone who opens the link gets your widget positions, sizes, opacity and looks (not your replay or picture).
+
+## Intro and outro cards
+
+In the Render tab, turn on Intro card (the player's picture, name, rank and the map) and/or Outro card (accuracy, max combo, score, pp and hit counts). They add a few silent seconds before and after the gameplay; the music stays in step with the gameplay.
