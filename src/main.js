@@ -1,26 +1,27 @@
-import './ui.js?v=20261109b';
-import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261109b';
-import { parseOsu } from './osu.js?v=20261109b';
-import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261109b';
-import { compareWithReplay } from './score.js?v=20261109b';
-import { nightcoreBeats } from './nightcore.js?v=20261109b';
-import { ReplayTrack } from './replay.js?v=20261109b';
-import { drawFrame, loadOverlayFonts } from './render.js?v=20261109b';
-import { loadArgonFonts } from './argon.js?v=20261109b';
-import { TosuOverlays } from './tosu.js?v=20261109b';
-import { exportMp4, webCodecsAvailable } from './encode.js?v=20261109b';
-import { VERSION } from './version.js?v=20261109b';
-import { md5 } from './md5.js?v=20261109b';
-import { resolveRange } from './range.js?v=20261109b';
-import { initLayoutEditor } from './layoutui.js?v=20261109b';
-import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261109b';
-import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261109b';
-import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261109b';
-import { BackgroundVideo } from './bgvideo.js?v=20261109b';
-import { buildKeys } from './keys.js?v=20261109b';
-import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261109b';
-import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261109b';
-import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261109b';
+import './ui.js?v=20261109d';
+import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261109d';
+import { parseOsu } from './osu.js?v=20261109d';
+import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261109d';
+import { compareWithReplay } from './score.js?v=20261109d';
+import { nightcoreBeats } from './nightcore.js?v=20261109d';
+import { ReplayTrack } from './replay.js?v=20261109d';
+import { drawFrame, loadOverlayFonts } from './render.js?v=20261109d';
+import { loadArgonFonts } from './argon.js?v=20261109d';
+import { TosuOverlays } from './tosu.js?v=20261109d';
+import { exportMp4, webCodecsAvailable } from './encode.js?v=20261109d';
+import { VERSION } from './version.js?v=20261109d';
+import { md5 } from './md5.js?v=20261109d';
+import { resolveRange } from './range.js?v=20261109d';
+import { initLayoutEditor } from './layoutui.js?v=20261109d';
+import { lookupPlayer } from './avatar.js?v=20261109d';
+import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261109d';
+import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261109d';
+import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261109d';
+import { BackgroundVideo } from './bgvideo.js?v=20261109d';
+import { buildKeys } from './keys.js?v=20261109d';
+import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261109d';
+import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261109d';
+import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261109d';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('stage');
@@ -227,6 +228,7 @@ function refresh() {
     } else {
       scene.colours = resolveColours(beatmap, state.skin);
       scene.player = replay.player;
+      { const w = document.getElementById('lookupwho'); if (w) w.dataset.name = replay.player; lookupPlayer(replay.player); }
       scene.play = { date: replay.date, score: replay.score, maxCombo: replay.maxCombo, n300: replay.n300, n100: replay.n100, n50: replay.n50, nKatu: replay.nKatu, nMiss: replay.nMiss };
       state.scene = scene;
       state.track = new ReplayTrack(replay.frames);

@@ -189,3 +189,14 @@ Picking a replay starts a download of its map straight away (found by the replay
 The Custom style replaces the old fixed CPOL look. It has seven widgets: map details, pp counter, accuracy and rank, and combo (the same tosu overlays CPOL used), plus key presses, hit counts (fruits, droplets, tiny droplets, misses) and a progress bar. Each one can be shown or hidden, dragged anywhere on the preview, and resized from the Layout tab. Edges and the centre lines snap while dragging (hold Alt to turn that off), and the arrow keys nudge the selected widget. Positions are saved as fractions of the frame, so a layout looks the same at 480p and 1080p, and they are remembered in this browser. The default layout is the old CPOL arrangement. Most widgets also have several looks to choose from in the same tab (for example three map-details looks and four pp counters); each is a native recreation of a community tosu overlay, credited in CREDITS.md. Every in-game HUD piece also has an osu!lazer (Argon) and an osu!stable look, so you can mix them, and there are extra Score and Health bar widgets (hidden by default). The Layout tab also keeps layouts: built-in *osu!lazer (Argon)* and *osu!stable* arrangements, your own saved layouts, and export/import of a layout as a `.json` file. Dragging is for the preview only; the outlines never appear in the video.
 
 The layout model is in `src/layout.js` and the editor in `src/layoutui.js`.
+
+## Player picture, country and rank (optional Worker)
+
+The Player card and Name tag can show the player's picture, country and rank. A static page can't hold an osu! API secret, so this uses a tiny Cloudflare Worker that you host yourself (`worker/osu-lookup.js`). Without it, the site still works; you can upload a picture or type a user ID instead.
+
+1. On osu! open Settings → OAuth → New OAuth Application. Callback URL can be anything (e.g. `http://localhost`). Note the Client ID and Client Secret.
+2. In Cloudflare create a Worker and paste in `worker/osu-lookup.js`.
+3. In the Worker's Settings → Variables add `OSU_CLIENT_ID` (text) and `OSU_CLIENT_SECRET` (secret). Optionally add `ALLOW_ORIGIN` set to `https://8408x.github.io`.
+4. Paste the Worker's address into "osu! lookup address" in the Player picture box. The player named in the replay is looked up automatically.
+
+The secret lives only in Cloudflare. Never put it in the site or the repo.

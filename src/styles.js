@@ -2,12 +2,12 @@
 // (credited in layout.js and CREDITS.md) in this site's own code; no overlay code or images are copied. A draw function
 // works in the style's natural size (see layout.js): the caller translates and scales the canvas to fit.
 
-import { tosuTokens } from './tosu.js?v=20261109b';
-import { hudAt } from './score.js?v=20261109b';
-import { getAvatar } from './avatar.js?v=20261109b';
-import { healthAt } from './health.js?v=20261109b';
-import { livePp, ppAtAccuracy } from './pp.js?v=20261109b';
-import { keysAt } from './keys.js?v=20261109b';
+import { tosuTokens } from './tosu.js?v=20261109d';
+import { hudAt } from './score.js?v=20261109d';
+import { getAvatar, getProfile } from './avatar.js?v=20261109d';
+import { healthAt } from './health.js?v=20261109d';
+import { livePp, ppAtAccuracy } from './pp.js?v=20261109d';
+import { keysAt } from './keys.js?v=20261109d';
 
 const SANS = '"Exo 2", "Torus", "Segoe UI", system-ui, -apple-system, sans-serif';
 const MONO = '"Roboto Mono", ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace';
@@ -25,6 +25,7 @@ export function styleData(scene, t, bg, keys) {
     tok, v, bg, t, scene,
     health: scene.health ? Math.max(0, Math.min(1, healthAt(scene.health, t))) : 1,
     player: scene.player ?? '',
+    profile: getProfile(),
     key: keys ? keysAt(keys, t) : null,
     pp: tok.ppIfMapEndsNow, ppFc: tok.ppIfRestFced,
     title: m.title ?? '', artist: m.artistUnicode ?? m.artist ?? '', diff: m.version ?? '', mapper: m.creator ?? '',
@@ -135,6 +136,7 @@ function blob(ctx, W, H, corner) {
   ctx.restore();
 }
 const playedOn = (d) => { const dt = d?.scene?.play?.date; return dt instanceof Date && !Number.isNaN(+dt) ? dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''; };
+const rankLine = (d) => { const p = d.profile; return p && p.rank ? `${p.country_code ? p.country_code + '  ·  ' : ''}#${p.rank.toLocaleString('en-US')}` : ''; };
 const finalAcc = (p) => { const n = (p?.n300 ?? 0) + (p?.n100 ?? 0) + (p?.n50 ?? 0), tot = n + (p?.nKatu ?? 0) + (p?.nMiss ?? 0); return tot ? ((n / tot) * 100).toFixed(2) : '0.00'; };
 /** The player's picture clipped to a circle, or a coloured disc with the initial when there is none. */
 function avatarCircle(ctx, d, cx, cy, r, initial = true) {
@@ -163,8 +165,8 @@ const LOOKS = {
     tag(ctx, d, W, H) {
       ctx.fillStyle = 'rgba(14,14,18,0.86)'; rr(ctx, 0, 0, W, H, H / 2); ctx.fill();
       avatarCircle(ctx, d, H / 2, H / 2, H / 2 - 8);
-      text(ctx, d.player || 'player', H + 4, H / 2 + (playedOn(d) ? 2 : 11), { size: 32, weight: 700, shadow: false, maxW: W - H - 20 });
-      text(ctx, playedOn(d), H + 4, H / 2 + 26, { size: 16, weight: 400, fill: 'rgba(255,255,255,0.6)', shadow: false });
+      text(ctx, d.player || 'player', H + 4, H / 2 + (rankLine(d) || playedOn(d) ? 2 : 11), { size: 32, weight: 700, shadow: false, maxW: W - H - 20 });
+      text(ctx, rankLine(d) || playedOn(d), H + 4, H / 2 + 26, { size: 16, weight: 400, fill: 'rgba(255,255,255,0.6)', shadow: false });
     },
     // Result card: the name over the play's final score, combo, accuracy and hit counts, as saved in the replay
     result(ctx, d, W, H) {
@@ -173,7 +175,8 @@ const LOOKS = {
       ctx.fillStyle = '#ff6b8a'; rr(ctx, 0, 0, 8, H, 4); ctx.fill();
       const has = avatarCircle(ctx, d, 58, 40, 24, false), nx = has ? 96 : 28;
       text(ctx, d.player || 'player', nx, 42, { size: 34, weight: 800, shadow: false, maxW: W - nx - 130 });
-      text(ctx, playedOn(d), W - 20, 38, { size: 16, weight: 400, fill: 'rgba(255,255,255,0.6)', align: 'right', shadow: false });
+      text(ctx, rankLine(d), W - 20, 28, { size: 16, weight: 600, fill: '#ff8fa3', align: 'right', shadow: false });
+      text(ctx, playedOn(d), W - 20, 50, { size: 16, weight: 400, fill: 'rgba(255,255,255,0.6)', align: 'right', shadow: false });
       text(ctx, grouped(p.score ?? 0), 28, 98, { size: 38, weight: 600, shadow: false });
       text(ctx, `${p.maxCombo ?? 0}x   ·   ${finalAcc(p)}%`, 28, 129, { size: 22, weight: 500, fill: 'rgba(255,255,255,0.8)', shadow: false });
       [[p.n300, '#3ddc4b', 'fruit'], [p.n100, '#4cb8ff', 'drop'], [p.n50, '#ffd23f', 'tiny'], [p.nMiss, '#ff4d4d', 'miss']].forEach(([n, c, label], i) => {
@@ -194,7 +197,7 @@ const LOOKS = {
     // Big name: the name in large type with a small "player" label and an accent line
     big(ctx, d, W, H) {
       const has = avatarCircle(ctx, d, 44, 48, 44, false), bx = has ? 104 : 0;
-      text(ctx, 'PLAYER', 4 + bx, 22, { size: 16, weight: 600, fill: '#ff8fa3', maxW: W - bx });
+      text(ctx, rankLine(d) ? `PLAYER  ·  ${rankLine(d)}` : 'PLAYER', 4 + bx, 22, { size: 16, weight: 600, fill: '#ff8fa3', maxW: W - bx });
       text(ctx, d.player || 'player', 2 + bx, 74, { size: 58, weight: 800, maxW: W - 8 - bx });
       ctx.fillStyle = '#ff6b8a'; ctx.fillRect(4, H - 6, Math.min(W - 8, 120), 4);
     },

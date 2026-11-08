@@ -1,0 +1,5 @@
+name = "osu-lookup"
+main = "osu-lookup.js"
+compatibility_date = "2026-01-01"
+# Set the secrets with:  npx wrangler secret put OSU_CLIENT_ID   and   npx wrangler secret put OSU_CLIENT_SECRET
+# Optional: ALLOW_ORIGIN = "https://8408x.github.io"

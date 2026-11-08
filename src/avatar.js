@@ -1,9 +1,34 @@
 // The player's picture for the Player card looks: loaded from the osu! servers by user id, or uploaded by hand.
 
-const KEY = 'ocr.userid';
+const KEY = 'ocr.userid', LOOKUP_KEY = 'ocr.lookup';
+let redrawFn = () => {};
+let profile = null;                                   // { username, country_code, rank, ... } from the lookup Worker
 let current = null;                                   // an HTMLImageElement that is safe to draw into the export canvas
 
 export const getAvatar = () => current;
+export const getProfile = () => profile;
+const lookupBase = () => { try { return (localStorage.getItem(LOOKUP_KEY) || '').trim().replace(/\/+$/, ''); } catch { return ''; } };
+
+/** Look the replay's player up through the user's own Worker: sets the profile (rank, country) and the picture. */
+export async function lookupPlayer(name) {
+  const base = lookupBase();
+  profile = null;
+  if (!base || !name) { redrawFn(); return; }
+  const msg = document.getElementById('lookupmsg');
+  const say = (m) => { if (msg) msg.textContent = m; };
+  say(`Looking up ${name}…`);
+  try {
+    const res = await fetch(`${base}/user?name=${encodeURIComponent(name)}`);
+    const j = await res.json();
+    if (!res.ok) throw new Error(j.error || res.status);
+    profile = j;
+    try { current = await loadImage(`${base}/avatar/${j.id}`); } catch { /* keep the picture that was already set */ }
+    say(`Found ${j.username}${j.rank ? ` (#${j.rank.toLocaleString('en-US')})` : ''}.`);
+  } catch (err) {
+    say(`Lookup failed: ${err.message}`);
+  }
+  redrawFn();
+}
 
 function loadImage(src) {
   return new Promise((resolve, reject) => {
@@ -37,10 +62,16 @@ function fromFile(file) {
 
 /** Wire the inputs in the layout pane. */
 export function initAvatar(redraw) {
+  redrawFn = redraw;
   const $ = (id) => document.getElementById(id);
   const say = (m) => { $('avatarmsg').textContent = m; };
   const set = (img, msg) => { current = img; say(msg); redraw(); };
-  try { $('avatarid').value = localStorage.getItem(KEY) ?? ''; } catch { /* storage unavailable */ }
+  try { $('avatarid').value = localStorage.getItem(KEY) ?? ''; $('lookupurl').value = localStorage.getItem(LOOKUP_KEY) ?? ''; } catch { /* storage unavailable */ }
+  $('lookupurl').addEventListener('change', () => {
+    try { localStorage.setItem(LOOKUP_KEY, $('lookupurl').value.trim()); } catch { /* ignore */ }
+    const who = document.getElementById('lookupwho')?.dataset.name;
+    if (who) lookupPlayer(who); else $('lookupmsg').textContent = $('lookupurl').value.trim() ? 'Saved. It is used when a replay is loaded.' : '';
+  });
 
   const load = async () => {
     const id = $('avatarid').value.trim();
