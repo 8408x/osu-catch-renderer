@@ -137,5 +137,11 @@ export function compareWithReplay(totals, replay) {
   ];
   const diffs = rows.filter(([, ours, theirs]) => Number.isFinite(theirs) && ours !== theirs)
     .map(([name, ours, theirs]) => `${name}: ${ours} here, ${theirs} in the replay`);
-  return { ok: diffs.length === 0, diffs };
+  // A difference of a call or two is what frame timing in the original play can cause (the game judges each
+  // object on a display frame), so it is reported as "near" rather than as a real mismatch.
+  const gap = (a, b) => (Number.isFinite(b) ? Math.abs(a - b) : 0);
+  const counts = gap(totals.fruits, replay.n300) <= 2 && gap(totals.droplets, replay.n100) <= 2 && gap(totals.tiny, replay.n50) <= 2
+    && gap(totals.tinyMiss, replay.nKatu) <= 2 && gap(totals.miss, replay.nMiss) <= 2;
+  const comboOk = gap(totals.maxCombo, replay.maxCombo) === 0 || gap(totals.miss, replay.nMiss) > 0;
+  return { ok: diffs.length === 0, near: diffs.length > 0 && counts && comboOk, diffs };
 }

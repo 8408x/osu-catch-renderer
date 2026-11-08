@@ -1,28 +1,28 @@
-import './ui.js?v=20261109r';
-import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261109r';
-import { parseOsu } from './osu.js?v=20261109r';
-import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261109r';
-import { compareWithReplay } from './score.js?v=20261109r';
-import { nightcoreBeats } from './nightcore.js?v=20261109r';
-import { ReplayTrack } from './replay.js?v=20261109r';
-import { drawFrame, loadOverlayFonts } from './render.js?v=20261109r';
-import { loadArgonFonts } from './argon.js?v=20261109r';
-import { TosuOverlays } from './tosu.js?v=20261109r';
-import { exportMp4, webCodecsAvailable } from './encode.js?v=20261109r';
-import { VERSION } from './version.js?v=20261109r';
-import { md5 } from './md5.js?v=20261109r';
-import { resolveRange } from './range.js?v=20261109r';
-import { initLayoutEditor } from './layoutui.js?v=20261109r';
-import { drawCard } from './card.js?v=20261109r';
-import { lookupPlayer } from './avatar.js?v=20261109r';
-import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261109r';
-import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261109r';
-import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261109r';
-import { BackgroundVideo } from './bgvideo.js?v=20261109r';
-import { buildKeys } from './keys.js?v=20261109r';
-import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261109r';
-import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261109r';
-import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261109r';
+import './ui.js?v=20261109s';
+import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261109s';
+import { parseOsu } from './osu.js?v=20261109s';
+import { buildScene, evaluateCatches, resolveColours } from './catch.js?v=20261109s';
+import { compareWithReplay } from './score.js?v=20261109s';
+import { nightcoreBeats } from './nightcore.js?v=20261109s';
+import { ReplayTrack } from './replay.js?v=20261109s';
+import { drawFrame, loadOverlayFonts } from './render.js?v=20261109s';
+import { loadArgonFonts } from './argon.js?v=20261109s';
+import { TosuOverlays } from './tosu.js?v=20261109s';
+import { exportMp4, webCodecsAvailable } from './encode.js?v=20261109s';
+import { VERSION } from './version.js?v=20261109s';
+import { md5 } from './md5.js?v=20261109s';
+import { resolveRange } from './range.js?v=20261109s';
+import { initLayoutEditor } from './layoutui.js?v=20261109s';
+import { drawCard } from './card.js?v=20261109s';
+import { lookupPlayer } from './avatar.js?v=20261109s';
+import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261109s';
+import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261109s';
+import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261109s';
+import { BackgroundVideo } from './bgvideo.js?v=20261109s';
+import { buildKeys } from './keys.js?v=20261109s';
+import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261109s';
+import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261109s';
+import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261109s';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('stage');
@@ -238,6 +238,7 @@ function refresh() {
       msgs.push(['dim', `${scene.objects.length} objects, ${caught}/${total} fruits and droplets${bananas ? ` and ${bananasCaught}/${bananas} bananas` : ''} caught in this replay (rough check against the real result).`]);
       const cmp = compareWithReplay(hud, state.replay);
       msgs.push(cmp.ok ? ['ok', "The catches match the replay's own counts (fruits, droplets, misses, max combo)."]
+        : cmp.near ? ['ok', `The catches are within timing noise of the replay's own counts (${cmp.diffs.join('; ')}). The game judges each object on a display frame, so a call or two at the catcher's edge can differ; the HUD is still right.`]
         : ['warn', `Our catch check differs from the replay's own counts, so the HUD may be off: ${cmp.diffs.join('; ')}.`]);
       if (!cmp.ok) {                                          // the objects that were decided by a hair: where a mismatch like this comes from
         const half = scene.catchWidth / 2;

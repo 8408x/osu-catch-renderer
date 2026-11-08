@@ -1339,6 +1339,9 @@ await test('score: replay count cross-check', () => {
   assert.ok(SC.compareWithReplay(totals, { n300: 1, n100: 1, n50: 1, nKatu: 1, nMiss: 1, maxCombo: 2 }).ok);
   const bad = SC.compareWithReplay(totals, { n300: 2, n100: 1, n50: 1, nKatu: 1, nMiss: 1, maxCombo: 2 });
   assert.ok(!bad.ok && bad.diffs.length === 1 && /fruits caught/.test(bad.diffs[0]));
+  assert.ok(bad.near, 'one fruit off is timing noise');
+  assert.ok(!SC.compareWithReplay(totals, { n300: 9, n100: 1, n50: 1, nKatu: 1, nMiss: 1, maxCombo: 2 }).near, 'a big gap is a real mismatch');
+  assert.ok(!SC.compareWithReplay(totals, { n300: 1, n100: 1, n50: 1, nKatu: 1, nMiss: 1, maxCombo: 50 }).near, 'a combo gap with equal misses is real');
 });
 
 await test('skin.ini [Fonts] prefixes and spacing', () => {
