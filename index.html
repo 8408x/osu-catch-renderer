@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="app-version" content="20261110d">
+  <meta name="app-version" content="20261110e">
   <script>try{var t=localStorage.getItem("ocr.theme");if(t==="light"||t==="dark"||t==="sakura")document.documentElement.dataset.theme=t;else if(matchMedia("(prefers-color-scheme: light)").matches)document.documentElement.dataset.theme="light";}catch(e){}</script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>osu!catch Replay Renderer</title>
@@ -161,7 +161,9 @@
     .toggle { display:flex; align-items:center; gap:9px; padding:8px 10px; background:var(--bg); border:1px solid var(--line); border-radius:8px; color:var(--text); font-size:13px; cursor:pointer; }
     .toggle:has(input:disabled) { opacity:.4; cursor:not-allowed; }
     .toggle input { accent-color:var(--accent); width:15px; height:15px; margin:0; }
-    .widgetlist { display:flex; flex-direction:column; gap:4px; }
+    .widgetlist { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+    .more { margin-top:8px; } .more > summary { cursor:pointer; color:var(--dim); font-size:12px; font-weight:600; padding:2px 0; } .more[open] > summary { margin-bottom:6px; }
+    .two { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:8px; }
     .widgetrow { display:flex; align-items:center; gap:8px; padding:3px 6px; border:1px solid var(--line); border-radius:8px; background:var(--bg); }
     .widgetrow.sel { border-color:var(--accent); }
     .widgetrow input { accent-color:var(--accent); width:15px; height:15px; margin:0; }
@@ -460,6 +462,6 @@
 <div class="dropveil" id="dropveil"><div>Drop files to load them<small>.osr replay · .osz map set · .osu · .osk skin · image · song</small></div></div>
 
 <script src="vendor/lzma-d-min.js"></script>
-<script type="module" src="src/main.js?v=20261110d"></script>
+<script type="module" src="src/main.js?v=20261110e"></script>
 </body>
 </html>

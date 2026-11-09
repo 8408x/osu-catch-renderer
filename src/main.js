@@ -1,29 +1,29 @@
-import './ui.js?v=20261110d';
-import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261110d';
-import { parseOsu } from './osu.js?v=20261110d';
-import { buildScene, evaluateCatches, findJudgeShift, resolveColours } from './catch.js?v=20261110d';
-import { compareWithReplay } from './score.js?v=20261110d';
-import { nightcoreBeats } from './nightcore.js?v=20261110d';
-import { ReplayTrack } from './replay.js?v=20261110d';
-import { drawFrame, loadOverlayFonts } from './render.js?v=20261110d';
-import { loadArgonFonts } from './argon.js?v=20261110d';
-import { TosuOverlays } from './tosu.js?v=20261110d';
-import { exportMp4, webCodecsAvailable } from './encode.js?v=20261110d';
-import { VERSION } from './version.js?v=20261110d';
-import { md5 } from './md5.js?v=20261110d';
-import { resolveRange } from './range.js?v=20261110d';
-import { initLayoutEditor } from './layoutui.js?v=20261110d';
-import { setSmoothNumbers } from './countup.js?v=20261110d';
-import { drawCard } from './card.js?v=20261110d';
-import { lookupPlayer, loadBoard } from './avatar.js?v=20261110d';
-import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261110d';
-import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261110d';
-import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261110d';
-import { BackgroundVideo } from './bgvideo.js?v=20261110d';
-import { buildKeys } from './keys.js?v=20261110d';
-import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261110d';
-import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261110d';
-import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261110d';
+import './ui.js?v=20261110e';
+import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261110e';
+import { parseOsu } from './osu.js?v=20261110e';
+import { buildScene, evaluateCatches, findJudgeShift, resolveColours } from './catch.js?v=20261110e';
+import { compareWithReplay } from './score.js?v=20261110e';
+import { nightcoreBeats } from './nightcore.js?v=20261110e';
+import { ReplayTrack } from './replay.js?v=20261110e';
+import { drawFrame, loadOverlayFonts } from './render.js?v=20261110e';
+import { loadArgonFonts } from './argon.js?v=20261110e';
+import { TosuOverlays } from './tosu.js?v=20261110e';
+import { exportMp4, webCodecsAvailable } from './encode.js?v=20261110e';
+import { VERSION } from './version.js?v=20261110e';
+import { md5 } from './md5.js?v=20261110e';
+import { resolveRange } from './range.js?v=20261110e';
+import { initLayoutEditor } from './layoutui.js?v=20261110e';
+import { setSmoothNumbers } from './countup.js?v=20261110e';
+import { drawCard } from './card.js?v=20261110e';
+import { lookupPlayer, loadBoard, initAvatar } from './avatar.js?v=20261110e';
+import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261110e';
+import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261110e';
+import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261110e';
+import { BackgroundVideo } from './bgvideo.js?v=20261110e';
+import { buildKeys } from './keys.js?v=20261110e';
+import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261110e';
+import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261110e';
+import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261110e';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('stage');
@@ -65,6 +65,7 @@ const editor = initLayoutEditor({
   editable: () => !!state.scene && !exporting && ['custom', 'overlay'].includes($('hudstyle').value) && $('showhud').checked,
   redraw: () => drawAt(state.t),
 });
+initAvatar(() => drawAt(state.t));
 for (const id of ['hudstyle', 'showhud']) $(id).addEventListener('change', () => editor.refresh());
 
 // ---------- messages ----------

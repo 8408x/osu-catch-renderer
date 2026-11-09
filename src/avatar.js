@@ -1,11 +1,10 @@
 // The player's picture for the Player card looks: loaded from the osu! servers by user id, or uploaded by hand.
 
-const KEY = 'ocr.userid', IMG_KEY = 'ocr.avatarimg';
+
 /** The site's own lookup Worker (the address is public; the osu! secret lives only in Cloudflare). */
 const DEFAULT_LOOKUP = 'https://osu-lookup.asianrbx.workers.dev';
 let redrawFn = () => {};
 let profile = null;                                   // { username, country_code, rank, ... } from the lookup Worker
-let custom = false;                                   // the picture was uploaded by hand, so a lookup must not replace it
 let current = null;                                   // an HTMLImageElement that is safe to draw into the export canvas
 
 export const getAvatar = () => current;
@@ -25,7 +24,7 @@ export async function lookupPlayer(name) {
     const j = await res.json();
     if (!res.ok) throw new Error(j.error || res.status);
     profile = j;
-    if (!custom) { try { current = await loadImage(`${base}/avatar/${j.id}`); } catch { /* keep the picture that was already set */ } }
+    try { current = await loadImage(`${base}/avatar/${j.id}`); } catch { /* keep the picture that was already set */ }
     say(`Found ${j.username}${j.rank ? ` (#${j.rank.toLocaleString('en-US')})` : ''}.`);
     redrawFn();
     const extra = (key, src) => src && loadImage(src).then((img) => { if (profile === j) { j[key] = img; redrawFn(); } }, () => {});   // the flag and the profile banner are optional
@@ -57,53 +56,8 @@ async function fromId(id) {
   throw last;
 }
 
-/** An uploaded file, shrunk to at most 256 px and returned as a data URL (small enough to keep in the browser, and safe for the export canvas). */
-async function fromFile(file) {
-  const url = URL.createObjectURL(file);
-  try {
-    const src = await new Promise((resolve, reject) => { const i = new Image(); i.onload = () => resolve(i); i.onerror = () => reject(new Error('not an image')); i.src = url; });
-    const k = Math.min(1, 256 / Math.max(src.naturalWidth, src.naturalHeight));
-    const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(src.naturalWidth * k)); c.height = Math.max(1, Math.round(src.naturalHeight * k));
-    c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
-    return c.toDataURL('image/png');
-  } finally { URL.revokeObjectURL(url); }
-}
-
-/** Wire the inputs in the layout pane. */
-export function initAvatar(redraw) {
-  redrawFn = redraw;
-  const $ = (id) => document.getElementById(id);
-  const say = (m) => { $('avatarmsg').textContent = m; };
-  const set = (img, msg) => { current = img; say(msg); redraw(); };
-  try { $('avatarid').value = localStorage.getItem(KEY) ?? ''; } catch { /* storage unavailable */ }
-
-  const load = async () => {
-    const id = $('avatarid').value.trim();
-    try { localStorage.setItem(KEY, id); } catch { /* ignore */ }
-    custom = false; try { localStorage.removeItem(IMG_KEY); } catch { /* ignore */ }
-    if (!id) { set(null, ''); return; }
-    if (!/^\d{1,10}$/.test(id)) { say('A user id is a number, like 2 (the digits at the end of the profile link).'); return; }
-    say('Loading…');
-    try { set(await fromId(id), 'Loaded.'); }
-    catch { set(null, 'Could not load that picture here. Upload one instead.'); }
-  };
-  $('avatarload').addEventListener('click', load);
-  $('avatarid').addEventListener('keydown', (e) => { if (e.key === 'Enter') load(); });
-  $('avatarpick').addEventListener('click', () => $('avatarfile').click());
-  $('avatarfile').addEventListener('change', async () => {
-    const f = $('avatarfile').files?.[0]; $('avatarfile').value = '';
-    if (!f) return;
-    try {
-      const data = await fromFile(f);
-      custom = true; try { localStorage.setItem(IMG_KEY, data); } catch { /* too big or blocked: it just will not be remembered */ }
-      set(await loadImage(data), `Using ${f.name} (kept in this browser).`);
-    } catch (err) { say(`That file could not be used: ${err.message}.`); }
-  });
-  $('avatarclear').addEventListener('click', () => { $('avatarid').value = ''; custom = false; try { localStorage.removeItem(KEY); localStorage.removeItem(IMG_KEY); } catch { /* ignore */ } set(null, ''); });
-  let saved = null; try { saved = localStorage.getItem(IMG_KEY); } catch { /* ignore */ }
-  if (saved) loadImage(saved).then((img) => { custom = true; set(img, 'Using your uploaded picture.'); }, () => {});   // an uploaded picture comes back on the next visit
-  else if ($('avatarid').value) load();              // the saved id is tried again on the next visit
-}
+/** Hand the page's repaint function to this module (lookups call it when a profile or picture arrives). */
+export function initAvatar(redraw) { redrawFn = redraw; }
 
 let board = null;                                     // { beatmap_id, scores: [...] } for the loaded replay's map, or null
 export const getBoard = () => board;

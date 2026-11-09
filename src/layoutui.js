@@ -1,8 +1,7 @@
 // The Layout tab and dragging on the preview. Owns the layout object (saved in localStorage); main.js hands it to
 // drawFrame. Pure UI: nothing here draws a frame.
 
-import { PRESETS, parseLayoutFile, layoutFileText, layoutToCode, layoutFromCode, WIDGETS, AUTHORS, styleInfo, ORDER, MIN_SCALE, MAX_SCALE, defaultLayout, normalizeLayout, rectOf, hitTest, clampPosition, snapPosition } from './layout.js?v=20261110d';
-import { initAvatar } from './avatar.js?v=20261110d';
+import { PRESETS, parseLayoutFile, layoutFileText, layoutToCode, layoutFromCode, WIDGETS, AUTHORS, styleInfo, ORDER, MIN_SCALE, MAX_SCALE, defaultLayout, normalizeLayout, rectOf, hitTest, clampPosition, snapPosition } from './layout.js?v=20261110e';
 
 const ICONS = {
   github: '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.89-1.17-.89-1.17-.73-.5.05-.49.05-.49.8.06 1.23.83 1.23.83.71 1.22 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.65-.89-3.65-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>',
@@ -50,39 +49,30 @@ export function initLayoutEditor({ canvas, pane, editable, redraw }) {
   // ---- the pane ----
   pane.innerHTML = `
     <div class="group">
-      <h3>Layouts</h3>
-      <label class="field"><span>Load a layout</span><select id="presetsel"></select></label>
+      <h3>Layout</h3>
       <div class="row">
-        <input type="text" id="presetname" placeholder="Name to save the current layout as" maxlength="40" style="flex:1;min-width:0">
-        <button type="button" class="ghost small" id="presetsave">Save</button>
+        <select id="presetsel" aria-label="Load a layout" style="flex:1;min-width:0"></select>
+        <button type="button" class="ghost small" id="resetall" title="Back to the default layout">Reset</button>
       </div>
-      <div class="row">
-        <button type="button" class="ghost small" id="presetdel">Delete saved</button>
-        <button type="button" class="ghost small" id="presetexport">Export file</button>
-        <button type="button" class="ghost small" id="presetimport">Import file</button>
-        <button type="button" class="ghost small" id="presetshare">Copy share link</button>
-        <input type="file" id="presetfile" accept=".json,application/json" hidden>
-      </div>
+      <details class="more">
+        <summary>Save, share or import a layout</summary>
+        <div class="row">
+          <input type="text" id="presetname" placeholder="Name to save the current layout as" maxlength="40" style="flex:1;min-width:0">
+          <button type="button" class="ghost small" id="presetsave">Save</button>
+        </div>
+        <div class="row">
+          <button type="button" class="ghost small" id="presetdel">Delete saved</button>
+          <button type="button" class="ghost small" id="presetexport">Export file</button>
+          <button type="button" class="ghost small" id="presetimport">Import file</button>
+          <button type="button" class="ghost small" id="presetshare">Copy share link</button>
+          <input type="file" id="presetfile" accept=".json,application/json" hidden>
+        </div>
+      </details>
       <p class="note" id="presetmsg" style="margin:6px 0 0"></p>
     </div>
     <div class="group">
-      <h3>Player picture</h3>
-      <div class="row">
-        <input type="text" id="avatarid" inputmode="numeric" placeholder="osu! user id" maxlength="10" style="flex:1;min-width:0">
-        <button type="button" class="ghost small" id="avatarload">Load</button>
-      </div>
-      <div class="row">
-        <button type="button" class="ghost small" id="avatarpick">Upload picture</button>
-        <button type="button" class="ghost small" id="avatarclear">Remove</button>
-        <input type="file" id="avatarfile" accept="image/*" hidden>
-      </div>
-      <p class="note" id="avatarmsg" style="margin:6px 0 0">Shown by the Player card looks. The id is the number at the end of your osu! profile link.</p>
-      <p class="note" id="lookupmsg" style="margin:6px 0 0"></p>
-      <span id="lookupwho" hidden></span>
-    </div>
-    <div class="group">
-      <h3>Widgets</h3>
-      <p class="note" id="layoutnote" style="margin:0 0 10px"></p>
+      <h3>Show on the video</h3>
+      <p class="note" id="layoutnote" style="margin:0 0 8px"></p>
       <div id="widgetlist" class="widgetlist"></div>
     </div>
     <div class="group" id="widgetprops">
@@ -90,20 +80,21 @@ export function initLayoutEditor({ canvas, pane, editable, redraw }) {
       <div class="field" id="stylefield"><span>Look</span>
         <div class="dd" id="lookdd"><button type="button" id="lookbtn" aria-haspopup="listbox" aria-expanded="false"></button><ul id="looklist" role="listbox" hidden></ul></div>
       </div>
-      <p class="note credit" id="stylecredit" style="margin:4px 0 10px"></p>
-      <label class="slider"><span>Size</span><output id="scaleout"></output>
-        <input id="widgetscale" type="range" min="${Math.round(MIN_SCALE * 100)}" max="${Math.round(MAX_SCALE * 100)}" step="5" value="100">
-      </label>
-      <label class="slider"><span>Opacity</span><output id="alphaout"></output>
-        <input id="widgetalpha" type="range" min="10" max="100" step="5" value="100">
-      </label>
+      <p class="note credit" id="stylecredit" style="margin:4px 0 8px"></p>
+      <div class="two">
+        <label class="slider"><span>Size</span><output id="scaleout"></output>
+          <input id="widgetscale" type="range" min="${Math.round(MIN_SCALE * 100)}" max="${Math.round(MAX_SCALE * 100)}" step="5" value="100">
+        </label>
+        <label class="slider"><span>Opacity</span><output id="alphaout"></output>
+          <input id="widgetalpha" type="range" min="10" max="100" step="5" value="100">
+        </label>
+      </div>
       <div class="row">
         <button type="button" class="ghost small" id="centerx">Centre across</button>
         <button type="button" class="ghost small" id="resetone">Reset this one</button>
       </div>
     </div>
-    <div class="row"><button type="button" class="ghost" id="resetall">Reset the whole layout</button></div>
-    <p class="note">Drag a widget on the preview, or select it here and nudge it with the arrow keys (Shift = bigger steps). Hold Alt while dragging to turn off snapping.</p>`;
+    <p class="note">Tip: drag a widget on the preview, or pick it here and use the arrow keys (Shift = bigger steps, Alt = no snapping).</p>`;
   const $ = (id) => pane.querySelector(`#${id}`);
   const list = $('widgetlist');
 
@@ -161,7 +152,6 @@ export function initLayoutEditor({ canvas, pane, editable, redraw }) {
 
   // ---- saved layouts, built-in layouts, and layout files ----
   const saved = loadPresets();
-  initAvatar(redraw);
   const say = (m) => { $('presetmsg').textContent = m; };
   const fillPresets = (pick = '') => {
     const sel = $('presetsel');
