@@ -4,7 +4,7 @@
 // and the output has perfectly even frame timing.
 
 import { Muxer, StreamTarget } from '../vendor/mp4-muxer.mjs';
-import { SAMPLE_RATE } from './audio.js?v=20261110j';
+import { SAMPLE_RATE } from './audio.js?v=20261110k';
 
 // Tried in order; the first one this browser can encode wins.
 const CANDIDATES = [
@@ -36,10 +36,13 @@ export async function pickCodec({ width, height, fps, bitrate }) {
   for (const c of CANDIDATES) {
     const config = { codec: c.codec, width, height, bitrate, framerate: fps };
     if (c.mux === 'avc') config.avc = { format: 'avc' };
-    try {
-      const { supported } = await VideoEncoder.isConfigSupported(config);
-      if (supported) return { ...c, config };
-    } catch { /* try the next one */ }
+    for (const hw of ['prefer-hardware', null]) {                    // the graphics chip encodes far faster than the processor, when there is one
+      const tried = hw ? { ...config, hardwareAcceleration: hw } : config;
+      try {
+        const { supported } = await VideoEncoder.isConfigSupported(tried);
+        if (supported) return { ...c, config: tried };
+      } catch { /* try the next one */ }
+    }
   }
   return null;
 }
@@ -101,6 +104,8 @@ async function encodeAudioTrack({ channels, sampleRate }, picked, muxer, signal,
  * @param {object} o
  * @param {HTMLCanvasElement|OffscreenCanvas} o.canvas canvas that drawAt() paints on (even width/height)
  * @param {(timeMs:number)=>void|Promise<void>} o.drawAt paints the frame for beatmap time `timeMs`
+ * @param {(timeMs:number)=>void} [o.prefetch] called a few frames ahead with each upcoming frame's time, so slow per-frame
+ *   work (the tosu overlay images) can run in parallel with the drawing
  * @param {number} o.startTime beatmap time of the first frame (ms)
  * @param {number} o.endTime beatmap time to stop at (ms)
  * @param {number} [o.rate] playback rate (DT = 1.5): video seconds = map seconds / rate
@@ -115,7 +120,7 @@ async function encodeAudioTrack({ channels, sampleRate }, picked, muxer, signal,
  * @param {number} [o.outroSec] seconds of result card after it (silent)
  * @param {(kind:'intro'|'outro', progress:number)=>void|Promise<void>} [o.drawCard] paints a title card frame
  */
-export async function exportMp4({ canvas, drawAt, startTime, endTime, rate = 1, fps = 60, bitrate = 12_000_000, makeAudio, onProgress, onStatus, signal, introSec = 0, outroSec = 0, drawCard }) {
+export async function exportMp4({ canvas, drawAt, prefetch, startTime, endTime, rate = 1, fps = 60, bitrate = 12_000_000, makeAudio, onProgress, onStatus, signal, introSec = 0, outroSec = 0, drawCard }) {
   if (!webCodecsAvailable()) throw new Error('This browser has no WebCodecs video encoder. Use a current Chrome, Edge or Safari.');
   const { width, height } = canvas;
   if (width % 2 || height % 2) throw new Error('Video width and height must be even numbers.');
@@ -165,27 +170,38 @@ export async function exportMp4({ canvas, drawAt, startTime, endTime, rate = 1, 
   encoder.configure(picked.config);
 
   const frameUs = 1e6 / fps;
+  const timing = { draw: 0, frame: 0, wait: 0, ui: 0 };
   const videoShare = audio ? 0.94 : 1; // the audio pass is quick, it gets the last slice of the bar
 
   try {
     onStatus?.('Rendering…');
+    const AHEAD = 32;
+    let ahead = introFrames;                                                  // next gameplay frame not yet prefetched
+    const timeOf = (n) => startTime + ((n - introFrames) / fps) * 1000 * rate;
     for (let i = 0; i < total; i++) {
+      if (prefetch) for (; ahead < Math.min(introFrames + mainFrames, i + AHEAD); ahead++) prefetch(timeOf(Math.max(ahead, introFrames)));
       if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError');
       if (encoderError) throw encoderError;
 
+      let t0 = performance.now();
       if (i < introFrames) await drawCard('intro', (i + 0.5) / introFrames);
       else if (i >= introFrames + mainFrames) await drawCard('outro', (i - introFrames - mainFrames + 0.5) / outroFrames);
       else await drawAt(startTime + ((i - introFrames) / fps) * 1000 * rate);
 
+      let t1 = performance.now();
       const frame = new VideoFrame(canvas, { timestamp: Math.round(i * frameUs), duration: Math.round(frameUs) });
       encoder.encode(frame, { keyFrame: i % (fps * 2) === 0 });
       frame.close();
+      let t2 = performance.now();
 
       while (encoder.encodeQueueSize > 10) {
         if (encoderError) throw encoderError;
         await new Promise((resolve) => encoder.addEventListener('dequeue', resolve, { once: true }));
       }
+      let t3 = performance.now();
+      timing.draw += t1 - t0; timing.frame += t2 - t1; timing.wait += t3 - t2;
       if (i % 10 === 0) { onProgress?.((i / total) * videoShare); await yieldToUI(); }
+      timing.ui += performance.now() - t3;
     }
     await encoder.flush();
     if (encoderError) throw encoderError;
@@ -212,5 +228,6 @@ export async function exportMp4({ canvas, drawAt, startTime, endTime, rate = 1, 
     frames: total,
     seconds: durationSec,
     hasAudio: !!audio,
+    timing,
   };
 }

@@ -1,33 +1,33 @@
-import './ui.js?v=20261110j';
-import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261110j';
-import { parseOsu } from './osu.js?v=20261110j';
-import { buildScene, evaluateCatches, findJudgeShift, resolveColours } from './catch.js?v=20261110j';
-import { compareWithReplay } from './score.js?v=20261110j';
-import { nightcoreBeats } from './nightcore.js?v=20261110j';
-import { ReplayTrack } from './replay.js?v=20261110j';
-import { drawFrame, loadOverlayFonts } from './render.js?v=20261110j';
-import { loadArgonFonts } from './argon.js?v=20261110j';
-import { TosuOverlays } from './tosu.js?v=20261110j';
-import { exportMp4, webCodecsAvailable } from './encode.js?v=20261110j';
-import { VERSION } from './version.js?v=20261110j';
-import { md5 } from './md5.js?v=20261110j';
-import { resolveRange } from './range.js?v=20261110j';
-import { initLayoutEditor } from './layoutui.js?v=20261110j';
-import { setSmoothNumbers } from './countup.js?v=20261110j';
-import { drawCard } from './card.js?v=20261110j';
-import { lookupPlayer, loadBoard, initAvatar } from './avatar.js?v=20261110j';
-import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261110j';
-import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261110j';
-import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261110j';
-import { BackgroundVideo } from './bgvideo.js?v=20261110j';
-import { buildKeys } from './keys.js?v=20261110j';
-import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261110j';
-import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261110j';
-import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261110j';
+import './ui.js?v=20261110k';
+import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261110k';
+import { parseOsu } from './osu.js?v=20261110k';
+import { buildScene, evaluateCatches, findJudgeShift, resolveColours } from './catch.js?v=20261110k';
+import { compareWithReplay } from './score.js?v=20261110k';
+import { nightcoreBeats } from './nightcore.js?v=20261110k';
+import { ReplayTrack } from './replay.js?v=20261110k';
+import { drawFrame, loadOverlayFonts } from './render.js?v=20261110k';
+import { loadArgonFonts } from './argon.js?v=20261110k';
+import { TosuOverlays } from './tosu.js?v=20261110k';
+import { exportMp4, webCodecsAvailable } from './encode.js?v=20261110k';
+import { VERSION } from './version.js?v=20261110k';
+import { md5 } from './md5.js?v=20261110k';
+import { resolveRange } from './range.js?v=20261110k';
+import { initLayoutEditor } from './layoutui.js?v=20261110k';
+import { setSmoothNumbers } from './countup.js?v=20261110k';
+import { drawCard } from './card.js?v=20261110k';
+import { lookupPlayer, loadBoard, initAvatar } from './avatar.js?v=20261110k';
+import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261110k';
+import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261110k';
+import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261110k';
+import { BackgroundVideo } from './bgvideo.js?v=20261110k';
+import { buildKeys } from './keys.js?v=20261110k';
+import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261110k';
+import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261110k';
+import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261110k';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('stage');
-const ctx = canvas.getContext('2d');
+const ctx = canvas.getContext('2d', { alpha: false });
 
 const state = {
   replay: null, replays: [], osuBytes: null, beatmap: null, beatmapFrom: null, // beatmapFrom: 'file' (picked .osu) | 'osz' (matched in the .osz)
@@ -1003,6 +1003,7 @@ async function renderCurrent(job = null) {
   draftExport = $('fastdraft').checked;
   const res = await exportMp4({
     canvas,
+    prefetch: (t) => { if (state.tosu && !draftExport && ['custom', 'overlay'].includes($('hudstyle').value) && $('showhud').checked) state.tosu.prefetch(sc, t); },
     drawAt: async (t) => {
       if (state.bgv && !draftExport && $('showbg').checked && $('showvideo').checked && state.bgv.active(t)) await state.bgv.seek(t);
       if (state.tosu && !draftExport && ['custom', 'overlay'].includes($('hudstyle').value) && $('showhud').checked) { try { await state.tosu.prepare(sc, t); } catch { /* drawn by the canvas fallback */ } }
@@ -1023,14 +1024,19 @@ async function renderCurrent(job = null) {
     onStatus: (text) => { stage = text; $('status').textContent = prefix + text; },
     onProgress: (p) => {
       $('bar').value = base + p * share;
-      $('status').textContent = `${prefix}${stage} ${(p * 100).toFixed(0)}%`;
+      const spent = (performance.now() - started) / 1000;
+      const eta = p > 0.04 && spent > 4 && stage === 'Rendering…' ? ` · about ${fmtEta(spent * (1 - p) / p)} left` : '';
+      $('status').textContent = `${prefix}${stage} ${(p * 100).toFixed(0)}%${eta}`;
     },
   });
+  { const t = res.timing; if (new URLSearchParams(location.search).has('timing')) console.log(`TIMING draw ${t.draw.toFixed(0)} ms, frame+encode ${t.frame.toFixed(0)} ms, waiting on encoder ${t.wait.toFixed(0)} ms, UI ${t.ui.toFixed(0)} ms over ${res.frames} frames`); }
   let name = safeName(`${state.replay.player} - ${sc.meta.title}${range.whole ? '' : ` (${fmtTime(range.from - sc.startTime).replace(':', 'm')}s)`}`);
   if (job) { let n = name, i = 2; while (job.usedNames.has(n)) n = `${name} (${i++})`; job.usedNames.add(n); name = n; }
   await addResult(res.blob, `${name}.mp4`);
   return { res, secs: (performance.now() - started) / 1000, range };
 }
+
+const fmtEta = (s) => (s < 90 ? `${Math.max(1, Math.round(s))} s` : `${Math.round(s / 60)} min`);
 
 /** Render one video (the loaded replay) or, with `batch`, every loaded replay in turn. */
 async function runExports(batch) {

@@ -5,9 +5,9 @@
 // are needed for a whole song. Chromium, Edge and Firefox can rasterise this; where it is not possible the caller falls
 // back to the canvas drawing.
 
-import { hudAt } from './score.js?v=20261110j';
-import { livePp } from './pp.js?v=20261110j';
-import { countUp } from './countup.js?v=20261110j';
+import { hudAt } from './score.js?v=20261110k';
+import { livePp } from './pp.js?v=20261110k';
+import { countUp } from './countup.js?v=20261110k';
 
 const CIRCUMFERENCE = 30 * Math.PI * 2;                 // the progress ring's circle, as in the overlay's App.js
 const OSU_GRADE = ['SSH', 'SS', 'SH', 'S', 'A', 'B', 'C', 'D', 'F', ''];   // lib/consts.js
@@ -213,6 +213,13 @@ export class TosuOverlays {
     })().catch((err) => { this.failed = true; throw err; }).finally(() => this.pending.delete(id));
     this.pending.set(id, job);
     return job;
+  }
+
+  /** Start rendering the overlays for time t without waiting: the exporter calls this a few frames ahead so the
+   *  browser decodes several overlay images at once (on other threads) while the current frame is being drawn. */
+  prefetch(scene, t) {
+    const k = tosuTokens(scene, t), keys = keysOf(k);
+    for (const n of (this.ppCss ? ['title', 'acc', 'pp', 'combo'] : ['title', 'acc', 'combo'])) this.request(n, k, keys[n]).catch(() => {});
   }
 
   /** Render (and wait for) the three overlays for beatmap time t. Used by the exporter before every frame. */
