@@ -159,6 +159,19 @@ function initStatus() {
   new MutationObserver(() => { s.title = s.textContent; }).observe(s, { childList: true, characterData: true, subtree: true });
 }
 
+function initTheme() {
+  const sel = $('theme'), root = document.documentElement, media = matchMedia('(prefers-color-scheme: light)');
+  let saved = 'auto';
+  try { const v = localStorage.getItem('ocr.theme'); if (['dark', 'light', 'sakura'].includes(v)) saved = v; } catch { /* storage blocked */ }
+  const apply = () => { root.dataset.theme = saved === 'auto' ? (media.matches ? 'light' : 'dark') : saved; };
+  sel.value = saved; apply();
+  sel.addEventListener('change', () => {
+    saved = sel.value; apply();
+    try { saved === 'auto' ? localStorage.removeItem('ocr.theme') : localStorage.setItem('ocr.theme', saved); } catch { /* storage blocked */ }
+  });
+  media.addEventListener?.('change', () => { if (saved === 'auto') apply(); });
+}
+
 function initKeys() {
   const seek = $('seek');
   const typing = (el) => { const tag = el?.tagName; return tag === 'INPUT' && el.type !== 'range' && el.type !== 'checkbox' || tag === 'SELECT' || tag === 'TEXTAREA' || tag === 'BUTTON'; };
@@ -241,6 +254,7 @@ try {
     initResults();
     initStatus();
     initKeys();
+    initTheme();
     initDrop();
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else run();

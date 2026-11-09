@@ -241,3 +241,7 @@ Many community overlays roll their numbers (CountUp, about half a second) instea
 ### Keyboard
 
 Space plays and pauses, Left/Right seek 5 s (Shift: 1 s), Home/End jump to the start/end, F toggles full screen for the preview.
+
+### Themes
+
+The top bar has a theme picker: Auto (follows your system), Dark, Light and Sakura. The choice is remembered in your browser. The video preview itself always stays dark.
