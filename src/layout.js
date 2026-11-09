@@ -117,6 +117,12 @@ export const WIDGETS = {
       { id: 'argon', label: 'osu!lazer (Argon)', credit: 'osu!lazer (Argon skin) by ppy and contributors', author: 'ppy', system: 'argon', w: 146 * V, h: 56 * V },
     ],
   },
+  leaderboard: {
+    label: 'Live leaderboard', at: [20, 330], on: false,
+    styles: [
+      { id: 'live', label: 'Live leaderboard (rank climbs as you score)', credit: 'Live leaderboard, made for this site', w: 340, h: 330 },
+    ],
+  },
   hits: {
     label: 'Hit counts', at: [1920 - 420 - 90, 1080 - 130], on: false,
     styles: [
@@ -140,7 +146,7 @@ export const WIDGETS = {
 };
 
 /** Draw and hit-test order, back to front. */
-export const ORDER = ['title', 'player', 'pp', 'acc', 'combo', 'score', 'health', 'hits', 'progress', 'keys'];
+export const ORDER = ['title', 'player', 'pp', 'acc', 'combo', 'score', 'health', 'hits', 'progress', 'keys', 'leaderboard'];
 
 export const styleInfo = (id, styleId) => WIDGETS[id].styles.find((x) => x.id === styleId) ?? WIDGETS[id].styles[0];
 

@@ -253,3 +253,7 @@ The gear in the top bar opens Settings: appearance (theme, keyboard hints), expe
 ## Updating the lookup Worker without pasting code
 
 In the Cloudflare dashboard: Workers & Pages -> `osu-lookup` -> Settings -> Builds -> Connect to Git, pick this repository and set the root directory to `worker`. After that every push that changes `worker/` is deployed automatically (the osu! secrets stay as they are).
+
+## Live leaderboard
+
+Tick **Live leaderboard** in the Layout tab to show the online top scores down the side of the video, with the player's own row climbing as the running score passes each of them. It needs **Online leaderboard** switched on in Settings. Board scores use osu!'s old-style score when it has one, which is the same scoring the replay's running score uses; a row without a score is skipped over as a dash, so the climb is a close guide rather than an exact result.

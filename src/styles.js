@@ -2,13 +2,13 @@
 // (credited in layout.js and CREDITS.md) in this site's own code; no overlay code or images are copied. A draw function
 // works in the style's natural size (see layout.js): the caller translates and scales the canvas to fit.
 
-import { countUp } from './countup.js?v=20261110p';
-import { tosuTokens } from './tosu.js?v=20261110p';
-import { hudAt } from './score.js?v=20261110p';
-import { getAvatar, getProfile } from './avatar.js?v=20261110p';
-import { healthAt } from './health.js?v=20261110p';
-import { livePp, ppAtAccuracy } from './pp.js?v=20261110p';
-import { keysAt } from './keys.js?v=20261110p';
+import { countUp } from './countup.js?v=20261110q';
+import { tosuTokens } from './tosu.js?v=20261110q';
+import { hudAt } from './score.js?v=20261110q';
+import { getAvatar, getProfile, getBoard } from './avatar.js?v=20261110q';
+import { healthAt } from './health.js?v=20261110q';
+import { livePp, ppAtAccuracy } from './pp.js?v=20261110q';
+import { keysAt } from './keys.js?v=20261110q';
 
 const SANS = '"Exo 2", "Torus", "Segoe UI", system-ui, -apple-system, sans-serif';
 const MONO = '"Roboto Mono", ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace';
@@ -618,6 +618,46 @@ const LOOKS = {
       ctx.fillStyle = '#44aadd'; rr(ctx, bx, 110, Math.max(10, bw * Math.max(0, Math.min(1, (acc - 80) / 20))), 10, 5); ctx.fill();
     },
   },
+  leaderboard: {
+    // made for this site: the online top scores, with the player's own row climbing as the running score passes them.
+    // Board scores and the running replay score use the same (stable) scoring when the board has the old-style number.
+    live(ctx, d, W, H) {
+      const board = getBoard(), me = (d.scene.player || '').toLowerCase(), pl = d.scene.play ?? {};
+      ctx.fillStyle = 'rgba(10,12,18,0.6)'; rr(ctx, 0, 0, W, H, 14); ctx.fill();
+      text(ctx, 'LEADERBOARD', 18, 28, { size: 14, weight: 700, fill: 'rgba(255,255,255,0.6)', shadow: false });
+      if (!board?.scores?.length) {
+        text(ctx, 'No leaderboard loaded', W / 2, H / 2 - 4, { size: 18, weight: 600, align: 'center', shadow: false, fill: 'rgba(255,255,255,0.8)' });
+        text(ctx, 'turn on "Online leaderboard" in Settings', W / 2, H / 2 + 22, { size: 14, weight: 400, align: 'center', shadow: false, fill: 'rgba(255,255,255,0.55)' });
+        return;
+      }
+      const near = (a, b) => Math.abs(a - b) < 0.0006;
+      // this play's own entry (same player, combo and accuracy) is replaced by the live row; any other score of theirs stays
+      const others = board.scores.filter((x) => !(x.username.toLowerCase() === me && x.max_combo === pl.maxCombo && near((x.accuracy ?? 0) * (x.accuracy > 1 ? 0.01 : 1), (Number(finalAcc(pl)) || 0) / 100))).sort((a, b) => b.score - a.score);
+      const scoreAt = (tt) => (d.scene.hud ? hudAt(d.scene.hud, tt).score : 0);
+      const rankAt = (tt) => { const sc = scoreAt(tt); let n = 0; while (n < others.length && others[n].score > sc) n++; return n; };
+      const cur = rankAt(d.t);
+      let prev = cur, since = 1;                                      // when did the rank last change? ease the row over 0.45 s
+      for (let k = 1; k <= 9; k++) { const r = rankAt(d.t - k * 50); if (r !== cur) { prev = r; since = (k - 1) / 9; break; } }
+      const a = 1 - (1 - Math.max(0, Math.min(1, since))) ** 3, me0 = prev + (cur - prev) * a;
+      const rows = 7, rowH = 40, top = 44;
+      const items = others.map((x, j) => ({ x, pos: j + (j >= cur ? 1 : 0), from: j + (j >= prev ? 1 : 0) }));
+      items.push({ me: true, pos: cur, from: prev });
+      const total = others.length + 1;
+      const scroll = Math.max(0, Math.min(total - rows, (prev + (cur - prev) * a) - 3));
+      ctx.save(); ctx.beginPath(); ctx.rect(0, top - 4, W, rows * rowH + 6); ctx.clip();
+      for (const it of items) {
+        const y = top + ((it.from + (it.pos - it.from) * a) - scroll) * rowH;
+        if (y < top - rowH || y > top + rows * rowH) continue;
+        const you = !!it.me, rank = it.pos + 1;
+        if (you) { ctx.fillStyle = 'rgba(255,107,138,0.28)'; rr(ctx, 8, y, W - 16, rowH - 6, 9); ctx.fill(); ctx.strokeStyle = '#ff6b8a'; ctx.lineWidth = 2; ctx.stroke(); }
+        text(ctx, `#${rank}`, 18, y + 24, { size: 15, weight: 700, fill: rank <= 3 ? ['#ffd23f', '#d9dde4', '#e0a070'][rank - 1] : 'rgba(255,255,255,0.6)', shadow: false });
+        text(ctx, you ? (d.scene.player || 'you') : it.x.username, 62, y + 24, { size: 16, weight: you ? 800 : 600, shadow: false, maxW: 140 });
+        text(ctx, grouped(you ? scoreAt(d.t) : it.x.score), W - 18, y + 24, { size: 16, weight: 600, family: MONO, align: 'right', shadow: false, maxW: 120 });
+      }
+      ctx.restore();
+    },
+  },
+
   hits: {
     // this site's own four labelled counters: fruits, droplets, tiny droplets, misses
     plain(ctx, d, W, H) {
