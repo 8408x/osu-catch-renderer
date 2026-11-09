@@ -1817,7 +1817,7 @@ await test('custom layout: defaults match the old overlay places, bad data is re
 });
 
 await test('countUp: rolls to a new value over about half a second and holds still otherwise', async () => {
-  const C = await import('../src/countup.js?v=20261111l');
+  const C = await import('../src/countup.js?v=20261111m');
   C.setSmoothNumbers(true);
   const raw = (t) => (t < 5000 ? 100 : 200);
   assert.equal(C.countUp(raw, 4000), 100);
