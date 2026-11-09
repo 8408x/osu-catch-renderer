@@ -160,14 +160,37 @@ function initStatus() {
 }
 
 function initKeys() {
+  const seek = $('seek');
+  const typing = (el) => { const tag = el?.tagName; return tag === 'INPUT' && el.type !== 'range' && el.type !== 'checkbox' || tag === 'SELECT' || tag === 'TEXTAREA' || tag === 'BUTTON'; };
+  const jump = (to) => {
+    const t = Math.max(+seek.min, Math.min(+seek.max, to));
+    seek.value = String(Math.round(t));
+    seek.dispatchEvent(new Event('input', { bubbles: true }));
+  };
+  const fullscreen = () => {
+    const wrap = $('stagewrap');
+    if (document.fullscreenElement) document.exitFullscreen?.();
+    else wrap.requestFullscreen?.().catch(() => {});
+  };
+  $('full').addEventListener('click', fullscreen);
   document.addEventListener('keydown', (e) => {
-    if (e.code !== 'Space' || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
-    const el = document.activeElement;
-    const tag = el?.tagName;
-    if (tag === 'INPUT' && el.type !== 'range' && el.type !== 'checkbox' || tag === 'SELECT' || tag === 'TEXTAREA' || tag === 'BUTTON') return;
-    const play = $('play');
-    if (play && !play.disabled) { e.preventDefault(); play.click(); }
+    if (e.ctrlKey || e.metaKey || e.altKey || typing(document.activeElement)) return;
+    if (e.code === 'Space' && !e.repeat) {
+      const play = $('play');
+      if (play && !play.disabled) { e.preventDefault(); play.click(); }
+    } else if (e.code === 'KeyF' && !e.repeat) {
+      e.preventDefault(); fullscreen();
+    } else if (!seek.disabled && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) {
+      e.preventDefault();
+      jump(+seek.value + (e.code === 'ArrowRight' ? 1 : -1) * (e.shiftKey ? 1000 : 5000));
+    } else if (!seek.disabled && e.code === 'Home') { e.preventDefault(); jump(+seek.min); }
+    else if (!seek.disabled && e.code === 'End') { e.preventDefault(); jump(+seek.max); }
   });
+  // the how-to card over the empty stage goes away once anything is loaded
+  const guide = $('guide'), chips = $('chips');
+  const sync = () => { guide.hidden = chips.children.length > 0; };
+  new MutationObserver(sync).observe(chips, { childList: true });
+  sync();
 }
 
 /** Drop files anywhere: each goes to the picker that understands it. */

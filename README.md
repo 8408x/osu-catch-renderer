@@ -237,3 +237,7 @@ With "Online leaderboard on the outro" ticked, the osu!lazer outro shows the map
 ### Smooth numbers
 
 Many community overlays roll their numbers (CountUp, about half a second) instead of jumping. "Smooth numbers" in the Render tab does the same for the pp counter (InGame3 also shows two decimals, like the real overlay). Frames are computed from the last second of the play, so seeking and exporting give the same result. Turn it off for faster exports.
+
+### Keyboard
+
+Space plays and pauses, Left/Right seek 5 s (Shift: 1 s), Home/End jump to the start/end, F toggles full screen for the preview.

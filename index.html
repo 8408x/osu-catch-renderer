@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="app-version" content="20261110b">
+  <meta name="app-version" content="20261110c">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>osu!catch Replay Renderer</title>
   <style>
@@ -68,6 +68,14 @@
     .chip[data-tone="warn"] i { background:var(--warn); }
     .chip[data-tone="err"] i { background:var(--err); }
     .chip b { color:var(--text); font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .stagewrap { position:relative; }
+    .guide { position:absolute; inset:0; margin:auto; width:min(100cqw, calc(100cqh * 16 / 9)); aspect-ratio:16/9; display:grid; place-content:center; gap:14px; padding:6%; text-align:center; border-radius:10px; background:linear-gradient(#11131ce6,#0a0b10e6); pointer-events:none; }
+    .guide[hidden] { display:none; }
+    .guide h2 { margin:0; font-size:clamp(15px,2.6cqw,26px); }
+    .guide ol { margin:0; padding:0; list-style:none; display:grid; gap:8px; color:var(--dim); font-size:clamp(12px,1.7cqw,16px); }
+    .guide li b { color:var(--text); }
+    .stagewrap:fullscreen { background:#000; padding:0; }
+    .stagewrap:fullscreen canvas { border-radius:0; box-shadow:none; }
     .stagewrap { flex:1; min-height:0; container-type:size; display:grid; place-items:center; }
     canvas { width:min(100cqw, calc(100cqh * 16 / 9)); height:auto; aspect-ratio:16/9; display:block; border-radius:10px; background:#07080c; box-shadow:0 12px 40px #0008; }
     .transport { display:flex; align-items:center; gap:12px; padding:8px 12px; background:var(--surface); border:1px solid var(--line); border-radius:12px; }
@@ -205,7 +213,16 @@
         <button type="button" id="viewvids" aria-pressed="false">Video <span class="count" id="resultcount" data-tone="ok">0</span></button>
       </div>
     </div>
-    <div class="stagewrap"><canvas id="stage" width="1280" height="720"></canvas></div>
+    <div class="stagewrap" id="stagewrap"><canvas id="stage" width="1280" height="720"></canvas>
+      <div class="guide" id="guide">
+        <h2>Turn an osu!catch replay into a video</h2>
+        <ol>
+          <li><b>Drop your replay</b> (.osr) anywhere on this page. The map is downloaded for you.</li>
+          <li><b>Pick a look</b> in the Look and Layout tabs. The preview updates as you go.</li>
+          <li><b>Render MP4</b> at the top right. Everything runs in your browser.</li>
+        </ol>
+      </div>
+    </div>
     <div class="resultview" id="resultview" hidden><div id="result"></div></div>
     <div class="transport" id="transport">
       <button id="play" class="ghost" disabled>Play</button>
@@ -216,7 +233,8 @@
         <button type="button" class="rangehandle to" id="handleto" hidden aria-label="Render up to here" title="End of the render. Drag me; double-click to reset."></button>
       </div>
       <span id="clock">0:00</span>
-      <span class="hint">Space = play / pause</span>
+      <button id="full" class="ghost small" type="button" title="Fullscreen preview (F)" aria-label="Fullscreen preview">Full screen</button>
+      <span class="hint">Space play · ←/→ seek · F full screen</span>
     </div>
 
     <div id="msgtray" class="tray" hidden>
@@ -416,6 +434,6 @@
 <div class="dropveil" id="dropveil"><div>Drop files to load them<small>.osr replay · .osz map set · .osu · .osk skin · image · song</small></div></div>
 
 <script src="vendor/lzma-d-min.js"></script>
-<script type="module" src="src/main.js?v=20261110b"></script>
+<script type="module" src="src/main.js?v=20261110c"></script>
 </body>
 </html>
