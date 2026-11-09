@@ -5,6 +5,7 @@
 //   OSU_CLIENT_ID      the client id of your osu! OAuth application
 //   OSU_CLIENT_SECRET  its client secret (add it as a Secret, not as plain text)
 // Optional:
+//   OSU_V1_KEY        an osu! legacy (v1) API key, as a Secret: gives the exact old (stable) scores on the leaderboard
 //   ALLOW_ORIGIN       the site allowed to call this Worker, e.g. https://8408x.github.io (default: any site)
 //
 // Routes:
@@ -77,11 +78,20 @@ export default {
         const res = await fetch(`https://osu.ppy.sh/api/v2/beatmaps/${b.id}/scores?mode=fruits&type=global`, auth);
         if (!res.ok) return json({ error: `osu! answered ${res.status}` }, 502);
         const j = await res.json();
+        // osu!'s old (v1) API still has every score as osu!stable counted it; use it when a key is set (OSU_V1_KEY secret)
+        const old = new Map();
+        if (env.OSU_V1_KEY) {
+          try {
+            const r1 = await fetch(`https://osu.ppy.sh/api/get_scores?k=${encodeURIComponent(env.OSU_V1_KEY)}&b=${b.id}&m=2&limit=100`);
+            const a = r1.ok ? await r1.json() : [];
+            for (const x of Array.isArray(a) ? a : []) if (Number(x.score) > 0 && !old.has(String(x.user_id))) old.set(String(x.user_id), Number(x.score));
+          } catch { /* the v2 numbers stand */ }
+        }
         return json({
-          beatmap_id: b.id, status: b.status, same_version: !b.checksum || b.checksum === sum,
+          beatmap_id: b.id, v1: old.size, status: b.status, same_version: !b.checksum || b.checksum === sum,
           scores: (j.scores ?? []).slice(0, 50).map((x, i) => ({
             rank: i + 1, user_id: x.user_id ?? x.user?.id, username: x.user?.username ?? '', country_code: x.user?.country_code ?? '',
-            score: [x.classic_total_score, x.legacy_total_score, x.total_score, x.score].find((v) => v > 0) ?? 0,   // some scores carry a 0 in one field and the real value in another
+            score: old.get(String(x.user_id ?? x.user?.id)) ?? [x.classic_total_score, x.legacy_total_score, x.total_score, x.score].find((v) => v > 0) ?? 0,   // some scores carry a 0 in one field and the real value in another
             accuracy: x.accuracy ?? 0, max_combo: x.max_combo ?? 0,
             mods: (x.mods ?? []).map((m) => (typeof m === 'string' ? m : m.acronym)), pp: x.pp ?? null,
             n300: x.statistics?.great ?? x.statistics?.count_300 ?? 0, n100: x.statistics?.large_tick_hit ?? x.statistics?.count_100 ?? 0,

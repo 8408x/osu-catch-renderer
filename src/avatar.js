@@ -104,7 +104,7 @@ export async function loadBoard(md5, beatmapId = 0) {
     board = j;
     say(`Leaderboard loaded: ${j.scores.length} scores.`);
     const note = j.same_version === false ? ' (the map has been updated since this replay, so it shows the newest version\'s scores)' : '';
-    setOnline('board', j.scores.length ? 'ok' : 'warn', j.scores.length ? `Leaderboard: ${j.scores.length} scores${j.status ? ` (${j.status} map)` : ''}${note}` : `Leaderboard: this ${j.status || ''} map has no osu!catch scores`.replace('  ', ' '));
+    setOnline('board', j.scores.length ? 'ok' : 'warn', j.scores.length ? `Leaderboard: ${j.scores.length} scores${j.v1 ? ` (${j.v1} with exact old-style scores)` : ''}${j.status ? ` (${j.status} map)` : ''}${note}` : `Leaderboard: this ${j.status || ''} map has no osu!catch scores`.replace('  ', ' '));
     // no profile for the player (the user lookup failed)? Their own entry on this board still gives an id and a country
     const who = document.getElementById('lookupwho')?.dataset.name?.toLowerCase();
     const mine = who && !profile ? j.scores.find((x) => x.username.toLowerCase() === who) : null;
