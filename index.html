@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="app-version" content="20261111d">
+  <meta name="app-version" content="20261111e">
   <script>try{var t=localStorage.getItem("ocr.theme");if(t==="light"||t==="dark"||t==="sakura")document.documentElement.dataset.theme=t;else if(matchMedia("(prefers-color-scheme: light)").matches)document.documentElement.dataset.theme="light";}catch(e){}</script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>osu!catch Replay Renderer</title>
@@ -10,7 +10,7 @@
     :root {
       color-scheme: dark;
       --bg:#0a0c11; --surface:#12151d; --surface2:#181c27; --line:#232838; --line2:#2f3550;
-      --text:#e9edf7; --dim:#8f99b3; --faint:#5d6680;
+      --text:#e9edf7; --dim:#8f99b3; --faint:#7d87a3;
       --accent:#ff6b8a; --accent-ink:#1c0a10; --focus:#6fd3c4;
       --ok:#7ee0a0; --warn:#ffcf66; --err:#ff7b8f;
       --hover:#202638; --hover-line:#3b4366; --accent-hover:#ff829c; --shadow:#000a; --veil:#0a0c11dd; --strong:#fff;
@@ -21,20 +21,20 @@
     :root[data-theme="light"] {
       color-scheme: light;
       --bg:#f3f4f8; --surface:#ffffff; --surface2:#f0f2f8; --line:#e1e4ee; --line2:#cfd4e4;
-      --text:#1c2133; --dim:#586079; --faint:#8a92aa;
-      --accent:#e8456b; --accent-ink:#ffffff; --focus:#0f9d8a;
+      --text:#1c2133; --dim:#4f576f; --faint:#5f6780;
+      --accent:#d63559; --accent-ink:#ffffff; --focus:#0f9d8a;
       --ok:#1c8a4e; --warn:#a86b00; --err:#c9283f;
-      --hover:#e6e9f3; --hover-line:#b9c0d8; --accent-hover:#d63559; --shadow:#2a336622; --veil:#f3f4f8ee; --strong:#000;
+      --hover:#e6e9f3; --hover-line:#b9c0d8; --accent-hover:#c42a4d; --shadow:#2a336622; --veil:#f3f4f8ee; --strong:#000;
       --ok-bg:#dff3e6; --warn-ink:#ffffff; --err-ink:#ffffff; --panel:#ffffff; --pop-line:rgba(20,30,70,.16);
     }
     /* Sakura: warm blush paper and rose ink */
     :root[data-theme="sakura"] {
       color-scheme: light;
       --bg:#fff4f6; --surface:#fffafb; --surface2:#ffe9ee; --line:#f4d3dc; --line2:#eab8c6;
-      --text:#3a1f2b; --dim:#7d5565; --faint:#b08796;
-      --accent:#e0446f; --accent-ink:#ffffff; --focus:#2a9d8f;
+      --text:#3a1f2b; --dim:#74495a; --faint:#835d6c;
+      --accent:#cf3560; --accent-ink:#ffffff; --focus:#2a9d8f;
       --ok:#1f8a58; --warn:#9a6200; --err:#c4243f;
-      --hover:#ffdde6; --hover-line:#e3a9ba; --accent-hover:#cc2f5b; --shadow:#7a1f4222; --veil:#fff4f6ee; --strong:#000;
+      --hover:#ffdde6; --hover-line:#e3a9ba; --accent-hover:#bb2a52; --shadow:#7a1f4222; --veil:#fff4f6ee; --strong:#000;
       --ok-bg:#dcf2e6; --warn-ink:#ffffff; --err-ink:#ffffff; --panel:#fffafb; --pop-line:rgba(120,40,70,.18);
     }
     * { box-sizing:border-box; }
@@ -67,7 +67,7 @@
     button:disabled { opacity:.38; cursor:not-allowed; }
     #cancel:disabled { display:none; }
     .pill { display:inline-flex; align-items:center; gap:7px; }
-    .count { min-width:18px; height:18px; padding:0 5px; border-radius:9px; background:var(--line2); font-size:11px; line-height:18px; text-align:center; color:var(--text); }
+    .count { min-width:18px; height:18px; padding:0 5px; border-radius:9px; background:var(--line2); font-size:12px; line-height:18px; text-align:center; color:var(--text); }
     .count[data-tone="warn"] { background:var(--warn); color:var(--warn-ink); }
     .count[data-tone="err"] { background:var(--err); color:var(--err-ink); }
     .count[data-tone="ok"] { background:var(--ok-bg); color:var(--ok); }
@@ -112,6 +112,26 @@
     .rangeband { position:absolute; top:50%; height:6px; margin-top:-3px; border-radius:3px; background:#ff9db388; pointer-events:none; z-index:1; }
     .transport .rangehandle { position:absolute; top:1px; width:10px; height:28px; min-width:0; padding:0; margin-left:-5px; border:0; border-radius:4px; background:#ff9db3; opacity:.55; cursor:ew-resize; z-index:2; touch-action:none; }
     .transport .rangehandle::after { content:''; position:absolute; top:6px; left:3px; width:4px; height:16px; border-left:1px solid #0006; border-right:1px solid #0006; box-sizing:border-box; }
+    /* readability + touch */
+    details.adv { margin-top:10px; border:1px solid var(--line); border-radius:10px; background:var(--surface); }
+    details.adv > summary { cursor:pointer; padding:10px 12px; font-weight:600; list-style:none; display:flex; align-items:center; gap:8px; border-radius:10px; }
+    details.adv > summary::-webkit-details-marker { display:none; }
+    details.adv > summary::before { content:'▸'; color:var(--dim); transition:transform .15s; }
+    details.adv[open] > summary::before { transform:rotate(90deg); }
+    details.adv > summary small { color:var(--faint); font-weight:400; font-size:12.5px; }
+    details.adv > :not(summary) { margin-left:12px; margin-right:12px; }
+    details.adv[open] { padding-bottom:12px; }
+    @media (pointer: coarse) {
+      button { min-height:40px; }
+      button.small, button.mini { min-height:36px; padding:6px 12px; }
+      .tab { min-height:44px; }
+      select, input[type=text], input[type=number] { min-height:40px; }
+      .toggle { min-height:44px; }
+      .transport .rangehandle { width:22px; margin-left:-11px; min-height:0; }
+      .transport .rangehandle::after { left:8px; }
+      .iconbtn { min-width:42px; }
+      input[type=checkbox] { width:20px; height:20px; }
+    }
     /* polish */
     button { transition:background .12s, border-color .12s, transform .08s, box-shadow .18s, color .12s; }
     button:active:not(:disabled) { transform:translateY(1px) scale(.985); }
@@ -143,7 +163,7 @@
     .tray .body { padding:12px 14px; overflow:auto; }
     .iconbtn { padding:6px 8px; display:inline-flex; align-items:center; }
     .setbody { display:flex; flex-direction:column; gap:8px; padding:12px 14px 16px; }
-    .setbody h4 { margin:8px 0 0; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--dim); }
+    .setbody h4 { margin:8px 0 0; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--dim); }
     .setbody > * { flex-shrink:0; }
     .setbody h4:first-child { margin-top:0; }
     .setbody .row { display:flex; gap:8px; flex-wrap:wrap; }
@@ -163,7 +183,7 @@
     .panes { flex:1; min-height:0; overflow:auto; padding:14px 16px 18px; }
     .pane[hidden] { display:none; }
     .group { margin-bottom:18px; }
-    .group > h3 { margin:0 0 8px; font-size:11px; letter-spacing:.09em; text-transform:uppercase; color:var(--faint); font-weight:700; }
+    .group > h3 { margin:0 0 8px; font-size:12px; letter-spacing:.09em; text-transform:uppercase; color:var(--faint); font-weight:700; }
     .field { display:flex; flex-direction:column; gap:5px; margin-bottom:10px; color:var(--dim); font-size:12px; }
     .field > span:first-child { color:var(--dim); }
     .dd { position:relative; }
@@ -174,10 +194,10 @@
     .dd li { display:flex; flex-direction:column; padding:7px 9px; border-radius:7px; cursor:pointer; color:var(--text, #eee); }
     .dd li:hover, .dd li:focus { background:var(--hover); outline:none; }
     .dd li[aria-selected="true"] { background:rgba(255,107,138,.2); }
-    .dd li small { color:var(--faint, #8a8d96); font-size:11px; }
+    .dd li small { color:var(--faint, #8a8d96); font-size:12.5px; }
     .credit .iconlink { display:inline-flex; vertical-align:-2px; margin-left:6px; color:var(--dim); }
     .credit .iconlink:hover { color:var(--strong); }
-    .field small { color:var(--faint); font-size:11px; }
+    .field small { color:var(--faint); font-size:12.5px; }
     .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
     .grid2 .field { margin-bottom:0; }
     select, input[type=text], input[type=number] { width:100%; background:var(--bg); border:1px solid var(--line2); border-radius:8px; padding:7px 9px; }
@@ -203,7 +223,7 @@
     .secs { display:flex; align-items:center; gap:5px; color:var(--dim); font-size:12px; }
     .secs input { width:58px; }
     .mini { padding:6px 12px; font-size:12px; }
-    .toggle > span small { display:block; color:var(--faint); font-size:11px; margin-top:1px; }
+    .toggle > span small { display:block; color:var(--faint); font-size:12.5px; margin-top:1px; }
     #boardmsg { display:block; margin-top:6px; min-height:0; }
     .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
     details { margin:2px 0 14px; border:1px solid var(--line); border-radius:10px; background:var(--bg); }
@@ -216,7 +236,7 @@
     #contact { display:flex; align-items:center; gap:10px; margin-left:4px; }
     #contact a { display:inline-flex; color:var(--faint); }
     #contact a:hover { color:var(--strong); }
-    #ver { padding:10px 16px; border-top:1px solid var(--line); font-size:11px; color:var(--faint); }
+    #ver { padding:10px 16px; border-top:1px solid var(--line); font-size:12px; color:var(--faint); }
     #ver.warn { color:var(--warn); }
 
     .dropveil { position:fixed; inset:0; z-index:50; display:none; place-items:center; background:var(--veil); backdrop-filter:blur(3px); pointer-events:none; }
@@ -477,10 +497,12 @@
               </select>
             </label>
           </div>
+          <details class="adv"><summary>Advanced <small>bitrate and fast draft</small></summary>
           <label class="field" style="margin-top:10px"><span>Bitrate (Mbps) <small id="mbpshint" style="font-weight:400;opacity:.7"></small></span>
             <input id="mbps" type="number" min="0.5" max="100" step="0.5" value="7.5">
           </label>
           <label class="toggle" style="margin-top:10px"><input id="fastdraft" type="checkbox"> <span>Fast draft <small>skips the storyboard, background video, hit lighting and tosu overlay images; much quicker</small></span></label>
+          </details>
         </div>
         <div class="group">
           <h3>Intro and outro cards</h3>
@@ -527,6 +549,6 @@
 <div class="dropveil" id="dropveil"><div>Drop files to load them<small>.osr replay · .osz map set · .osu · .osk skin · image · song</small></div></div>
 
 <script src="vendor/lzma-d-min.js"></script>
-<script type="module" src="src/main.js?v=20261111d"></script>
+<script type="module" src="src/main.js?v=20261111e"></script>
 </body>
 </html>
