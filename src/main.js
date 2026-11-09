@@ -1,29 +1,29 @@
-import './ui.js?v=20261110n';
-import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261110n';
-import { parseOsu } from './osu.js?v=20261110n';
-import { buildScene, evaluateCatches, findJudgeShift, resolveColours } from './catch.js?v=20261110n';
-import { compareWithReplay } from './score.js?v=20261110n';
-import { nightcoreBeats } from './nightcore.js?v=20261110n';
-import { ReplayTrack } from './replay.js?v=20261110n';
-import { drawFrame, loadOverlayFonts } from './render.js?v=20261110n';
-import { loadArgonFonts } from './argon.js?v=20261110n';
-import { TosuOverlays } from './tosu.js?v=20261110n';
-import { exportMp4, webCodecsAvailable } from './encode.js?v=20261110n';
-import { VERSION } from './version.js?v=20261110n';
-import { md5 } from './md5.js?v=20261110n';
-import { resolveRange } from './range.js?v=20261110n';
-import { initLayoutEditor } from './layoutui.js?v=20261110n';
-import { setSmoothNumbers } from './countup.js?v=20261110n';
-import { drawCard } from './card.js?v=20261110n';
-import { lookupPlayer, loadBoard, initAvatar, online } from './avatar.js?v=20261110n';
-import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261110n';
-import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261110n';
-import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261110n';
-import { BackgroundVideo } from './bgvideo.js?v=20261110n';
-import { buildKeys } from './keys.js?v=20261110n';
-import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261110n';
-import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261110n';
-import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261110n';
+import './ui.js?v=20261110o';
+import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261110o';
+import { parseOsu } from './osu.js?v=20261110o';
+import { buildScene, evaluateCatches, findJudgeShift, resolveColours } from './catch.js?v=20261110o';
+import { compareWithReplay } from './score.js?v=20261110o';
+import { nightcoreBeats } from './nightcore.js?v=20261110o';
+import { ReplayTrack } from './replay.js?v=20261110o';
+import { drawFrame, loadOverlayFonts } from './render.js?v=20261110o';
+import { loadArgonFonts } from './argon.js?v=20261110o';
+import { TosuOverlays } from './tosu.js?v=20261110o';
+import { exportMp4, webCodecsAvailable } from './encode.js?v=20261110o';
+import { VERSION } from './version.js?v=20261110o';
+import { md5 } from './md5.js?v=20261110o';
+import { resolveRange } from './range.js?v=20261110o';
+import { initLayoutEditor } from './layoutui.js?v=20261110o';
+import { setSmoothNumbers } from './countup.js?v=20261110o';
+import { drawCard } from './card.js?v=20261110o';
+import { lookupPlayer, loadBoard, initAvatar, online } from './avatar.js?v=20261110o';
+import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261110o';
+import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261110o';
+import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261110o';
+import { BackgroundVideo } from './bgvideo.js?v=20261110o';
+import { buildKeys } from './keys.js?v=20261110o';
+import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261110o';
+import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261110o';
+import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261110o';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('stage');
@@ -71,7 +71,11 @@ for (const id of ['hudstyle', 'showhud']) $(id).addEventListener('change', () =>
 // ---------- messages ----------
 let shownMsgs = [];
 /** The lookups' own lines for the Logs (player picture and rank, leaderboard), with the reason when one failed. */
-const onlineLines = () => [online.player, $('showboard')?.checked ? online.board : null].filter(Boolean).map((o) => [o.tone, o.text]);
+const onlineLines = () => {
+  const lines = [online.player, $('showboard')?.checked ? online.board : null].filter(Boolean).map((o) => [o.tone, o.text]);
+  if ($('showboard')?.checked && online.board) lines.push(['dim', "Note: leaderboard scores and ranks come from osu!'s servers, and a replay's own score uses older scoring, so the ranking on the card may be inexact or may not show at all (some scores are missing, shown as a dash, or the map has no leaderboard)."]);
+  return lines;
+};
 function showMessages(list) {
   shownMsgs = list;
   list = [...list, ...onlineLines()];
