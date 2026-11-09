@@ -239,12 +239,13 @@ function initEggs() {
   const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.dataset.motion === 'reduce';
   const FRUITS = ['pear', 'orange', 'apple', 'grapes'].map((n) => { const i = new Image(); i.src = `assets/egg-${n}.png?v=${document.querySelector('meta[name=app-version]')?.content ?? ''}`; return i.src; });
   const toast = (text) => {
+    document.querySelectorAll('.eggtoast').forEach((t) => t.remove());   // one message at a time
     const el = document.createElement('div');
     el.className = 'eggtoast'; el.textContent = text; el.setAttribute('role', 'status');
     document.body.append(el); setTimeout(() => el.remove(), 2400);
   };
   const shower = (n = 40) => {
-    if (calm()) { toast('Fruit shower (animation is off)'); return; }
+    if (calm()) return;                                        // no falling fruit with reduced motion; the message still shows
     for (let i = 0; i < n; i++) {
       const f = document.createElement('img');
       f.className = 'eggrain'; f.src = FRUITS[i % 4]; f.alt = '';
