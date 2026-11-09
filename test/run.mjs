@@ -1524,6 +1524,41 @@ await test('score: mod multipliers (osu!stable) and the 1 s roll-up of the count
   assert.equal(SC.scoreShownAt(SC.hudAt(hud, 10), 10), 0);
 });
 
+await test('slow motion: windows around misses merge, the video gets longer, times and audio map through the warp', async () => {
+  const { buildWarp } = await import('../src/warp.js');
+  const { warpAudio } = await import('../src/audio.js');
+  assert.equal(buildWarp([], 10000), null);
+  const w = buildWarp([2000, 2100, 6000], 10000, { speed: 0.5, before: 200, after: 300 });
+  assert.equal(w.segs.filter((x) => x.speed < 1).length, 2, 'the two close misses share one window');
+  // slowed: [1800, 2400] and [5800, 6300] -> 600 -> 1200 ms and 500 -> 1000 ms, so +1100 ms in all
+  assert.ok(Math.abs(w.totalV - 11100) < 1e-6);
+  assert.ok(Math.abs(w.vToU(1000) - 1000) < 1e-6, 'before the first window time is unchanged');
+  assert.ok(Math.abs(w.vToU(1800 + 600) - (1800 + 300)) < 1e-6, 'inside a window the play moves at half speed');
+  assert.ok(Math.abs(w.vToU(w.totalV) - 10000) < 1e-6 && Math.abs(w.vToU(-5)) < 1e-9);
+  const sr = 8000, len = 10 * sr;
+  const tone = Float32Array.from({ length: len }, (_, i) => 0.5 * Math.sin(i / 20));
+  const out = warpAudio([tone, tone], w, sr);
+  assert.equal(out[0].length, Math.round((w.totalV / 1000) * sr), 'the audio is as long as the slowed video');
+  assert.ok(out[0].some((x) => Math.abs(x) > 0.3) && out[0].every(Number.isFinite));
+});
+
+await test('experimental extras: every overlay draws without error and changes the picture', async () => {
+  const E = await import('../src/extras.js');
+  const { createCanvas } = (await import('node:module')).createRequire(import.meta.url)('@napi-rs/canvas');
+  const sc = { preempt: 800, fruitRadius: 20, catchWidth: 90, objects: [
+    { kind: 'fruit', t: 1000, x: 250, offset: 5, caught: true }, { kind: 'droplet', t: 1200, x: 100, offset: -60, caught: false },
+    { kind: 'tiny', t: 1300, x: 300, offset: 0, caught: true }, { kind: 'fruit', t: 1500, x: 400, offset: 40, caught: true }] };
+  assert.deepEqual(E.missTimes(sc), [1200], 'only fruits and droplets that were missed');
+  const blank = (draw) => { const c = createCanvas(600, 700), g = c.getContext('2d'); draw(g); return g.getImageData(0, 0, 600, 700).data.some((v) => v); };
+  const track = { xAt: (t) => 200 + t / 20 };
+  assert.ok(blank((g) => E.drawHitboxes(g, sc, 0, 4, 1100, 250, 1)), 'hitboxes');
+  assert.ok(blank((g) => E.drawMissFlash(g, 300, 300, sc, 1300)), 'flash right after the miss');
+  assert.ok(!blank((g) => E.drawMissFlash(g, 300, 300, sc, 3000)), 'no flash long after');
+  assert.ok(blank((g) => E.drawKeyPad(g, { left: [[0, 500]], right: [], dash: [] }, 100)), 'input overlay');
+  assert.ok(blank((g) => E.drawTrail(g, track, 2000)), 'trail');
+  assert.ok(blank((g) => E.drawCatchMeter(g, sc, 1600)), 'meter');
+});
+
 await test('health: starts full, drains between objects, catching refills, a missed fruit costs 3-20% by HP, tinies and bananas cost nothing', () => {
   const sc = mkRun([['fruit', 1000], ['fruit', 2000, false], ['tiny', 3000, false], ['banana', 4000, false], ['fruit', 5000]], { hp: 0 });
   const h = HP.buildHealth(sc);
@@ -1782,7 +1817,7 @@ await test('custom layout: defaults match the old overlay places, bad data is re
 });
 
 await test('countUp: rolls to a new value over about half a second and holds still otherwise', async () => {
-  const C = await import('../src/countup.js?v=20261111a');
+  const C = await import('../src/countup.js?v=20261111b');
   C.setSmoothNumbers(true);
   const raw = (t) => (t < 5000 ? 100 : 200);
   assert.equal(C.countUp(raw, 4000), 100);

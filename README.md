@@ -257,3 +257,6 @@ In the Cloudflare dashboard: Workers & Pages -> `osu-lookup` -> Settings -> Buil
 ## Live leaderboard
 
 Tick **Live leaderboard** in the Layout tab to show the online top scores down the side of the video, with the player's own row climbing as the running score passes each of them. It loads the board by itself when ticked. Board scores use osu!'s old-style score when it has one, which is the same scoring the replay's running score uses; a row without a score is skipped over as a dash, so the climb is a close guide rather than an exact result.
+
+### Experimental extras
+Settings > Experimental has switches, all off by default: **Hitboxes** (outlines the falling fruit and the plate), **Miss flash**, **Miss markers** (red ticks on the seek bar), **Input overlay** (left / dash / right keys, estimated from the catcher's movement), **Catcher trail**, **Catch meter** (a hit-error style bar), **Slow motion on misses** (export only: the video slows to 0.35x around each miss, with the music stretched to match and its pitch kept, so the video gets longer) and **Ghost replay** (load a second replay of the same map and its catcher is drawn faintly for comparison).

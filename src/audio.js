@@ -151,3 +151,28 @@ export function prepareAudio(channels, { startTime, durationSec, rate = 1, night
   }
   return out;
 }
+
+/**
+ * Play `channels` (audio for the normal timeline) through a slow-motion warp (see warp.js): each slowed stretch is
+ * time-stretched with its pitch kept, the rest is copied. The result is exactly round(seconds * sampleRate) long.
+ */
+export function warpAudio(channels, warp, sampleRate, seconds = warp.totalV / 1000) {
+  const outLen = Math.round(seconds * sampleRate);
+  const out = channels.map(() => new Float32Array(outLen));
+  for (const sg of warp.segs) {
+    const from = Math.round((sg.u0 / 1000) * sampleRate), n = Math.round(((sg.u1 - sg.u0) / 1000) * sampleRate);
+    const at = Math.round((sg.v0 / 1000) * sampleRate), len = Math.round(((sg.u1 - sg.u0) / sg.speed / 1000) * sampleRate);
+    let part;
+    if (sg.speed === 1) part = channels.map((ch) => slice(ch, from, n));
+    else {
+      const src = channels.map((ch) => slice(ch, from, n + FRAME * 2));
+      part = timeStretch(src, sg.speed, len);
+    }
+    const fade = Math.min(len >> 1, Math.round(0.002 * sampleRate));
+    part.forEach((p, c) => {
+      for (let i = 0; i < fade; i++) { const g = i / fade; p[i] *= g; p[len - 1 - i] *= g; }
+      for (let i = 0; i < len && at + i < outLen; i++) out[c][at + i] += p[i];
+    });
+  }
+  return out;
+}

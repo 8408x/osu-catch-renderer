@@ -1,29 +1,31 @@
-import './ui.js?v=20261111a';
-import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261111a';
-import { parseOsu } from './osu.js?v=20261111a';
-import { buildScene, evaluateCatches, findJudgeShift, resolveColours } from './catch.js?v=20261111a';
-import { compareWithReplay } from './score.js?v=20261111a';
-import { nightcoreBeats } from './nightcore.js?v=20261111a';
-import { ReplayTrack } from './replay.js?v=20261111a';
-import { drawFrame, loadOverlayFonts } from './render.js?v=20261111a';
-import { loadArgonFonts } from './argon.js?v=20261111a';
-import { TosuOverlays } from './tosu.js?v=20261111a';
-import { exportMp4, webCodecsAvailable } from './encode.js?v=20261111a';
-import { VERSION } from './version.js?v=20261111a';
-import { md5 } from './md5.js?v=20261111a';
-import { resolveRange } from './range.js?v=20261111a';
-import { initLayoutEditor } from './layoutui.js?v=20261111a';
-import { setSmoothNumbers } from './countup.js?v=20261111a';
-import { drawCard } from './card.js?v=20261111a';
-import { lookupPlayer, loadBoard, initAvatar, online, getBoard } from './avatar.js?v=20261111a';
-import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261111a';
-import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261111a';
-import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261111a';
-import { BackgroundVideo } from './bgvideo.js?v=20261111a';
-import { buildKeys } from './keys.js?v=20261111a';
-import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261111a';
-import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261111a';
-import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261111a';
+import './ui.js?v=20261111b';
+import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261111b';
+import { parseOsu } from './osu.js?v=20261111b';
+import { buildScene, evaluateCatches, findJudgeShift, resolveColours } from './catch.js?v=20261111b';
+import { compareWithReplay } from './score.js?v=20261111b';
+import { nightcoreBeats } from './nightcore.js?v=20261111b';
+import { ReplayTrack } from './replay.js?v=20261111b';
+import { drawFrame, loadOverlayFonts } from './render.js?v=20261111b';
+import { loadArgonFonts } from './argon.js?v=20261111b';
+import { TosuOverlays } from './tosu.js?v=20261111b';
+import { exportMp4, webCodecsAvailable } from './encode.js?v=20261111b';
+import { VERSION } from './version.js?v=20261111b';
+import { md5 } from './md5.js?v=20261111b';
+import { resolveRange } from './range.js?v=20261111b';
+import { initLayoutEditor } from './layoutui.js?v=20261111b';
+import { setSmoothNumbers } from './countup.js?v=20261111b';
+import { drawCard } from './card.js?v=20261111b';
+import { lookupPlayer, loadBoard, initAvatar, online, getBoard } from './avatar.js?v=20261111b';
+import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261111b';
+import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261111b';
+import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261111b';
+import { BackgroundVideo } from './bgvideo.js?v=20261111b';
+import { missTimes } from './extras.js?v=20261111b';
+import { buildWarp } from './warp.js?v=20261111b';
+import { buildKeys } from './keys.js?v=20261111b';
+import { prepareAudio, warpAudio, SAMPLE_RATE } from './audio.js?v=20261111b';
+import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261111b';
+import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261111b';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('stage');
@@ -44,6 +46,7 @@ const state = {
   bgv: null, bgvKey: '', // the beatmap's background video (BackgroundVideo) and what it was loaded from
   bg: null, bgKey: '', // decoded background (ImageBitmap) and what it was decoded from
   keys: null,       // inferred key presses of the replay
+  ghost: null,      // experimental: a second replay's catcher { track, name, md5 }
   audioFile: null,  // { name, bytes } when a plain song file was chosen
   decoded: null,    // { key: bytes, channels } cache of the decoded music
 };
@@ -137,6 +140,8 @@ function drawAt(t, fromExport = false) {
     sb: $('showsb').checked && $('showbg').checked && !(fromExport && draftExport) ? state.sb : null,
     bgDim: Math.min(100, Math.max(0, Number($('bgdim').value) || 0)) / 100,
     keys: state.keys,
+    ex: { hitboxes: $('exhit').checked, flash: $('exflash').checked, keys: $('exkeys').checked, trail: $('extrail').checked, meter: $('exmeter').checked },
+    ghost: state.ghost,
     makeCanvas: (w, h) => skinEnv.createCanvas(w, h),
     layout: editor.layout,
     guides: exporting || fromExport ? null : editor.guides(),
@@ -877,7 +882,7 @@ function setBusy(busy) {
   $('exportall').disabled = busy || !state.scene;
   $('cancel').disabled = !busy;
   for (const id of ['rangefrom', 'rangeto', 'rangefromnow', 'rangetonow', 'rangeclear', 'replaypick']) $(id).disabled = busy;
-  for (const id of ['osr', 'osu', 'audio', 'skin', 'useDefault', 'res', 'fps', 'mbps', 'introon', 'introsec', 'outroon', 'outrosec', 'cardstyle', 'showboard', 'smoothnum', 'volume', 'usehits', 'hitvolume', 'showwidth', 'showhud', 'showlight', 'hudstyle', 'showbg', 'bgdim', 'bgfile', 'play', 'seek', 'prevres']) $(id).disabled = busy;
+  for (const id of ['osr', 'osu', 'audio', 'skin', 'useDefault', 'res', 'fps', 'mbps', 'introon', 'introsec', 'outroon', 'outrosec', 'cardstyle', 'showboard', 'smoothnum', 'exhit', 'exflash', 'exmarks', 'exkeys', 'extrail', 'exmeter', 'exslow', 'ghostfile', 'ghostclear', 'volume', 'usehits', 'hitvolume', 'showwidth', 'showhud', 'showlight', 'hudstyle', 'showbg', 'bgdim', 'bgfile', 'play', 'seek', 'prevres']) $(id).disabled = busy;
   $('showvideo').disabled = busy || !state.bgv;
   $('showsb').disabled = busy || !state.sb;
   $('usemusic').disabled = busy || !currentMusic()?.bytes;
@@ -902,7 +907,42 @@ function updateRangeNote() {
 }
 
 /** Place the two timeline handles and the pink band to match the range boxes. */
+// ---------- experimental: miss markers on the seek bar, ghost replay ----------
+function syncMarks() {
+  const box = $('missmarks');
+  if (!box) return;
+  box.replaceChildren();
+  const sc = state.scene;
+  if (!sc || !$('exmarks').checked) return;
+  const lo = Number($('seek').min), hi = Number($('seek').max) || lo + 1, seen = new Set();
+  for (const t of missTimes(sc)) {
+    const k = Math.round(((t - lo) / (hi - lo)) * 400);        // at most 400 ticks, however many misses
+    if (seen.has(k)) continue;
+    seen.add(k);
+    const i = document.createElement('i');
+    i.style.left = `${Math.min(100, Math.max(0, ((t - lo) / (hi - lo)) * 100))}%`;
+    box.append(i);
+  }
+}
+$('exmarks').addEventListener('change', syncMarks);
+
+async function setGhost(file) {
+  const msg = $('ghostmsg');
+  if (!file) { state.ghost = null; msg.textContent = ''; drawAt(state.t); return; }
+  try {
+    const r = await parseOsr(await file.arrayBuffer());
+    if (r.mode !== MODE.CATCH) throw new Error('that is not an osu!catch replay');
+    state.ghost = { track: new ReplayTrack(r.frames), name: r.player, md5: r.beatmapMd5 };
+    const same = !state.replay || state.replay.beatmapMd5 === r.beatmapMd5;
+    msg.textContent = `Ghost: ${r.player}, ${modsToString(r.mods)}.${same ? '' : ' Warning: this replay is for a different map version, so the ghost will not line up.'}`;
+  } catch (e) { state.ghost = null; msg.textContent = `Could not read the ghost replay: ${e.message}`; }
+  drawAt(state.t);
+}
+$('ghostfile').addEventListener('change', () => setGhost($('ghostfile').files[0] ?? null));
+$('ghostclear').addEventListener('click', () => { $('ghostfile').value = ''; setGhost(null); });
+
 function syncRangeUi() {
+  syncMarks();
   const sc = state.scene, seek = $('seek');
   for (const id of ['handlefrom', 'handleto', 'rangeband']) $(id).hidden = !sc;
   if (!sc) return;
@@ -1014,7 +1054,13 @@ async function renderCurrent(job = null) {
   const clip = { ...sc, startTime: range.from, endTime: range.to };       // the audio code reads the scene's start and end
 
   draftExport = $('fastdraft').checked;
+  let warp = null;                                         // experimental: slow motion around the misses
+  if ($('exslow').checked) {
+    const rate = sc.rate || 1;
+    warp = buildWarp(missTimes(sc).filter((t) => t >= range.from && t <= range.to).map((t) => (t - range.from) / rate), (range.to - range.from) / rate);
+  }
   const res = await exportMp4({
+    warp,
     canvas,
     prefetch: (t) => { if (state.tosu && !draftExport && ['custom', 'overlay'].includes($('hudstyle').value) && $('showhud').checked) state.tosu.prefetch(sc, t); },
     drawAt: async (t) => {
@@ -1028,7 +1074,10 @@ async function renderCurrent(job = null) {
     fps: Number($('fps').value),
     bitrate: Math.max(0.5, Number($('mbps').value) || suggestMbps(size().h, Number($('fps').value) || 60)) * 1e6,
     makeAudio: useMusic || useHits
-      ? (durationSec) => buildAudio(clip, durationSec, { useMusic, useHits, volume, hitVolume, nightcore, music })
+      ? async (durationSec) => {
+        const a = await buildAudio(clip, warp ? warp.totalU / 1000 : durationSec, { useMusic, useHits, volume, hitVolume, nightcore, music });
+        return warp ? { ...a, channels: warpAudio(a.channels, warp, a.sampleRate, durationSec) } : a;
+      }
       : undefined,
     introSec: $('introon').checked ? Math.min(10, Math.max(1, Number($('introsec').value) || 4)) : 0,
     outroSec: $('outroon').checked ? Math.min(10, Math.max(1, Number($('outrosec').value) || 5)) : 0,

@@ -4,7 +4,7 @@
 // and the output has perfectly even frame timing.
 
 import { Muxer, StreamTarget } from '../vendor/mp4-muxer.mjs';
-import { SAMPLE_RATE } from './audio.js?v=20261111a';
+import { SAMPLE_RATE } from './audio.js?v=20261111b';
 
 // Tried in order; the first one this browser can encode wins.
 const CANDIDATES = [
@@ -120,7 +120,7 @@ async function encodeAudioTrack({ channels, sampleRate }, picked, muxer, signal,
  * @param {number} [o.outroSec] seconds of result card after it (silent)
  * @param {(kind:'intro'|'outro', progress:number)=>void|Promise<void>} [o.drawCard] paints a title card frame
  */
-export async function exportMp4({ canvas, drawAt, prefetch, startTime, endTime, rate = 1, fps = 60, bitrate = 12_000_000, makeAudio, onProgress, onStatus, signal, introSec = 0, outroSec = 0, drawCard }) {
+export async function exportMp4({ canvas, drawAt, prefetch, startTime, endTime, rate = 1, fps = 60, bitrate = 12_000_000, makeAudio, onProgress, onStatus, signal, introSec = 0, outroSec = 0, drawCard, warp = null }) {
   if (!webCodecsAvailable()) throw new Error('This browser has no WebCodecs video encoder. Use a current Chrome, Edge or Safari.');
   const { width, height } = canvas;
   if (width % 2 || height % 2) throw new Error('Video width and height must be even numbers.');
@@ -135,7 +135,9 @@ export async function exportMp4({ canvas, drawAt, prefetch, startTime, endTime, 
     if (!audioPicked) throw new Error('This browser cannot encode audio. Use a current Chrome or Edge, or render without music.');
   }
 
-  const mainFrames = Math.max(1, Math.ceil(((endTime - startTime) / rate / 1000) * fps));
+  const videoMs = warp ? warp.totalV : (endTime - startTime) / rate;     // slow motion makes the video longer than the play
+  const mainFrames = Math.max(1, Math.ceil((videoMs / 1000) * fps));
+  const mapTime = (ms) => startTime + (warp ? warp.vToU(ms) : ms) * rate;
   const introFrames = drawCard ? Math.round(introSec * fps) : 0, outroFrames = drawCard ? Math.round(outroSec * fps) : 0;
   const total = introFrames + mainFrames + outroFrames;
   const durationSec = mainFrames / fps;
@@ -177,7 +179,7 @@ export async function exportMp4({ canvas, drawAt, prefetch, startTime, endTime, 
     onStatus?.('Rendering…');
     const AHEAD = 32;
     let ahead = introFrames;                                                  // next gameplay frame not yet prefetched
-    const timeOf = (n) => startTime + ((n - introFrames) / fps) * 1000 * rate;
+    const timeOf = (n) => mapTime(((n - introFrames) / fps) * 1000);
     for (let i = 0; i < total; i++) {
       if (prefetch) for (; ahead < Math.min(introFrames + mainFrames, i + AHEAD); ahead++) prefetch(timeOf(Math.max(ahead, introFrames)));
       if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError');
@@ -186,7 +188,7 @@ export async function exportMp4({ canvas, drawAt, prefetch, startTime, endTime, 
       let t0 = performance.now();
       if (i < introFrames) await drawCard('intro', (i + 0.5) / introFrames);
       else if (i >= introFrames + mainFrames) await drawCard('outro', (i - introFrames - mainFrames + 0.5) / outroFrames);
-      else await drawAt(startTime + ((i - introFrames) / fps) * 1000 * rate);
+      else await drawAt(mapTime(((i - introFrames) / fps) * 1000));
 
       let t1 = performance.now();
       const frame = new VideoFrame(canvas, { timestamp: Math.round(i * frameUs), duration: Math.round(frameUs) });

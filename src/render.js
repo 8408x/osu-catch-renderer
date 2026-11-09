@@ -7,18 +7,19 @@
 //   - droplets use 0.8x and tiny droplets 0.4x of that; sprites are capped at 160 px
 //   - catcher sprite = texture size x 0.35 x catcher scale, hung from the plate line 16 px down
 
-import { FIELD_W, FIELD_H } from './catch.js?v=20261111a';
-import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261111a';
-import { hudAt, scoreShownAt } from './score.js?v=20261111a';
-import { plateAt, explosionsAt } from './plate.js?v=20261111a';
-import { drawArgonHud, drawArgonPart } from './argon.js?v=20261111a';
-import { healthAt } from './health.js?v=20261111a';
-import { livePp } from './pp.js?v=20261111a';
-import { keysAt } from './keys.js?v=20261111a';
-import { ORDER, rectOf, fullRectOf, WIDGETS, styleInfo } from './layout.js?v=20261111a';
-import { lookFor, styleData } from './styles.js?v=20261111a';
-import { drawModIcons, drawModBadges } from './mods.js?v=20261111a';
-import { drawFlashlight } from './flashlight.js?v=20261111a';
+import { FIELD_W, FIELD_H } from './catch.js?v=20261111b';
+import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261111b';
+import { hudAt, scoreShownAt } from './score.js?v=20261111b';
+import { plateAt, explosionsAt } from './plate.js?v=20261111b';
+import { drawArgonHud, drawArgonPart } from './argon.js?v=20261111b';
+import { healthAt } from './health.js?v=20261111b';
+import { livePp } from './pp.js?v=20261111b';
+import { keysAt } from './keys.js?v=20261111b';
+import { ORDER, rectOf, fullRectOf, WIDGETS, styleInfo } from './layout.js?v=20261111b';
+import { lookFor, styleData } from './styles.js?v=20261111b';
+import { drawModIcons, drawModBadges } from './mods.js?v=20261111b';
+import { drawFlashlight } from './flashlight.js?v=20261111b';
+import { drawHitboxes, drawMissFlash, drawKeyPad, drawTrail, drawCatchMeter } from './extras.js?v=20261111b';
 
 const ZONE = 120;  // room below the field for the catcher, in field units
 const PAD = 12;
@@ -746,7 +747,7 @@ function drawGuides(ctx, W, H, layout, guides, u) {
 }
 
 export function drawFrame(ctx, W, H, scene, track, t, opts = {}) {
-  const { skin, showCatchWidth = false, showHud = false, hitLighting = false, style = 'overlay', bg = null, bgDim = 0.8, keys = null, argon = null, tosu = null, sb = null, makeCanvas = null, layout: customLayout = null, guides = null } = opts;
+  const { skin, showCatchWidth = false, showHud = false, hitLighting = false, style = 'overlay', bg = null, bgDim = 0.8, keys = null, argon = null, tosu = null, sb = null, makeCanvas = null, layout: customLayout = null, guides = null, ex = null, ghost = null } = opts;
   const overlay = true;                                    // both HUD styles use the full-height playfield
   const { s, ox, oy } = layout(W, H, overlay);
 
@@ -813,6 +814,13 @@ export function drawFrame(ctx, W, H, scene, track, t, opts = {}) {
       }
     }
 
+    if (ex?.trail) drawTrail(ctx, track, t);
+    if (ghost) {                                           // a second replay's catcher, faint, for comparison
+      const gx = ghost.track.xAt(t);
+      drawCatcher(ctx, skin, scene, gx, 'idle', ghost.track.facingAt(t), { alpha: 0.38 });
+      ctx.save(); ctx.globalAlpha = 0.7; ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.font = '600 13px system-ui, sans-serif';
+      ctx.fillText(ghost.name, gx, FIELD_H - 62); ctx.restore();
+    }
     const fx = scene.fx;
     const state = fx ? catcherStateAt(fx, t) : 'idle';
     const amount = fx ? hyperAmount(fx, t) : 0;
@@ -820,7 +828,10 @@ export function drawFrame(ctx, W, H, scene, track, t, opts = {}) {
     if (fx) drawTrails(ctx, skin, scene, fx, t);
     if (hitLighting) drawHitLighting(ctx, skin, scene, t, catcherX);
     if ((scene.mods ?? 0) & 1024) drawFlashlight(ctx, scene, t, catcherX, FIELD_H);   // the Flashlight mod
+    if (ex?.hitboxes) drawHitboxes(ctx, scene, lo, hi, t, catcherX, s);
   }
+  if (ex?.keys && keys) drawKeyPad(ctx, keys, t);
+  if (ex?.meter) drawCatchMeter(ctx, scene, t);
 
   if (sb) sb.drawOver(ctx, W, H, t);                       // the Overlay layer sits above the fruit
   ctx.setTransform(s, 0, 0, s, ox, oy);
@@ -839,5 +850,6 @@ export function drawFrame(ctx, W, H, scene, track, t, opts = {}) {
   else if (showHud && customLayout && (style === 'custom' || style === 'overlay')) drawCustom(ctx, W, H, scene, t, { layout: customLayout, tosu, keys, skin, bg, guides, argon });
   else if (showHud) drawOverlay(ctx, W, H, scene, t, { bg, keys, tosu, skin });
 
+  if (ex?.flash) drawMissFlash(ctx, W, H, scene, t);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
