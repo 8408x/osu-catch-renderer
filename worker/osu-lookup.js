@@ -81,7 +81,7 @@ export default {
           beatmap_id: b.id, status: b.status, same_version: !b.checksum || b.checksum === sum,
           scores: (j.scores ?? []).slice(0, 50).map((x, i) => ({
             rank: i + 1, user_id: x.user_id ?? x.user?.id, username: x.user?.username ?? '', country_code: x.user?.country_code ?? '',
-            score: x.classic_total_score ?? x.legacy_total_score ?? x.total_score ?? x.score ?? 0, accuracy: x.accuracy ?? 0, max_combo: x.max_combo ?? 0,
+            score: [x.classic_total_score, x.legacy_total_score, x.total_score, x.score].find((v) => v > 0) ?? 0,   // some scores carry a 0 in one field and the real value in another accuracy: x.accuracy ?? 0, max_combo: x.max_combo ?? 0,
             mods: (x.mods ?? []).map((m) => (typeof m === 'string' ? m : m.acronym)), pp: x.pp ?? null,
             n300: x.statistics?.great ?? x.statistics?.count_300 ?? 0, n100: x.statistics?.large_tick_hit ?? x.statistics?.count_100 ?? 0,
             n50: x.statistics?.small_tick_hit ?? x.statistics?.count_50 ?? 0, nkatu: x.statistics?.small_tick_miss ?? x.statistics?.count_katu ?? 0, nmiss: x.statistics?.miss ?? x.statistics?.count_miss ?? 0,

@@ -3,10 +3,10 @@
 // Three looks: 'lazer' (the loading screen and results screen of osu!lazer), 'stable' (osu!stable's loading
 // screen and ranking panel) and 'simple' (a plain centred card). Layouts follow those screens; no artwork is copied.
 
-import { getAvatar, getProfile, getBoard } from './avatar.js?v=20261110m';
-import { styleData } from './styles.js?v=20261110m';
-import { hudAt } from './score.js?v=20261110m';
-import { modEntries } from './mods.js?v=20261110m';
+import { getAvatar, getProfile, getBoard } from './avatar.js?v=20261110n';
+import { styleData } from './styles.js?v=20261110n';
+import { hudAt } from './score.js?v=20261110n';
+import { modEntries } from './mods.js?v=20261110n';
 
 const SANS = '"Exo 2", "Torus", system-ui, "Segoe UI", sans-serif';
 const MONO = '"JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, monospace';
@@ -147,7 +147,7 @@ function drawBoard(ctx, x, y, w, h, u, scene) {
     ctx.textAlign = 'right'; ctx.font = FONT(500, fs * 0.9); ctx.fillStyle = 'rgba(255,255,255,0.75)';
     ctx.fillText(`${((r.accuracy ?? 0) * 100).toFixed(2)}%`, accR, cy + fs * 0.33);
     ctx.fillText(`${commas(r.max_combo ?? 0)}x`, accR + 130 * u, cy + fs * 0.33);
-    ctx.font = FONT(800, fs, MONO); ctx.fillStyle = '#fff'; ctx.fillText(commas(r.score ?? 0), scoreR, cy + fs * 0.33);
+    ctx.font = FONT(800, fs, MONO); ctx.fillStyle = '#fff'; ctx.fillText(r.score > 0 ? commas(r.score) : '\u2014', scoreR, cy + fs * 0.33);
   });
 }
 
