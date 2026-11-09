@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="app-version" content="20261111e">
+  <meta name="app-version" content="20261111f">
   <script>try{var t=localStorage.getItem("ocr.theme");if(t==="light"||t==="dark"||t==="sakura")document.documentElement.dataset.theme=t;else if(matchMedia("(prefers-color-scheme: light)").matches)document.documentElement.dataset.theme="light";}catch(e){}</script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>osu!catch Replay Renderer</title>
@@ -194,6 +194,10 @@
     .dd li { display:flex; flex-direction:column; padding:7px 9px; border-radius:7px; cursor:pointer; color:var(--text, #eee); }
     .dd li:hover, .dd li:focus { background:var(--hover); outline:none; }
     .dd li[aria-selected="true"] { background:rgba(255,107,138,.2); }
+    .dd li { flex-direction:row; align-items:center; gap:10px; }
+    .dd li .lookname { display:flex; flex-direction:column; min-width:0; }
+    .lookthumb { width:80px; height:28px; flex:none; border-radius:5px; background:#1c1f2a; }
+    .lookthumb.none { opacity:.6; }
     .dd li small { color:var(--faint, #8a8d96); font-size:12.5px; }
     .credit .iconlink { display:inline-flex; vertical-align:-2px; margin-left:6px; color:var(--dim); }
     .credit .iconlink:hover { color:var(--strong); }
@@ -549,6 +553,6 @@
 <div class="dropveil" id="dropveil"><div>Drop files to load them<small>.osr replay · .osz map set · .osu · .osk skin · image · song</small></div></div>
 
 <script src="vendor/lzma-d-min.js"></script>
-<script type="module" src="src/main.js?v=20261111e"></script>
+<script type="module" src="src/main.js?v=20261111f"></script>
 </body>
 </html>
