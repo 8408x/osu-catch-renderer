@@ -2,13 +2,13 @@
 // (credited in layout.js and CREDITS.md) in this site's own code; no overlay code or images are copied. A draw function
 // works in the style's natural size (see layout.js): the caller translates and scales the canvas to fit.
 
-import { countUp } from './countup.js?v=20261110x';
-import { tosuTokens } from './tosu.js?v=20261110x';
-import { hudAt } from './score.js?v=20261110x';
-import { getAvatar, getProfile, getBoard } from './avatar.js?v=20261110x';
-import { healthAt } from './health.js?v=20261110x';
-import { livePp, ppAtAccuracy } from './pp.js?v=20261110x';
-import { keysAt } from './keys.js?v=20261110x';
+import { countUp } from './countup.js?v=20261110y';
+import { tosuTokens } from './tosu.js?v=20261110y';
+import { hudAt } from './score.js?v=20261110y';
+import { getAvatar, getProfile, getBoard } from './avatar.js?v=20261110y';
+import { healthAt } from './health.js?v=20261110y';
+import { livePp, ppAtAccuracy } from './pp.js?v=20261110y';
+import { keysAt } from './keys.js?v=20261110y';
 
 const SANS = '"Exo 2", "Torus", "Segoe UI", system-ui, -apple-system, sans-serif';
 const MONO = '"Roboto Mono", ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace';

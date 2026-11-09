@@ -75,9 +75,18 @@ export default {
         if (bm.status === 404) return json({ error: 'this exact version of the map is not on osu! (it may be unsubmitted or updated since the replay)' }, 404);
         if (!bm.ok) return json({ error: `osu! answered ${bm.status}` }, 502);
         const b = await bm.json();
-        const res = await fetch(`https://osu.ppy.sh/api/v2/beatmaps/${b.id}/scores?mode=fruits&type=global`, auth);
-        if (!res.ok) return json({ error: `osu! answered ${res.status}` }, 502);
-        const j = await res.json();
+        // the website's own list (solo-scores) carries the classic scores of lazer plays too; the older list leaves those at 0
+        let j = null, listSrc = 'solo-scores';
+        try {
+          const rs = await fetch(`https://osu.ppy.sh/api/v2/beatmaps/${b.id}/solo-scores?mode=fruits&type=global`, auth);
+          if (rs.ok) { const t = await rs.json(); if (Array.isArray(t.scores) && t.scores.length) j = t; }
+        } catch { /* fall back */ }
+        if (!j) {
+          listSrc = 'scores';
+          const res = await fetch(`https://osu.ppy.sh/api/v2/beatmaps/${b.id}/scores?mode=fruits&type=global`, auth);
+          if (!res.ok) return json({ error: `osu! answered ${res.status}` }, 502);
+          j = await res.json();
+        }
         // osu!'s old (v1) API still has every score as osu!stable counted it; use it when a key is set (OSU_V1_KEY secret)
         const old = new Map();
         let v1note = env.OSU_V1_KEY ? '' : 'no OSU_V1_KEY secret on the Worker';
@@ -92,11 +101,11 @@ export default {
           } catch (e) { v1note = `osu! v1 failed: ${e.message}`; }
         }
         return json({
-          beatmap_id: b.id, v1: old.size,
+          beatmap_id: b.id, list: listSrc, v1: old.size,
           zero_debug: (j.scores ?? []).slice(0, 50).filter((x) => !old.has(String(x.user_id ?? x.user?.id))).slice(0, 2).map((x) => `${x.user?.username}: classic=${x.classic_total_score} legacy=${x.legacy_total_score} total=${x.total_score} score=${x.score} acc=${x.accuracy} combo=${x.max_combo} stats=${JSON.stringify(x.statistics ?? null)} legacy_id=${x.legacy_score_id} build=${x.build_id}`).join(' | '), v1_note: old.size ? '' : v1note, status: b.status, same_version: !b.checksum || b.checksum === sum,
           scores: (j.scores ?? []).slice(0, 50).map((x, i) => ({
             rank: i + 1, user_id: x.user_id ?? x.user?.id, username: x.user?.username ?? '', country_code: x.user?.country_code ?? '',
-            score: old.get(String(x.user_id ?? x.user?.id)) ?? [x.classic_total_score, x.legacy_total_score, x.total_score, x.score].find((v) => v > 0) ?? 0,   // some scores carry a 0 in one field and the real value in another
+            score: old.get(String(x.user_id ?? x.user?.id)) ?? [x.legacy_total_score, x.classic_total_score, x.score, x.total_score].find((v) => v > 0) ?? 0,   // some scores carry a 0 in one field and the real value in another
             accuracy: x.accuracy ?? 0, max_combo: x.max_combo ?? 0,
             mods: (x.mods ?? []).map((m) => (typeof m === 'string' ? m : m.acronym)), pp: x.pp ?? null,
             n300: x.statistics?.great ?? x.statistics?.count_300 ?? 0, n100: x.statistics?.large_tick_hit ?? x.statistics?.count_100 ?? 0,
