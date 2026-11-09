@@ -2,13 +2,13 @@
 // (credited in layout.js and CREDITS.md) in this site's own code; no overlay code or images are copied. A draw function
 // works in the style's natural size (see layout.js): the caller translates and scales the canvas to fit.
 
-import { countUp } from './countup.js?v=20261110s';
-import { tosuTokens } from './tosu.js?v=20261110s';
-import { hudAt } from './score.js?v=20261110s';
-import { getAvatar, getProfile, getBoard } from './avatar.js?v=20261110s';
-import { healthAt } from './health.js?v=20261110s';
-import { livePp, ppAtAccuracy } from './pp.js?v=20261110s';
-import { keysAt } from './keys.js?v=20261110s';
+import { countUp } from './countup.js?v=20261110t';
+import { tosuTokens } from './tosu.js?v=20261110t';
+import { hudAt } from './score.js?v=20261110t';
+import { getAvatar, getProfile, getBoard } from './avatar.js?v=20261110t';
+import { healthAt } from './health.js?v=20261110t';
+import { livePp, ppAtAccuracy } from './pp.js?v=20261110t';
+import { keysAt } from './keys.js?v=20261110t';
 
 const SANS = '"Exo 2", "Torus", "Segoe UI", system-ui, -apple-system, sans-serif';
 const MONO = '"Roboto Mono", ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace';
@@ -633,7 +633,10 @@ const LOOKS = {
       const near = (a, b) => Math.abs(a - b) < 0.0006;
       // this play's own entry (same player, combo and accuracy) is replaced by the live row; any other score of theirs stays
       const others = board.scores.filter((x) => !(x.username.toLowerCase() === me && x.max_combo === pl.maxCombo && near((x.accuracy ?? 0) * (x.accuracy > 1 ? 0.01 : 1), (Number(finalAcc(pl)) || 0) / 100))).sort((a, b) => b.score - a.score);
-      const scoreAt = (tt) => (d.scene.hud ? hudAt(d.scene.hud, tt).score : 0);
+      // our running score is lazer's 1,000,000-point scale but the board lists classic scores, so stretch it to end at the replay file's own final score
+      const tl = d.scene.hud?.timeline, endScore = tl?.length ? tl[tl.length - 1].score : 0;
+      const stretch = pl.score > 0 && endScore > 0 ? pl.score / endScore : 1;
+      const scoreAt = (tt) => (d.scene.hud ? Math.round(hudAt(d.scene.hud, tt).score * stretch) : 0);
       const rankAt = (tt) => { const sc = scoreAt(tt); let n = 0; while (n < others.length && others[n].score > sc) n++; return n; };
       const cur = rankAt(d.t);
       let prev = cur, since = 1;                                      // when did the rank last change? ease the row over 0.45 s
