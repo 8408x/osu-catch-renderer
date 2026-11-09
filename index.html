@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="app-version" content="20261111i">
+  <meta name="app-version" content="20261111j">
   <script>try{var t=localStorage.getItem("ocr.theme");if(t==="light"||t==="dark"||t==="sakura")document.documentElement.dataset.theme=t;else if(matchMedia("(prefers-color-scheme: light)").matches)document.documentElement.dataset.theme="light";}catch(e){}</script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>osu!catch Replay Renderer</title>
@@ -471,6 +471,9 @@
               </label>
             </div>
           </details>
+          <label class="field" style="margin-top:12px"><span>Background image (jpg or png). The .osz's own background is used otherwise</span>
+            <input id="bgfile" type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png">
+          </label>
         </div>
         <div class="group">
           <h3>Extras</h3>
@@ -478,9 +481,6 @@
             <input id="skin" type="file" accept=".osk,.zip">
           </label>
           <div class="row" style="margin-bottom:12px"><button id="useDefault" class="ghost small" type="button">Use default skin</button></div>
-          <label class="field"><span>Background image (jpg or png). The .osz's own background is used otherwise</span>
-            <input id="bgfile" type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png">
-          </label>
         </div>
       </div>
 
@@ -625,6 +625,6 @@
 <div class="dropveil" id="dropveil"><div>Drop files to load them<small>.osr replay · .osz map set · .osu · .osk skin · image · song</small></div></div>
 
 <script src="vendor/lzma-d-min.js"></script>
-<script type="module" src="src/main.js?v=20261111i"></script>
+<script type="module" src="src/main.js?v=20261111j"></script>
 </body>
 </html>
