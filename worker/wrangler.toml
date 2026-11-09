@@ -1,5 +1,12 @@
+# Cloudflare builds and deploys this Worker straight from GitHub (Workers Builds), so a push updates it.
+# The client id is public and lives here so a deploy can never erase it.
+# The client SECRET is not here: keep OSU_CLIENT_SECRET as a Secret in the Cloudflare dashboard
+# (Settings -> Variables and Secrets), or set it with:  npx wrangler secret put OSU_CLIENT_SECRET
+# Optional: ALLOW_ORIGIN = "https://8408x.github.io"
 name = "osu-lookup"
 main = "osu-lookup.js"
 compatibility_date = "2026-01-01"
-# Set the secrets with:  npx wrangler secret put OSU_CLIENT_ID   and   npx wrangler secret put OSU_CLIENT_SECRET
-# Optional: ALLOW_ORIGIN = "https://8408x.github.io"
+keep_vars = true
+
+[vars]
+OSU_CLIENT_ID = "74633"
