@@ -6,12 +6,12 @@
 // and times use the system UI font instead of Torus, the key boxes are a plain stand-in (replays only store x and
 // dash), and the HP bar's tube is built from a few strokes instead of the real distance shader.
 
-import { hudAt, scoreShownAt } from './score.js?v=20261110o';
-import { healthAt } from './health.js?v=20261110o';
-import { livePp } from './pp.js?v=20261110o';
-import { countUp } from './countup.js?v=20261110o';
-import { keysAt } from './keys.js?v=20261110o';
-import { drawModBadges } from './mods.js?v=20261110o';
+import { hudAt, scoreShownAt } from './score.js?v=20261110p';
+import { healthAt } from './health.js?v=20261110p';
+import { livePp } from './pp.js?v=20261110p';
+import { countUp } from './countup.js?v=20261110p';
+import { keysAt } from './keys.js?v=20261110p';
+import { drawModBadges } from './mods.js?v=20261110p';
 
 const FILES = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'dot', 'percentage', 'x', 'wireframes'];
 const GLYPH_SCALE = 0.125;                       // TexturedCharacterGlyph(..., 0.125f): 240 px textures -> 30 units

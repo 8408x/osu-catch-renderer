@@ -2,7 +2,7 @@
 // when the target value changes, the shown number rolls from where it is to the new one. A video frame has no memory,
 // so the animation is replayed over the last second of beatmap time to find what the overlay would show at time t.
 
-let on = true;
+let on = false;                                  // experimental: off until the Settings switch turns it on
 export const setSmoothNumbers = (v) => { on = !!v; };
 export const smoothNumbers = () => on;
 

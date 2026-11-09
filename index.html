@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="app-version" content="20261110o">
+  <meta name="app-version" content="20261110p">
   <script>try{var t=localStorage.getItem("ocr.theme");if(t==="light"||t==="dark"||t==="sakura")document.documentElement.dataset.theme=t;else if(matchMedia("(prefers-color-scheme: light)").matches)document.documentElement.dataset.theme="light";}catch(e){}</script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>osu!catch Replay Renderer</title>
@@ -282,8 +282,8 @@
         </label>
         <label class="toggle"><input id="hints" type="checkbox" checked> <span>Keyboard hints <small>the shortcut reminder under the preview</small></span></label>
         <h4>Experimental</h4>
-        <label class="toggle"><input id="smoothnum" type="checkbox" checked> <span>Smooth numbers <small>the pp counter rolls up like the community overlays (a bit slower export)</small></span></label>
-        <label class="toggle"><input id="showboard" type="checkbox" checked> <span>Online leaderboard <small>on the osu!lazer outro</small></span></label>
+        <label class="toggle"><input id="smoothnum" type="checkbox" autocomplete="off"> <span>Smooth numbers <small>the pp counter rolls up like the community overlays (a bit slower export)</small></span></label>
+        <label class="toggle"><input id="showboard" type="checkbox" autocomplete="off"> <span>Online leaderboard <small>on the osu!lazer outro</small></span></label>
         <small id="boardmsg" class="note"></small>
         <h4>Test mode</h4>
         <label class="toggle"><input id="testmode" type="checkbox"> <span>Test mode <small>loads a top player's replay for you, so there is nothing to upload (the beatmap is downloaded for it)</small></span></label>
@@ -489,6 +489,6 @@
 <div class="dropveil" id="dropveil"><div>Drop files to load them<small>.osr replay · .osz map set · .osu · .osk skin · image · song</small></div></div>
 
 <script src="vendor/lzma-d-min.js"></script>
-<script type="module" src="src/main.js?v=20261110o"></script>
+<script type="module" src="src/main.js?v=20261110p"></script>
 </body>
 </html>

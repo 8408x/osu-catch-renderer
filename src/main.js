@@ -1,29 +1,29 @@
-import './ui.js?v=20261110o';
-import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261110o';
-import { parseOsu } from './osu.js?v=20261110o';
-import { buildScene, evaluateCatches, findJudgeShift, resolveColours } from './catch.js?v=20261110o';
-import { compareWithReplay } from './score.js?v=20261110o';
-import { nightcoreBeats } from './nightcore.js?v=20261110o';
-import { ReplayTrack } from './replay.js?v=20261110o';
-import { drawFrame, loadOverlayFonts } from './render.js?v=20261110o';
-import { loadArgonFonts } from './argon.js?v=20261110o';
-import { TosuOverlays } from './tosu.js?v=20261110o';
-import { exportMp4, webCodecsAvailable } from './encode.js?v=20261110o';
-import { VERSION } from './version.js?v=20261110o';
-import { md5 } from './md5.js?v=20261110o';
-import { resolveRange } from './range.js?v=20261110o';
-import { initLayoutEditor } from './layoutui.js?v=20261110o';
-import { setSmoothNumbers } from './countup.js?v=20261110o';
-import { drawCard } from './card.js?v=20261110o';
-import { lookupPlayer, loadBoard, initAvatar, online } from './avatar.js?v=20261110o';
-import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261110o';
-import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261110o';
-import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261110o';
-import { BackgroundVideo } from './bgvideo.js?v=20261110o';
-import { buildKeys } from './keys.js?v=20261110o';
-import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261110o';
-import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261110o';
-import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261110o';
+import './ui.js?v=20261110p';
+import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261110p';
+import { parseOsu } from './osu.js?v=20261110p';
+import { buildScene, evaluateCatches, findJudgeShift, resolveColours } from './catch.js?v=20261110p';
+import { compareWithReplay } from './score.js?v=20261110p';
+import { nightcoreBeats } from './nightcore.js?v=20261110p';
+import { ReplayTrack } from './replay.js?v=20261110p';
+import { drawFrame, loadOverlayFonts } from './render.js?v=20261110p';
+import { loadArgonFonts } from './argon.js?v=20261110p';
+import { TosuOverlays } from './tosu.js?v=20261110p';
+import { exportMp4, webCodecsAvailable } from './encode.js?v=20261110p';
+import { VERSION } from './version.js?v=20261110p';
+import { md5 } from './md5.js?v=20261110p';
+import { resolveRange } from './range.js?v=20261110p';
+import { initLayoutEditor } from './layoutui.js?v=20261110p';
+import { setSmoothNumbers } from './countup.js?v=20261110p';
+import { drawCard } from './card.js?v=20261110p';
+import { lookupPlayer, loadBoard, initAvatar, online } from './avatar.js?v=20261110p';
+import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261110p';
+import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261110p';
+import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261110p';
+import { BackgroundVideo } from './bgvideo.js?v=20261110p';
+import { buildKeys } from './keys.js?v=20261110p';
+import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261110p';
+import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261110p';
+import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261110p';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('stage');
@@ -837,6 +837,7 @@ for (const kind of ['intro', 'outro']) {
 }
 $('showboard').addEventListener('change', () => { if ($('showboard').checked && state.replay) loadBoard(state.replay.beatmapMd5, state.beatmap?.beatmapId); });
 $('smoothnum').addEventListener('change', () => { setSmoothNumbers($('smoothnum').checked); if (state.scene && !playing) drawAt(state.t); });
+setSmoothNumbers($('smoothnum').checked);
 $('cardstyle').addEventListener('change', () => { if (state.scene && !playing) { drawAt(state.t); updateClock(); } });
 
 $('seek').addEventListener('input', () => {
