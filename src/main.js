@@ -1,29 +1,29 @@
-import './ui.js?v=20261110k';
-import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261110k';
-import { parseOsu } from './osu.js?v=20261110k';
-import { buildScene, evaluateCatches, findJudgeShift, resolveColours } from './catch.js?v=20261110k';
-import { compareWithReplay } from './score.js?v=20261110k';
-import { nightcoreBeats } from './nightcore.js?v=20261110k';
-import { ReplayTrack } from './replay.js?v=20261110k';
-import { drawFrame, loadOverlayFonts } from './render.js?v=20261110k';
-import { loadArgonFonts } from './argon.js?v=20261110k';
-import { TosuOverlays } from './tosu.js?v=20261110k';
-import { exportMp4, webCodecsAvailable } from './encode.js?v=20261110k';
-import { VERSION } from './version.js?v=20261110k';
-import { md5 } from './md5.js?v=20261110k';
-import { resolveRange } from './range.js?v=20261110k';
-import { initLayoutEditor } from './layoutui.js?v=20261110k';
-import { setSmoothNumbers } from './countup.js?v=20261110k';
-import { drawCard } from './card.js?v=20261110k';
-import { lookupPlayer, loadBoard, initAvatar } from './avatar.js?v=20261110k';
-import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261110k';
-import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261110k';
-import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261110k';
-import { BackgroundVideo } from './bgvideo.js?v=20261110k';
-import { buildKeys } from './keys.js?v=20261110k';
-import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261110k';
-import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261110k';
-import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261110k';
+import './ui.js?v=20261110m';
+import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261110m';
+import { parseOsu } from './osu.js?v=20261110m';
+import { buildScene, evaluateCatches, findJudgeShift, resolveColours } from './catch.js?v=20261110m';
+import { compareWithReplay } from './score.js?v=20261110m';
+import { nightcoreBeats } from './nightcore.js?v=20261110m';
+import { ReplayTrack } from './replay.js?v=20261110m';
+import { drawFrame, loadOverlayFonts } from './render.js?v=20261110m';
+import { loadArgonFonts } from './argon.js?v=20261110m';
+import { TosuOverlays } from './tosu.js?v=20261110m';
+import { exportMp4, webCodecsAvailable } from './encode.js?v=20261110m';
+import { VERSION } from './version.js?v=20261110m';
+import { md5 } from './md5.js?v=20261110m';
+import { resolveRange } from './range.js?v=20261110m';
+import { initLayoutEditor } from './layoutui.js?v=20261110m';
+import { setSmoothNumbers } from './countup.js?v=20261110m';
+import { drawCard } from './card.js?v=20261110m';
+import { lookupPlayer, loadBoard, initAvatar, online } from './avatar.js?v=20261110m';
+import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261110m';
+import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261110m';
+import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261110m';
+import { BackgroundVideo } from './bgvideo.js?v=20261110m';
+import { buildKeys } from './keys.js?v=20261110m';
+import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261110m';
+import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261110m';
+import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261110m';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('stage');
@@ -65,11 +65,16 @@ const editor = initLayoutEditor({
   editable: () => !!state.scene && !exporting && ['custom', 'overlay'].includes($('hudstyle').value) && $('showhud').checked,
   redraw: () => drawAt(state.t),
 });
-initAvatar(() => drawAt(state.t));
+initAvatar(() => drawAt(state.t), () => showMessages(shownMsgs));
 for (const id of ['hudstyle', 'showhud']) $(id).addEventListener('change', () => editor.refresh());
 
 // ---------- messages ----------
+let shownMsgs = [];
+/** The lookups' own lines for the Logs (player picture and rank, leaderboard), with the reason when one failed. */
+const onlineLines = () => [online.player, $('showboard')?.checked ? online.board : null].filter(Boolean).map((o) => [o.tone, o.text]);
 function showMessages(list) {
+  shownMsgs = list;
+  list = [...list, ...onlineLines()];
   const box = $('msgs');
   box.replaceChildren();
   for (const [cls, text] of list) {
@@ -231,7 +236,7 @@ function refresh() {
     } else {
       scene.colours = resolveColours(beatmap, state.skin);
       scene.player = replay.player;
-      { const w = document.getElementById('lookupwho'); if (w) w.dataset.name = replay.player; lookupPlayer(replay.player); if ($('showboard')?.checked) loadBoard(replay.beatmapMd5); }
+      { const w = document.getElementById('lookupwho'); if (w) w.dataset.name = replay.player; lookupPlayer(replay.player); if ($('showboard')?.checked) loadBoard(replay.beatmapMd5, beatmap.beatmapId); }
       scene.play = { date: replay.date, score: replay.score, maxCombo: replay.maxCombo, n300: replay.n300, n100: replay.n100, n50: replay.n50, nKatu: replay.nKatu, nMiss: replay.nMiss };
       state.scene = scene;
       state.track = new ReplayTrack(replay.frames);
@@ -826,7 +831,7 @@ for (const kind of ['intro', 'outro']) {
     $('clock').textContent = kind === 'intro' ? 'Intro' : 'Outro';
   });
 }
-$('showboard').addEventListener('change', () => { if ($('showboard').checked && state.replay) loadBoard(state.replay.beatmapMd5); });
+$('showboard').addEventListener('change', () => { if ($('showboard').checked && state.replay) loadBoard(state.replay.beatmapMd5, state.beatmap?.beatmapId); });
 $('smoothnum').addEventListener('change', () => { setSmoothNumbers($('smoothnum').checked); if (state.scene && !playing) drawAt(state.t); });
 $('cardstyle').addEventListener('change', () => { if (state.scene && !playing) { drawAt(state.t); updateClock(); } });
 

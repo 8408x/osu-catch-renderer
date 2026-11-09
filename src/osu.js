@@ -8,7 +8,7 @@ export function parseOsu(text) {
     mode: 0,
     audioFilename: '', audioLeadIn: 0,
     sampleSet: 1, sampleVolume: 100,   // [General] SampleSet (1 normal, 2 soft, 3 drum) and default volume
-    title: '', artist: '', artistUnicode: '', version: '', creator: '',
+    title: '', artist: '', artistUnicode: '', version: '', creator: '', beatmapId: 0,
     cs: 5, ar: null, od: 5, hp: 5,
     background: '',                    // [Events] background image file name
     video: null,                       // [Events] background video: {file, offset} (offset in ms, may be negative)
@@ -78,6 +78,7 @@ export function parseOsu(text) {
         else if (key === 'ArtistUnicode') bm.artistUnicode = val;
         else if (key === 'Version') bm.version = val;
         else if (key === 'Creator') bm.creator = val;
+        else if (key === 'BeatmapID') bm.beatmapId = parseInt(val, 10) || 0;
       } else if (section === 'Difficulty') {
         const n = parseFloat(val);
         if (key === 'CircleSize') bm.cs = n;

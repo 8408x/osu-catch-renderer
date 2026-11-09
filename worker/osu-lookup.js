@@ -9,7 +9,7 @@
 //
 // Routes:
 //   GET /user?name=NAME    ->  { id, username, country_code, country_name, rank, country_rank, pp, avatar_url }
-//   GET /scores?checksum=MD5  ->  { beatmap_id, scores: [{ rank, user_id, username, country_code, score, accuracy, max_combo, mods, pp, n300, n100, n50, nkatu, nmiss, date }] }  (osu!catch top 50)
+//   GET /scores?checksum=MD5[&id=BEATMAPID]  ->  { beatmap_id, scores: [{ rank, user_id, username, country_code, score, accuracy, max_combo, mods, pp, n300, n100, n50, nkatu, nmiss, date }] }  (osu!catch top 50)
 //   GET /avatar/ID         ->  the player's picture, with the headers a canvas needs
 
 let token = null;                                  // { value, expires } kept between requests while the Worker stays warm
@@ -68,15 +68,17 @@ export default {
         const sum = (url.searchParams.get('checksum') || '').toLowerCase();
         if (!/^[0-9a-f]{32}$/.test(sum)) return json({ error: 'checksum must be the beatmap md5' }, 400);
         const auth = { headers: { Authorization: `Bearer ${await getToken(env)}`, Accept: 'application/json' } };
-        const bm = await fetch(`https://osu.ppy.sh/api/v2/beatmaps/lookup?checksum=${sum}`, auth);
-        if (bm.status === 404) return json({ error: 'this map is not on osu! (no leaderboard)' }, 404);
+        let bm = await fetch(`https://osu.ppy.sh/api/v2/beatmaps/lookup?checksum=${sum}`, auth);
+        const wanted = (url.searchParams.get('id') || '').replace(/\D/g, '');          // the difficulty's id from the .osu file: works when the map was updated after the replay was set
+        if (bm.status === 404 && wanted) bm = await fetch(`https://osu.ppy.sh/api/v2/beatmaps/${wanted}`, auth);
+        if (bm.status === 404) return json({ error: 'this exact version of the map is not on osu! (it may be unsubmitted or updated since the replay)' }, 404);
         if (!bm.ok) return json({ error: `osu! answered ${bm.status}` }, 502);
         const b = await bm.json();
         const res = await fetch(`https://osu.ppy.sh/api/v2/beatmaps/${b.id}/scores?mode=fruits&type=global`, auth);
         if (!res.ok) return json({ error: `osu! answered ${res.status}` }, 502);
         const j = await res.json();
         return json({
-          beatmap_id: b.id, status: b.status,
+          beatmap_id: b.id, status: b.status, same_version: !b.checksum || b.checksum === sum,
           scores: (j.scores ?? []).slice(0, 50).map((x, i) => ({
             rank: i + 1, user_id: x.user_id ?? x.user?.id, username: x.user?.username ?? '', country_code: x.user?.country_code ?? '',
             score: x.classic_total_score ?? x.legacy_total_score ?? x.total_score ?? x.score ?? 0, accuracy: x.accuracy ?? 0, max_combo: x.max_combo ?? 0,
