@@ -1,32 +1,32 @@
-import './ui.js?v=20261111g';
-import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261111g';
-import { parseOsu } from './osu.js?v=20261111g';
-import { buildScene, evaluateCatches, findJudgeShift, resolveColours } from './catch.js?v=20261111g';
-import { compareWithReplay } from './score.js?v=20261111g';
-import { nightcoreBeats } from './nightcore.js?v=20261111g';
-import { ReplayTrack } from './replay.js?v=20261111g';
-import { drawFrame, loadOverlayFonts } from './render.js?v=20261111g';
-import { lookFor, styleData } from './styles.js?v=20261111g';
-import { loadArgonFonts } from './argon.js?v=20261111g';
-import { TosuOverlays } from './tosu.js?v=20261111g';
-import { exportMp4, webCodecsAvailable } from './encode.js?v=20261111g';
-import { VERSION } from './version.js?v=20261111g';
-import { md5 } from './md5.js?v=20261111g';
-import { resolveRange } from './range.js?v=20261111g';
-import { initLayoutEditor } from './layoutui.js?v=20261111g';
-import { setSmoothNumbers } from './countup.js?v=20261111g';
-import { drawCard } from './card.js?v=20261111g';
-import { lookupPlayer, loadBoard, initAvatar, online, getBoard } from './avatar.js?v=20261111g';
-import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261111g';
-import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261111g';
-import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261111g';
-import { BackgroundVideo } from './bgvideo.js?v=20261111g';
-import { missTimes } from './extras.js?v=20261111g';
-import { buildWarp } from './warp.js?v=20261111g';
-import { buildKeys } from './keys.js?v=20261111g';
-import { prepareAudio, warpAudio, SAMPLE_RATE } from './audio.js?v=20261111g';
-import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261111g';
-import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261111g';
+import './ui.js?v=20261111h';
+import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261111h';
+import { parseOsu } from './osu.js?v=20261111h';
+import { buildScene, evaluateCatches, findJudgeShift, resolveColours } from './catch.js?v=20261111h';
+import { compareWithReplay } from './score.js?v=20261111h';
+import { nightcoreBeats } from './nightcore.js?v=20261111h';
+import { ReplayTrack } from './replay.js?v=20261111h';
+import { drawFrame, loadOverlayFonts } from './render.js?v=20261111h';
+import { lookFor, styleData } from './styles.js?v=20261111h';
+import { loadArgonFonts } from './argon.js?v=20261111h';
+import { TosuOverlays } from './tosu.js?v=20261111h';
+import { exportMp4, webCodecsAvailable } from './encode.js?v=20261111h';
+import { VERSION } from './version.js?v=20261111h';
+import { md5 } from './md5.js?v=20261111h';
+import { resolveRange } from './range.js?v=20261111h';
+import { initLayoutEditor } from './layoutui.js?v=20261111h';
+import { setSmoothNumbers } from './countup.js?v=20261111h';
+import { drawCard } from './card.js?v=20261111h';
+import { lookupPlayer, loadBoard, initAvatar, online, getBoard } from './avatar.js?v=20261111h';
+import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261111h';
+import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261111h';
+import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261111h';
+import { BackgroundVideo } from './bgvideo.js?v=20261111h';
+import { missTimes } from './extras.js?v=20261111h';
+import { buildWarp } from './warp.js?v=20261111h';
+import { buildKeys } from './keys.js?v=20261111h';
+import { prepareAudio, warpAudio, SAMPLE_RATE } from './audio.js?v=20261111h';
+import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261111h';
+import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261111h';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('stage');
@@ -278,7 +278,9 @@ function refresh() {
           .sort((a, b) => Math.abs(a.margin) - Math.abs(b.margin)).slice(0, 8);
         if (close.length) msgs.push(['dim', `Closest calls (catcher half-width ${half.toFixed(3)}): ${close.map(({ o, i, margin }) => `#${i} ${o.kind} at ${(o.t / 1000).toFixed(3)}s ${o.caught ? 'caught' : 'missed'} by ${Math.abs(margin).toFixed(3)} px`).join('; ')}.`]);
       }
-      state.t = scene.startTime;
+      // open on a lively frame (a few fruit already falling) instead of the empty first moment
+      const o = scene.objects[Math.min(scene.objects.length - 1, 6)];
+      state.t = o ? Math.max(scene.startTime, Math.min(scene.endTime, o.t - 400)) : scene.startTime;
     }
   } else if (replay && beatmap) {
     // an error message above already explains it
@@ -914,6 +916,7 @@ const exportRange = (sc) => resolveRange($('rangefrom').value, $('rangeto').valu
 function updateRangeNote() {
   const sc = state.scene, el = $('rangenote');
   syncRangeUi();
+  if ($('rangefrom').value || $('rangeto').value) $('rangegroup').open = true;   // a range is set: show it
   if (!sc) { el.textContent = ''; return; }
   const r = exportRange(sc);
   if (r.error) { el.textContent = r.error; return; }

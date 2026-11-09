@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="app-version" content="20261111g">
+  <meta name="app-version" content="20261111h">
   <script>try{var t=localStorage.getItem("ocr.theme");if(t==="light"||t==="dark"||t==="sakura")document.documentElement.dataset.theme=t;else if(matchMedia("(prefers-color-scheme: light)").matches)document.documentElement.dataset.theme="light";}catch(e){}</script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>osu!catch Replay Renderer</title>
@@ -15,7 +15,7 @@
       --ok:#7ee0a0; --warn:#ffcf66; --err:#ff7b8f;
       --hover:#202638; --hover-line:#3b4366; --accent-hover:#ff829c; --shadow:#000a; --veil:#0a0c11dd; --strong:#fff;
       --ok-bg:#25402f; --warn-ink:#2a1f00; --err-ink:#2d0710; --panel:#171923; --pop-line:rgba(255,255,255,.14);
-      --top:56px; --side:400px;
+      --top:60px; --side:380px; --r:12px; --r-sm:8px;
     }
     /* Light: clean paper-white with the same pink accent */
     :root[data-theme="light"] {
@@ -80,6 +80,7 @@
     .seg button { border:0; background:transparent; padding:4px 12px; border-radius:7px; color:var(--dim); font-size:13px; }
     .seg button[aria-pressed="true"] { background:var(--surface2); color:var(--text); box-shadow:0 0 0 1px var(--line2) inset; }
     .seg button:hover:not(:disabled) { background:var(--surface2); }
+    .stagecol:has(.resultview:not([hidden])) { justify-content:flex-start; }
     .resultview { flex:1; min-height:0; container-type:size; overflow:auto; }
     .resultview > #result { min-height:100cqh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:2px 0 8px; }
     .resultview a.dl { display:inline-flex; align-items:center; gap:8px; padding:8px 14px; background:var(--accent); color:var(--accent-ink); border-radius:8px; text-decoration:none; }
@@ -101,7 +102,9 @@
     .guide li b { color:var(--text); }
     .stagewrap:fullscreen { background:#000; padding:0; }
     .stagewrap:fullscreen canvas { border-radius:0; box-shadow:none; }
-    .stagewrap { flex:1; min-height:0; container-type:size; display:grid; place-items:center; }
+    .stagecol { justify-content:center; }
+    .stagewrap { flex:0 1 auto; width:min(100%, calc((100dvh - var(--top) - 200px) * 16 / 9)); aspect-ratio:16/9; margin-inline:auto; min-height:0; container-type:size; display:grid; place-items:center; }
+    .stagewrap:fullscreen { width:100%; aspect-ratio:auto; }
     canvas { width:min(100cqw, calc(100cqh * 16 / 9)); height:auto; aspect-ratio:16/9; display:block; border-radius:10px; background:#07080c; box-shadow:0 12px 40px #0008; }
     .transport { display:flex; align-items:center; gap:12px; padding:8px 12px; background:var(--surface); border:1px solid var(--line); border-radius:12px; }
     .transport button { min-width:72px; }
@@ -164,9 +167,42 @@
     .count[data-tone="warn"]::before { content:'! '; }
     .count[data-tone="err"]::before { content:'\00D7  '; }
     .missmarks i { width:3px; height:11px; border-top:3px solid #fff3; box-sizing:border-box; }
-    :root[data-motion="reduce"] .chip, :root[data-motion="reduce"] .pane:not([hidden]) { animation:none; }
+    :root[data-motion="reduce"] .chip i, :root[data-motion="reduce"] .chip, :root[data-motion="reduce"] .pane:not([hidden]) { animation:none; }
     :root[data-motion="reduce"] * { transition:none !important; animation:none !important; scroll-behavior:auto !important; }
-    @media (prefers-reduced-motion: reduce) { .chip, .pane:not([hidden]) { animation:none; } button { transition:none; } }
+    /* ---- appearance pass ---- */
+    .top { background:linear-gradient(180deg, var(--surface), color-mix(in srgb, var(--surface) 88%, var(--bg))); padding:0 18px; }
+    .brand { font-size:16px; gap:11px; }
+    .brand svg { width:32px; height:32px; filter:drop-shadow(0 3px 6px color-mix(in srgb, var(--accent) 45%, transparent)); }
+    .brand small { display:block; font-size:11.5px; margin-top:-2px; }
+    .brand > span { display:flex; flex-direction:column; line-height:1.15; }
+    .panes { background:var(--bg); padding:14px; }
+    .group { background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:14px 14px 6px; margin-bottom:14px; }
+    .group > h3 { margin-bottom:10px; }
+    details.group { padding:0; }
+    details.group > summary { cursor:pointer; list-style:none; padding:13px 14px; font-size:12px; letter-spacing:.09em; text-transform:uppercase; color:var(--faint); font-weight:700; display:flex; align-items:center; gap:8px; }
+    details.group > summary::-webkit-details-marker { display:none; }
+    details.group > summary::before { content:'\25B8'; transition:transform .15s; }
+    details.group[open] > summary::before { transform:rotate(90deg); }
+    details.group > summary small { text-transform:none; letter-spacing:0; font-weight:400; color:var(--faint); font-size:12.5px; }
+    details.group > :not(summary) { margin-left:14px; margin-right:14px; }
+    details.group[open] { padding-bottom:8px; }
+    input[type=file] { width:100%; padding:12px; border:1.5px dashed var(--line2); border-radius:10px; background:var(--bg); color:var(--dim); cursor:pointer; transition:border-color .15s, background .15s; }
+    input[type=file]:hover:not(:disabled) { border-color:var(--accent); background:var(--surface2); }
+    input[type=file]::file-selector-button { margin-right:12px; padding:6px 12px; border:1px solid var(--line2); border-radius:var(--r-sm); background:var(--surface2); color:var(--text); font:inherit; font-weight:600; cursor:pointer; }
+    input[type=file][data-has] { border-style:solid; border-color:var(--ok); color:var(--text); }
+    .chips { gap:8px; }
+    .chip { border-radius:12px; padding:5px 12px 5px 9px; align-items:flex-start; background:var(--surface); box-shadow:0 1px 0 var(--line); }
+    .chip i { margin-top:1px; }
+    .chip b { white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+    .chip[data-tone="load"] i { background:transparent; border:2px solid var(--line2); border-top-color:var(--accent); animation:spin .8s linear infinite; }
+    .chip[data-tone="load"] i::before { content:''; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .transport { border-radius:var(--r); gap:14px; padding:8px 14px; }
+    .transport .rangehandle { width:14px; margin-left:-7px; top:0; height:30px; opacity:.7; }
+    .transport .rangehandle::after { left:5px; }
+    .guide svg { width:min(150px, 22cqw); height:auto; margin:0 auto; }
+    .guide { gap:12px; }
+    @media (prefers-reduced-motion: reduce) { .chip i, .chip, .pane:not([hidden]) { animation:none; } button { transition:none; } }
     .rangehandle.set, .rangehandle:hover, .rangehandle:focus-visible { opacity:1; }
     .rangehandle[hidden] { display:none; }
     #clock { color:var(--dim); font-variant-numeric:tabular-nums; min-width:92px; text-align:right; }
@@ -269,13 +305,16 @@
       .top { position:sticky; top:0; }
       .shell { display:block; }
       .stagecol { position:sticky; top:var(--top); z-index:15; background:var(--bg); padding:10px 12px; }
-      .stagewrap { flex:none; height:min(34vh, 52vw); }
+      .stagewrap { flex:none; width:100%; aspect-ratio:auto; height:min(34vh, 52vw); }
       .side { border-left:0; border-top:1px solid var(--line); }
       .panes { overflow:visible; }
       .brand small, .hint, .brand span, #contact { display:none; }
       .top { gap:8px; padding:0 10px; }
       #status { display:none; }
       #msgtray, #settings { right:8px; }
+      .transport { flex-wrap:wrap; gap:8px 12px; }
+      .seekwrap { order:5; flex:1 1 100%; }
+      #clock { margin-right:auto; }
     }
   </style>
 </head>
@@ -313,6 +352,7 @@
     </div>
     <div class="stagewrap" id="stagewrap"><canvas id="stage" width="1280" height="720"></canvas>
       <div class="guide" id="guide">
+        <svg viewBox="0 0 160 90" aria-hidden="true"><circle cx="40" cy="14" r="8" fill="#ff6b8a"/><circle cx="82" cy="30" r="8" fill="#ffb04a"/><circle cx="120" cy="10" r="8" fill="#7ccf6a"/><circle cx="62" cy="52" r="5" fill="#9b6bd6"/><path d="M40 78h80l-10 8H50z" fill="currentColor" opacity=".5"/><rect x="48" y="70" width="64" height="8" rx="4" fill="var(--accent)"/></svg>
         <h2>Turn an osu!catch replay into a video</h2>
         <ol>
           <li><b>Drop your replay</b> (.osr) anywhere on this page. The map is downloaded for you.</li>
@@ -325,6 +365,7 @@
     <div class="resultview" id="resultview" hidden><div id="result"></div></div>
     <div class="transport" id="transport">
       <button id="play" class="ghost" disabled>Play</button>
+      <span id="clock">0:00</span>
       <div class="seekwrap" id="seekwrap">
         <input id="seek" type="range" min="0" max="1" step="1" value="0" disabled aria-label="Position">
         <div class="rangeband" id="rangeband" hidden></div>
@@ -332,9 +373,8 @@
         <button type="button" class="rangehandle" id="handlefrom" hidden aria-label="Render from here" title="Start of the render. Drag me; double-click to reset."></button>
         <button type="button" class="rangehandle to" id="handleto" hidden aria-label="Render up to here" title="End of the render. Drag me; double-click to reset."></button>
       </div>
-      <span id="clock">0:00</span>
       <button id="full" class="ghost small" type="button" title="Fullscreen preview (F)" aria-label="Fullscreen preview">Full screen</button>
-      <span class="hint">Space play · ←/→ seek · F full screen</span>
+      <span class="hint">Press <kbd>?</kbd> for shortcuts</span>
     </div>
 
     <div id="settings" class="tray" hidden>
@@ -555,8 +595,8 @@
             <select id="cardstyle"><option value="lazer">osu!lazer</option><option value="stable">osu!stable</option><option value="simple">Simple</option></select>
           </label>
         </div>
-        <div class="group">
-          <h3>Render only part of the map</h3>
+        <details class="group" id="rangegroup">
+          <summary>Render only part of the map <small>optional</small></summary>
           <p class="note" style="margin:0 0 8px">Drag the pink handles on the timeline under the preview, or type the times.</p>
           <div class="grid2">
             <label class="field"><span>From (m:ss)</span>
@@ -572,7 +612,7 @@
             <button id="rangeclear" type="button" class="ghost small">Whole map</button>
           </div>
           <p id="rangenote" class="note"></p>
-        </div>
+        </details>
         <p class="note">Start the render with the button at the top right. Your video is drawn at the resolution above even when the preview is smaller.</p>
         <div class="resetrow"><button type="button" class="ghost small" data-reset="pane-render">Reset this tab to defaults</button></div>
       </div>
@@ -585,6 +625,6 @@
 <div class="dropveil" id="dropveil"><div>Drop files to load them<small>.osr replay · .osz map set · .osu · .osk skin · image · song</small></div></div>
 
 <script src="vendor/lzma-d-min.js"></script>
-<script type="module" src="src/main.js?v=20261111g"></script>
+<script type="module" src="src/main.js?v=20261111h"></script>
 </body>
 </html>

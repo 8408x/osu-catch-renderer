@@ -105,6 +105,10 @@ function initMessages(setTray) {
       const p = ps.find((x) => x.textContent.startsWith(`${key}:`));
       if (p) items.push({ key, text: p.textContent.slice(key.length + 1).trim(), tone: p.classList.contains('err') ? 'err' : p.classList.contains('warn') ? 'warn' : 'ok' });
     }
+    for (const p of ps) {                                   // lookups still running show up as a spinning chip
+      const m = /^(Player|Leaderboard):/.exec(p.textContent);
+      if (m && p.classList.contains('dim') && /looking up|loading/i.test(p.textContent)) items.push({ key: m[1], text: p.textContent.slice(m[0].length).trim(), tone: 'load' });
+    }
     for (const p of ps) if (p.classList.contains('err') && !items.some((i) => i.text === p.textContent)) items.push({ key: 'Problem', text: p.textContent, tone: 'err' });
     chips.replaceChildren(...items.map((i) => {
       const b = document.createElement('button');
@@ -116,7 +120,7 @@ function initMessages(setTray) {
       const label = document.createElement('span');
       label.textContent = i.key;
       const val = document.createElement('b');
-      val.textContent = i.text.length > 60 ? `${i.text.slice(0, 58)}…` : i.text;
+      val.textContent = i.text.length > 110 ? `${i.text.slice(0, 108)}…` : i.text;
       b.append(dot, label, val);
       b.addEventListener('click', () => setTray('msgbtn', 'msgtray', true));
       return b;
@@ -218,6 +222,15 @@ function initResets() {
   }
 }
 
+/** A file picker shows it holds a file (green solid border) instead of looking untouched. */
+function initFiles() {
+  for (const el of document.querySelectorAll('input[type=file]')) {
+    const mark = () => { if (el.files?.length) el.dataset.has = '1'; else delete el.dataset.has; };
+    el.addEventListener('change', mark);
+    mark();
+  }
+}
+
 function initHints() {
   const box = $('hints');
   const apply = () => document.body.classList.toggle('nohints', !box.checked);
@@ -311,6 +324,7 @@ try {
     initTheme();
     initHints();
     initCalm();
+    initFiles();
     initResets();
     initDrop();
     initCelebrate();
