@@ -92,7 +92,8 @@ export default {
           } catch (e) { v1note = `osu! v1 failed: ${e.message}`; }
         }
         return json({
-          beatmap_id: b.id, v1: old.size, v1_note: old.size ? '' : v1note, status: b.status, same_version: !b.checksum || b.checksum === sum,
+          beatmap_id: b.id, v1: old.size,
+          zero_debug: (j.scores ?? []).slice(0, 50).filter((x) => !old.has(String(x.user_id ?? x.user?.id))).slice(0, 2).map((x) => `${x.user?.username}: classic=${x.classic_total_score} legacy=${x.legacy_total_score} total=${x.total_score} score=${x.score} acc=${x.accuracy} combo=${x.max_combo} stats=${JSON.stringify(x.statistics ?? null)} legacy_id=${x.legacy_score_id} build=${x.build_id}`).join(' | '), v1_note: old.size ? '' : v1note, status: b.status, same_version: !b.checksum || b.checksum === sum,
           scores: (j.scores ?? []).slice(0, 50).map((x, i) => ({
             rank: i + 1, user_id: x.user_id ?? x.user?.id, username: x.user?.username ?? '', country_code: x.user?.country_code ?? '',
             score: old.get(String(x.user_id ?? x.user?.id)) ?? [x.classic_total_score, x.legacy_total_score, x.total_score, x.score].find((v) => v > 0) ?? 0,   // some scores carry a 0 in one field and the real value in another
