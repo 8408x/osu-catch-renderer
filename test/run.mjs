@@ -1493,30 +1493,27 @@ const HP = await import('../src/health.js');
 const mkRun = (spec, extra = {}) => ({ mods: 0, hp: 5, breaks: [], ...extra,
   objects: spec.map(([kind, t, caught = true]) => ({ kind, t, caught })) });
 
-await test('score: a perfect run is exactly 1,000,000 plus 200 per banana; misses and missed tinies take part away', () => {
-  const run = (caught) => {
-    const objs = [];
-    for (let i = 0; i < 300; i++) objs.push(['fruit', 1000 + i * 100, caught === true || caught.includes(i)]);
-    for (let i = 0; i < 100; i++) objs.push(['tiny', 1050 + i * 300, true]);
-    objs.push(['banana', 40000, true], ['banana', 40100, true]);
-    return mkRun(objs.sort((a, b) => a[1] - b[1]));
-  };
-  const perfect = SC.buildHud(run(true));
-  assert.equal(perfect.totals.score, 1000400);
-  const one = SC.buildHud(mkRun([['fruit', 100, true], ['fruit', 200, true], ['fruit', 300, false], ['fruit', 400, true]]));
-  assert.ok(one.totals.score < 1000000 && one.totals.score > 0);
-  // the first fruits weigh 0.5 (combo 1-2), so a fruit-only map with every fruit caught is exactly 1M
-  assert.equal(SC.buildHud(mkRun([['fruit', 100], ['fruit', 200], ['fruit', 300]])).totals.score, 1000000);
-  // every tiny missed on a map where they are half of fruits + tinies
-  const tinyMiss = SC.buildHud(mkRun([['fruit', 100], ['tiny', 150, false], ['fruit', 200], ['tiny', 250, false]]));
-  assert.equal(tinyMiss.totals.score, 800000, 'tinies are half of fruits + tinies here, so the 400k * 0.5 tiny share is lost');
+await test('score: osu!stable ScoreV1 - hit values plus a combo bonus scaled by the map stars and mods', () => {
+  // stars = round((HP + OD + CS + clamp(objects / drainSeconds * 8, 0, 16)) / 38 * 5): (5+5+5+8)/38*5 = 3.03 -> 3
+  const legacy = { hp: 5, od: 5, cs: 5, objects: 100, drainMs: 100000 };
+  assert.equal(SC.peppyStars(legacy), 3);
+  const sc = (spec, extra = {}) => SC.buildHud(mkRun(spec, { legacy, ...extra })).totals.score;
+  // first two hits have no combo bonus; the third gets 1 step: 300 * 1 * 3 * 1 / 25 = 36
+  assert.equal(sc([['fruit', 100], ['fruit', 200], ['fruit', 300]]), 300 + 300 + 336);
+  assert.equal(sc([['fruit', 100], ['tiny', 150], ['droplet', 200], ['banana', 250]]), 300 + 10 + 100 + 1100);
+  // a miss resets the combo: no bonus after it
+  assert.equal(sc([['fruit', 100], ['fruit', 200], ['fruit', 300, false], ['fruit', 400], ['fruit', 500]]), 300 * 4);
+  // a missed tiny keeps the combo
+  assert.equal(sc([['fruit', 100], ['fruit', 200], ['tiny', 250, false], ['fruit', 300]]), 300 + 300 + 336);
+  // mods scale the bonus: HR 1.12 -> 300 * 1 * 3 * 1.12 / 25 = 40.32 -> 40
+  assert.equal(sc([['fruit', 100], ['fruit', 200], ['fruit', 300]], { mods: 16 }), 300 + 300 + 340);
 });
 
-await test('score: mod multipliers (CatchScoreMultiplierCalculator) and the 1 s roll-up of the counter', () => {
+await test('score: mod multipliers (osu!stable) and the 1 s roll-up of the counter', () => {
   near(SC.scoreMultiplier(0), 1);
   near(SC.scoreMultiplier(2), 0.5);
   near(SC.scoreMultiplier(16 | 8), 1.12 * 1.06);
-  near(SC.scoreMultiplier(64 | 512 | 8), 1.1 * 1.06);
+  near(SC.scoreMultiplier(64 | 512 | 8), 1.12 * 1.06);
   near(SC.scoreMultiplier(256), 0.3);
   const hud = SC.buildHud(mkRun([['fruit', 1000], ['fruit', 1100]]));
   const v = SC.hudAt(hud, 1100);
@@ -1785,7 +1782,7 @@ await test('custom layout: defaults match the old overlay places, bad data is re
 });
 
 await test('countUp: rolls to a new value over about half a second and holds still otherwise', async () => {
-  const C = await import('../src/countup.js?v=20261110t');
+  const C = await import('../src/countup.js?v=20261110u');
   C.setSmoothNumbers(true);
   const raw = (t) => (t < 5000 ? 100 : 200);
   assert.equal(C.countUp(raw, 4000), 100);

@@ -47,58 +47,51 @@ export function buildHud(scene) {
   return { timeline, totals };
 }
 
-// ---------- score (lazer's standardised score, as CatchScoreProcessor computes it) ----------
-//   total = (600k + 400k * (1 - tinyShare)) * comboProgress + 400k * tinyShare * tinyHitFraction + 200 per banana,
-//   where comboProgress = combo-weighted score so far / combo-weighted score of a perfect run, and tinyShare is the
-//   share of tiny droplets among fruits + tiny droplets. The result is multiplied by the mods' multiplier.
-const COMBO_CAP = 200, COMBO_BASE = 4;
-const log4 = (v) => Math.log(v) / Math.log(COMBO_BASE);
-const comboWeight = (n) => Math.min(Math.max(0.5, log4(n)), log4(COMBO_CAP));
+// ---------- score (osu!stable's classic ScoreV1, the same numbers the replay file and the online board use) ----------
+//   every hit adds  hit + hit * max(0, comboBefore - 1) * stars * modMultiplier / 25   (rounded down), with
+//   hit = 300 fruit, 100 droplet, 10 tiny droplet (tiny droplets and bananas do not feed the combo bonus), 1100 banana,
+//   stars = round((HP + OD + CS + clamp(objects / drainSeconds * 8, 0, 16)) / 38 * 5) from the map's own (unmodded) values.
 export const SCORE_ROLL_MS = 1000;                       // the legacy score counter rolls up over 1 s (OutQuad)
 const outQuad = (p) => 1 - (1 - p) * (1 - p);
 
-/** Mod multiplier (CatchScoreMultiplierCalculator) for the replay's mod flags. */
+/** osu!stable's score multiplier for the replay's mod flags (catch). */
 export function scoreMultiplier(mods) {
   let m = 1;
   if (mods & 2) m *= 0.5;                                // EZ
   if (mods & 1) m *= 0.5;                                // NF
-  if (mods & 256) m *= 0.3;                              // HT (0.75x)
+  if (mods & 256) m *= 0.3;                              // HT
   if (mods & 16) m *= 1.12;                              // HR
-  if (mods & (64 | 512)) m *= 1.1;                       // DT / NC (1.5x)
+  if (mods & (64 | 512)) m *= 1.12;                      // DT / NC
   if (mods & 8) m *= 1.06;                               // HD
   if (mods & 1024) m *= 1.12;                            // FL
-  if (mods & 128) m *= 0.1;                              // RX
   return m;
 }
 
+/** DifficultyPeppyStars: scene.legacy = { hp, od, cs, objects, drainMs } from the unmodded map. */
+export function peppyStars(l) {
+  if (!l) return 3;
+  const drain = Math.max(1, (l.drainMs ?? 0) / 1000);
+  return Math.round((l.hp + l.od + l.cs + Math.min(16, Math.max(0, (l.objects / drain) * 8))) / 38 * 5);
+}
+
 function newScorer(scene) {
-  let fruits = 0, tinies = 0, perfect = 0, n = 0;
-  for (const o of scene.objects) {
-    if (o.kind === 'tiny') tinies++;
-    else if (o.kind !== 'banana') {
-      if (o.kind === 'fruit') fruits++;
-      perfect += (o.kind === 'fruit' ? 300 : 100) * comboWeight(++n);
-    }
-  }
-  const tinyShare = tinies + fruits ? tinies / (tinies + fruits) : 0;
-  const mult = scoreMultiplier(scene.mods ?? 0);
-  let portion = 0, tinyHit = 0, bonus = 0;
+  const mult = peppyStars(scene.legacy) * scoreMultiplier(scene.mods ?? 0);
+  let total = 0;
   let shown = 0, lastT = -Infinity, from = 0;            // rolling display state
   const display = (t) => from + (shown - from) * outQuad(Math.min(1, Math.max(0, (t - lastT) / SCORE_ROLL_MS)));
   return {
     /** Apply one judgement; returns the exact score after it and the value the counter was showing just before. */
     judge(o, comboAfter) {
-      if (o.kind === 'banana') { if (o.caught) bonus += 200; }
-      else if (o.kind === 'tiny') { if (o.caught) tinyHit++; }
-      else {
-        if (o.caught) portion += (o.kind === 'fruit' ? 300 : 100) * comboWeight(comboAfter);
+      if (o.caught) {
+        if (o.kind === 'banana') total += 1100;
+        else if (o.kind === 'tiny') total += 10;
+        else {
+          const hit = o.kind === 'fruit' ? 300 : 100, before = comboAfter - 1;
+          total += hit + Math.floor((hit * Math.max(0, before - 1) * mult) / 25);
+        }
       }
-      const comboProgress = perfect > 0 ? portion / perfect : 1;
-      const raw = (1000000 - 400000 + 400000 * (1 - tinyShare)) * comboProgress
-        + 400000 * tinyShare * (tinies ? tinyHit / tinies : 0) + bonus;
-      const score = Math.round(Math.round(raw) * mult);
-      from = display(o.t); lastT = o.t; shown = score;
-      return { score, scoreFrom: from };
+      from = display(o.t); lastT = o.t; shown = total;
+      return { score: total, scoreFrom: from };
     },
   };
 }

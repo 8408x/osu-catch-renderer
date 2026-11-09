@@ -2,14 +2,14 @@
 // from a parsed beatmap, following osu!lazer's JuiceStream / SliderEventGenerator logic,
 // and works out which objects a given replay caught.
 
-import { createPath } from './slider.js?v=20261110t';
-import { LegacyRandom, statelessInt, statelessSingle } from './rng.js?v=20261110t';
-import { buildCatcherFx } from './catcher.js?v=20261110t';
-import { buildHud, compareWithReplay } from './score.js?v=20261110t';
-import { buildHealth } from './health.js?v=20261110t';
-import { buildDifficulty, maxPerformance } from './pp.js?v=20261110t';
-import { buildPlate } from './plate.js?v=20261110t';
-import { makeSampler, bananaSamples } from './hitsounds.js?v=20261110t';
+import { createPath } from './slider.js?v=20261110u';
+import { LegacyRandom, statelessInt, statelessSingle } from './rng.js?v=20261110u';
+import { buildCatcherFx } from './catcher.js?v=20261110u';
+import { buildHud, compareWithReplay } from './score.js?v=20261110u';
+import { buildHealth } from './health.js?v=20261110u';
+import { buildDifficulty, maxPerformance } from './pp.js?v=20261110u';
+import { buildPlate } from './plate.js?v=20261110u';
+import { makeSampler, bananaSamples } from './hitsounds.js?v=20261110u';
 
 export const FIELD_W = 512;
 export const FIELD_H = 384;
@@ -293,6 +293,10 @@ export function buildScene(bm, mods = 0) {
     mods,
     hp: Math.min(10, (mods & MOD_HR ? bm.hp * 1.4 : mods & MOD_EZ ? bm.hp * 0.5 : bm.hp)),
     breaks: bm.breaks ?? [],
+    legacy: {                                                    // for osu!stable's score formula: the map's own values, no mods
+      hp: bm.hp, od: bm.od ?? 0, cs: bm.cs, objects: bm.hitObjects.length,
+      drainMs: lastT - firstT - (bm.breaks ?? []).reduce((n, b) => n + Math.max(0, Math.min(b.end, lastT) - Math.max(b.start, firstT)), 0),
+    },
     colours: resolveColours(bm, null),
     objects,
     startTime: firstT - preempt - 500,
