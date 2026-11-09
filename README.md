@@ -205,7 +205,7 @@ The layout model is in `src/layout.js` and the editor in `src/layoutui.js`.
 
 ## Player picture, country and rank (optional Worker)
 
-The Player card and Name tag can show the player's picture, country and rank. A static page can't hold an osu! API secret, so this uses a tiny Cloudflare Worker that you host yourself (`worker/osu-lookup.js`). Without it, the site still works; you can upload a picture or type a user ID instead.
+The Player card can show the player's picture, country and rank. A static page can't hold an osu! API secret, so this uses a tiny Cloudflare Worker that you host yourself (`worker/osu-lookup.js`). Without it, the site still works, with an initial in place of the picture.
 
 1. On osu! open Settings → OAuth → New OAuth Application. Callback URL can be anything (e.g. `http://localhost`). Note the Client ID and Client Secret.
 2. In Cloudflare create a Worker and paste in `worker/osu-lookup.js`.

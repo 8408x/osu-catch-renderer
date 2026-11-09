@@ -2,13 +2,13 @@
 // (credited in layout.js and CREDITS.md) in this site's own code; no overlay code or images are copied. A draw function
 // works in the style's natural size (see layout.js): the caller translates and scales the canvas to fit.
 
-import { countUp } from './countup.js?v=20261110f';
-import { tosuTokens } from './tosu.js?v=20261110f';
-import { hudAt } from './score.js?v=20261110f';
-import { getAvatar, getProfile } from './avatar.js?v=20261110f';
-import { healthAt } from './health.js?v=20261110f';
-import { livePp, ppAtAccuracy } from './pp.js?v=20261110f';
-import { keysAt } from './keys.js?v=20261110f';
+import { countUp } from './countup.js?v=20261110g';
+import { tosuTokens } from './tosu.js?v=20261110g';
+import { hudAt } from './score.js?v=20261110g';
+import { getAvatar, getProfile } from './avatar.js?v=20261110g';
+import { healthAt } from './health.js?v=20261110g';
+import { livePp, ppAtAccuracy } from './pp.js?v=20261110g';
+import { keysAt } from './keys.js?v=20261110g';
 
 const SANS = '"Exo 2", "Torus", "Segoe UI", system-ui, -apple-system, sans-serif';
 const MONO = '"Roboto Mono", ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace';
@@ -232,38 +232,27 @@ const LOOKS = {
       text(ctx, 'player:', 16, 46, { size: 20, weight: 600 });
       text(ctx, d.player || d.title, 16, 84, { size: 36, weight: 800, maxW: W - 90 });
     },
-    // Name tag: a round initial and the name, with the date the replay was played
-    tag(ctx, d, W, H) {
-      ctx.fillStyle = 'rgba(14,14,18,0.86)'; rr(ctx, 0, 0, W, H, H / 2); ctx.fill();
-      avatarCircle(ctx, d, H / 2, H / 2, H / 2 - 8);
-      text(ctx, d.player || 'player', H + 4, H / 2 + (rankLine(d) || playedOn(d) ? 2 : 11), { size: 32, weight: 700, shadow: false, maxW: W - H - 20 });
-      text(ctx, rankLine(d) || playedOn(d), H + 4, H / 2 + 26, { size: 16, weight: 400, fill: 'rgba(255,255,255,0.6)', shadow: false });
-    },
-    // Result card: the name over the play's final score, combo, accuracy and hit counts, as saved in the replay
-    result(ctx, d, W, H) {
+    // Player card (made for this site): picture or initial, "PLAYED BY" label, the name, rank and date,
+    // then the play's final score, combo, accuracy and hit counts as saved in the replay
+    card(ctx, d, W, H) {
       const p = d.scene.play ?? {};
-      ctx.fillStyle = 'rgba(14,14,18,0.88)'; rr(ctx, 0, 0, W, H, 14); ctx.fill();
+      ctx.fillStyle = 'rgba(14,14,18,0.88)'; rr(ctx, 0, 0, W, H, 16); ctx.fill();
       ctx.fillStyle = '#ff6b8a'; rr(ctx, 0, 0, 8, H, 4); ctx.fill();
-      const has = avatarCircle(ctx, d, 58, 40, 24, false), nx = has ? 96 : 28;
-      text(ctx, d.player || 'player', nx, 42, { size: 34, weight: 800, shadow: false, maxW: W - nx - 130 });
-      text(ctx, rankLine(d), W - 20, 28, { size: 16, weight: 600, fill: '#ff8fa3', align: 'right', shadow: false });
-      text(ctx, playedOn(d), W - 20, 50, { size: 16, weight: 400, fill: 'rgba(255,255,255,0.6)', align: 'right', shadow: false });
-      text(ctx, grouped(p.score ?? 0), 28, 98, { size: 38, weight: 600, shadow: false });
-      text(ctx, `${p.maxCombo ?? 0}x   ·   ${finalAcc(p)}%`, 28, 129, { size: 22, weight: 500, fill: 'rgba(255,255,255,0.8)', shadow: false });
+      avatarCircle(ctx, d, 62, 46, 28);
+      const nx = 106, right = rankLine(d), date = playedOn(d);
+      text(ctx, 'PLAYED BY', nx, 26, { size: 13, weight: 700, fill: '#ff8fa3', shadow: false });
+      text(ctx, d.player || 'player', nx, 62, { size: 34, weight: 800, shadow: false, maxW: W - nx - (right || date ? 140 : 24) });
+      if (right) text(ctx, right, W - 20, 30, { size: 16, weight: 600, fill: '#ff8fa3', align: 'right', shadow: false });
+      if (date) text(ctx, date, W - 20, right ? 52 : 30, { size: 15, weight: 400, fill: 'rgba(255,255,255,0.6)', align: 'right', shadow: false });
+      ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(28, 88, W - 48, 1);
+      text(ctx, grouped(p.score ?? 0), 28, 128, { size: 36, weight: 600, shadow: false });
+      text(ctx, `${p.maxCombo ?? 0}x   ·   ${finalAcc(p)}%`, W - 20, 126, { size: 22, weight: 500, fill: 'rgba(255,255,255,0.82)', align: 'right', shadow: false });
       [[p.n300, '#3ddc4b', 'fruit'], [p.n100, '#4cb8ff', 'drop'], [p.n50, '#ffd23f', 'tiny'], [p.nMiss, '#ff4d4d', 'miss']].forEach(([n, c, label], i) => {
         const cx = 28 + i * 105;
-        ctx.fillStyle = c; rr(ctx, cx, 142, 6, 36, 3); ctx.fill();
-        text(ctx, String(n ?? 0), cx + 14, 163, { size: 24, weight: 700, shadow: false });
-        text(ctx, label, cx + 14, 178, { size: 12, weight: 400, fill: 'rgba(255,255,255,0.55)', shadow: false });
+        ctx.fillStyle = c; rr(ctx, cx, 146, 6, 36, 3); ctx.fill();
+        text(ctx, String(n ?? 0), cx + 14, 167, { size: 24, weight: 700, shadow: false });
+        text(ctx, label, cx + 14, 182, { size: 12, weight: 400, fill: 'rgba(255,255,255,0.55)', shadow: false });
       });
-    },
-    // Played-by strip: a slim line, "played by NAME  ·  date"
-    strip(ctx, d, W, H) {
-      ctx.fillStyle = 'rgba(14,14,18,0.8)'; rr(ctx, 0, 0, W, H, H / 2); ctx.fill();
-      const has = avatarCircle(ctx, d, 24, H / 2, H / 2 - 5, false), sx = has ? 40 : 0;
-      text(ctx, 'played by', 18 + sx, H / 2 + 7, { size: 18, weight: 400, fill: 'rgba(255,255,255,0.65)', shadow: false });
-      text(ctx, d.player || 'player', 112 + sx, H / 2 + 8, { size: 24, weight: 700, shadow: false, maxW: W - 260 - sx });
-      text(ctx, playedOn(d), W - 18, H / 2 + 6, { size: 16, weight: 400, fill: 'rgba(255,255,255,0.55)', align: 'right', shadow: false });
     },
     // User Card by Belikhun (layout, sizes and colours follow the overlay's own stylesheet, drawn on a 420 x 108 card)
     usercard(ctx, d, W, H) {
@@ -366,13 +355,6 @@ const LOOKS = {
         wrapLines(ctx, `Playing ${playingLine(d)}`, 970, 2).forEach((l, i) => shadowText(l, 308, 227 + i * 64, 50, 500, 1 - fade));
       }
       ctx.restore();
-    },
-    // Big name: the name in large type with a small "player" label and an accent line
-    big(ctx, d, W, H) {
-      const has = avatarCircle(ctx, d, 44, 48, 44, false), bx = has ? 104 : 0;
-      text(ctx, rankLine(d) ? `PLAYER  ·  ${rankLine(d)}` : 'PLAYER', 4 + bx, 22, { size: 16, weight: 600, fill: '#ff8fa3', maxW: W - bx });
-      text(ctx, d.player || 'player', 2 + bx, 74, { size: 58, weight: 800, maxW: W - 8 - bx });
-      ctx.fillStyle = '#ff6b8a'; ctx.fillRect(4, H - 6, Math.min(W - 8, 120), 4);
     },
   },
 

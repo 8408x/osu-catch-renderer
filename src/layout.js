@@ -43,11 +43,8 @@ export const WIDGETS = {
   player: {
     label: 'Player card', at: [6, 120], on: false,
     styles: [
-      { id: 'tag', label: 'Name tag', credit: 'Name tag', w: 380, h: 84 },
+      { id: 'card', label: 'Player card', credit: 'Player card, made for this site', w: 460, h: 196 },
       { id: 'victim', label: 'VictimCrasherOverlay', credit: 'VictimCrasherOverlay by VictimCrasher', author: 'VictimCrasher', w: 400, h: 110 },
-      { id: 'result', label: 'Result card', credit: 'Result card', w: 460, h: 192 },
-      { id: 'strip', label: 'Played-by strip', credit: 'Played-by strip', w: 470, h: 44 },
-      { id: 'big', label: 'Big name', credit: 'Big name', w: 520, h: 96 },
       { id: 'usercard', label: 'User Card', credit: 'User Card by Belikhun', author: 'Belikhun', w: 420, h: 108 },
       { id: 'userstats', label: 'osuUserStats', credit: 'osuUserStats by HosizoraN', author: 'HosizoraN', w: 520, h: 127 },
     ],
