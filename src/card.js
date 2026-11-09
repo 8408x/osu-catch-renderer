@@ -3,10 +3,10 @@
 // Three looks: 'lazer' (the loading screen and results screen of osu!lazer), 'stable' (osu!stable's loading
 // screen and ranking panel) and 'simple' (a plain centred card). Layouts follow those screens; no artwork is copied.
 
-import { getAvatar, getProfile, getBoard } from './avatar.js?v=20261111h';
-import { styleData } from './styles.js?v=20261111h';
-import { hudAt } from './score.js?v=20261111h';
-import { modEntries } from './mods.js?v=20261111h';
+import { getAvatar, getProfile, getBoard } from './avatar.js?v=20261111i';
+import { styleData } from './styles.js?v=20261111i';
+import { hudAt } from './score.js?v=20261111i';
+import { modEntries } from './mods.js?v=20261111i';
 
 const SANS = '"Exo 2", "Torus", system-ui, "Segoe UI", sans-serif';
 const MONO = '"JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, monospace';
