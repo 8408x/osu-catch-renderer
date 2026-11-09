@@ -59,7 +59,7 @@ function restoreChoices() {
 }
 
 function initTrays() {
-  const pairs = [['msgbtn', 'msgtray']];
+  const pairs = [['msgbtn', 'msgtray'], ['setbtn', 'settings']];
   const set = (btnId, trayId, open) => {
     const tray = $(trayId), btn = $(btnId);
     tray.hidden = !open;
@@ -76,7 +76,7 @@ function initTrays() {
     x.addEventListener('click', () => { const p = pairs.find(([, t]) => t === x.dataset.close); if (p) set(p[0], p[1], false); });
   }
   document.addEventListener('pointerdown', (e) => {          // a click anywhere else closes the logs
-    if (e.target.closest('.tray, #msgbtn, .chip')) return;
+    if (e.target.closest('.tray, #msgbtn, #setbtn, .chip')) return;
     for (const [b, t] of pairs) if (!$(t).hidden) set(b, t, false);
   });
   document.addEventListener('keydown', (e) => {
@@ -172,6 +172,15 @@ function initTheme() {
   media.addEventListener?.('change', () => { if (saved === 'auto') apply(); });
 }
 
+/** Settings panel extras: keyboard hints on or off (remembered). */
+function initHints() {
+  const box = $('hints');
+  const apply = () => document.body.classList.toggle('nohints', !box.checked);
+  box.checked = store.get('hints') !== '0';
+  apply();
+  box.addEventListener('change', () => { apply(); store.set('hints', box.checked ? '1' : '0'); });
+}
+
 function initKeys() {
   const seek = $('seek');
   const typing = (el) => { const tag = el?.tagName; return tag === 'INPUT' && el.type !== 'range' && el.type !== 'checkbox' || tag === 'SELECT' || tag === 'TEXTAREA' || tag === 'BUTTON'; };
@@ -255,6 +264,7 @@ try {
     initStatus();
     initKeys();
     initTheme();
+    initHints();
     initDrop();
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else run();

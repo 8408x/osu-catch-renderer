@@ -1,29 +1,29 @@
-import './ui.js?v=20261110g';
-import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261110g';
-import { parseOsu } from './osu.js?v=20261110g';
-import { buildScene, evaluateCatches, findJudgeShift, resolveColours } from './catch.js?v=20261110g';
-import { compareWithReplay } from './score.js?v=20261110g';
-import { nightcoreBeats } from './nightcore.js?v=20261110g';
-import { ReplayTrack } from './replay.js?v=20261110g';
-import { drawFrame, loadOverlayFonts } from './render.js?v=20261110g';
-import { loadArgonFonts } from './argon.js?v=20261110g';
-import { TosuOverlays } from './tosu.js?v=20261110g';
-import { exportMp4, webCodecsAvailable } from './encode.js?v=20261110g';
-import { VERSION } from './version.js?v=20261110g';
-import { md5 } from './md5.js?v=20261110g';
-import { resolveRange } from './range.js?v=20261110g';
-import { initLayoutEditor } from './layoutui.js?v=20261110g';
-import { setSmoothNumbers } from './countup.js?v=20261110g';
-import { drawCard } from './card.js?v=20261110g';
-import { lookupPlayer, loadBoard, initAvatar } from './avatar.js?v=20261110g';
-import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261110g';
-import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261110g';
-import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261110g';
-import { BackgroundVideo } from './bgvideo.js?v=20261110g';
-import { buildKeys } from './keys.js?v=20261110g';
-import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261110g';
-import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261110g';
-import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261110g';
+import './ui.js?v=20261110j';
+import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261110j';
+import { parseOsu } from './osu.js?v=20261110j';
+import { buildScene, evaluateCatches, findJudgeShift, resolveColours } from './catch.js?v=20261110j';
+import { compareWithReplay } from './score.js?v=20261110j';
+import { nightcoreBeats } from './nightcore.js?v=20261110j';
+import { ReplayTrack } from './replay.js?v=20261110j';
+import { drawFrame, loadOverlayFonts } from './render.js?v=20261110j';
+import { loadArgonFonts } from './argon.js?v=20261110j';
+import { TosuOverlays } from './tosu.js?v=20261110j';
+import { exportMp4, webCodecsAvailable } from './encode.js?v=20261110j';
+import { VERSION } from './version.js?v=20261110j';
+import { md5 } from './md5.js?v=20261110j';
+import { resolveRange } from './range.js?v=20261110j';
+import { initLayoutEditor } from './layoutui.js?v=20261110j';
+import { setSmoothNumbers } from './countup.js?v=20261110j';
+import { drawCard } from './card.js?v=20261110j';
+import { lookupPlayer, loadBoard, initAvatar } from './avatar.js?v=20261110j';
+import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261110j';
+import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261110j';
+import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261110j';
+import { BackgroundVideo } from './bgvideo.js?v=20261110j';
+import { buildKeys } from './keys.js?v=20261110j';
+import { prepareAudio, SAMPLE_RATE } from './audio.js?v=20261110j';
+import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261110j';
+import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261110j';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('stage');
@@ -1117,6 +1117,69 @@ loadArgonFonts(skinEnv, bytesOf).then((g) => { state.argon = g; drawAt(state.t);
 
 // Roboto Mono for the overlay text; redraw the preview once it has loaded.
 loadOverlayFonts().then((ok) => { if (ok) drawAt(state.t); });
+
+
+// ---- Test mode: a top player's replay picked for you, so nothing has to be uploaded. The replays live in samples/;
+// the beatmap is downloaded for each one the usual way (the replay names its beatmap by hash).
+{
+  let list = null, lastMap = null;
+  const msg = (t) => { $('testmsg').textContent = t; };
+  const load = async () => {
+    if (list) return list;
+    const r = await fetch(`samples/index.json?v=${VERSION}`);
+    if (!r.ok) throw new Error('could not read the sample list');
+    list = await r.json();
+    $('testpick').replaceChildren(...list.map((e, i) => {
+      const o = document.createElement('option');
+      o.value = String(i);
+      o.textContent = `${e.player} · ${e.map} · ${e.mods} · ${e.score.toLocaleString('en-US')}`;
+      return o;
+    }));
+    return list;
+  };
+  const useSample = async (i) => {
+    try {
+      const entries = await load(), e = entries[i];
+      msg(`Loading ${e.player}'s replay…`);
+      const r = await fetch(`samples/${e.file}?v=${VERSION}`);
+      if (!r.ok) throw new Error('could not download the replay');
+      const file = new File([await r.arrayBuffer()], e.file);
+      if (lastMap !== e.map) {                                  // a different map: drop the old one so the right one is downloaded
+        state.osz = null; state.audioFile = null; state.osuBytes = null; state.beatmap = null; state.beatmapFrom = null;
+        $('mirrorid').value = '';
+        if (mirrorAbort) { quietAbort = true; mirrorAbort.abort(); }
+      }
+      lastMap = e.map;
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      $('osr').files = dt.files;
+      $('testpick').value = String(i);
+      $('osr').dispatchEvent(new Event('change'));
+      msg(`${e.player}, ${e.map}, ${e.mods}. The beatmap downloads automatically.`);
+    } catch (err) { msg(`Test mode: ${err.message}.`); }
+  };
+  const random = async () => {
+    try {
+      const entries = await load(), cur = Number($('testpick').value);
+      let i = Math.floor(Math.random() * entries.length);
+      if (entries.length > 1 && i === cur && state.replay) i = (i + 1) % entries.length;
+      await useSample(i);
+    } catch (err) { msg(`Test mode: ${err.message}.`); }
+  };
+  const apply = async (on, fresh) => {
+    $('testbox').hidden = !on;
+    try { localStorage.setItem('ocr.testmode', on ? '1' : '0'); } catch { /* storage blocked */ }
+    if (!on) return;
+    try { await load(); } catch (err) { msg(`Test mode: ${err.message}.`); return; }
+    if (fresh || !state.replay) await random();
+  };
+  $('testmode').addEventListener('change', () => apply($('testmode').checked, true));
+  $('testrandom').addEventListener('click', random);
+  $('testload').addEventListener('click', () => useSample(Number($('testpick').value)));
+  let was = null;
+  try { was = localStorage.getItem('ocr.testmode'); } catch { /* storage blocked */ }
+  if (was === '1') { $('testmode').checked = true; apply(true, false); }
+}
 
 // ---- version line: what is running here, and whether the deployed page is newer ----
 (async () => {

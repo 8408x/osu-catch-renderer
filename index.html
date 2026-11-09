@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="app-version" content="20261110g">
+  <meta name="app-version" content="20261110j">
   <script>try{var t=localStorage.getItem("ocr.theme");if(t==="light"||t==="dark"||t==="sakura")document.documentElement.dataset.theme=t;else if(matchMedia("(prefers-color-scheme: light)").matches)document.documentElement.dataset.theme="light";}catch(e){}</script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>osu!catch Replay Renderer</title>
@@ -119,7 +119,15 @@
     .tray { position:absolute; left:16px; right:16px; z-index:10; background:var(--surface); border:1px solid var(--line2); border-radius:12px; box-shadow:0 18px 50px var(--shadow); display:flex; flex-direction:column; max-height:min(62%, 560px); }
     .tray header { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-bottom:1px solid var(--line); font-weight:700; }
     .tray .body { padding:12px 14px; overflow:auto; }
-    #msgtray { position:fixed; left:auto; right:12px; top:calc(var(--top) + 6px); width:min(440px, calc(100vw - 24px)); max-height:min(60vh, 460px); z-index:30; }
+    .iconbtn { padding:6px 8px; display:inline-flex; align-items:center; }
+    .setbody { display:flex; flex-direction:column; gap:8px; padding:12px 14px 16px; }
+    .setbody h4 { margin:8px 0 0; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--dim); }
+    .setbody > * { flex-shrink:0; }
+    .setbody h4:first-child { margin-top:0; }
+    .setbody .row { display:flex; gap:8px; flex-wrap:wrap; }
+    body.nohints .hint { display:none; }
+    #settings, #msgtray { position:fixed; left:auto; right:12px; top:calc(var(--top) + 6px); width:min(440px, calc(100vw - 24px)); max-height:min(60vh, 460px); z-index:30; }
+    #settings { max-height:min(88vh, 760px); }
         .msgs p { margin:5px 0; font-size:13px; }
     .ok { color:var(--text); } .warn { color:var(--warn); } .err { color:var(--err); } .dim { color:var(--dim); }
     a.dl { color:var(--accent); font-weight:600; word-break:break-all; }
@@ -206,7 +214,7 @@
       .brand small, .hint, .brand span, #contact { display:none; }
       .top { gap:8px; padding:0 10px; }
       #status { display:none; }
-      #msgtray { right:8px; }
+      #msgtray, #settings { right:8px; }
     }
   </style>
 </head>
@@ -223,7 +231,7 @@
   </div>
   <div id="status" aria-live="polite"></div>
   <div class="actions">
-    <label class="themepick" title="Colour theme"><span class="sr">Theme</span><select id="theme" aria-label="Colour theme"><option value="auto">Auto</option><option value="dark">Dark</option><option value="light">Light</option><option value="sakura">Sakura</option></select></label>
+    <button id="setbtn" class="ghost iconbtn" type="button" aria-controls="settings" aria-expanded="false" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zm7.4-2.5a7.6 7.6 0 0 0 .1-1 7.600 7.600 0 0 0-.1-1l2-1.600-2-3.400-2.400 1a7.300 7.300 0 0 0-1.700-1L15 3.500h-4l-.4 2.500a7.300 7.300 0 0 0-1.700 1l-2.400-1-2 3.400 2 1.600a7.600 7.600 0 0 0-.1 1c0 .3 0 .7.1 1l-2 1.600 2 3.400 2.400-1c.5.4 1.100.7 1.700 1l.4 2.500h4l.4-2.500c.6-.3 1.200-.6 1.700-1l2.400 1 2-3.400z"/></svg></button>
     <button id="msgbtn" class="ghost pill" type="button" aria-controls="msgtray" aria-expanded="false">Logs <span class="count" id="msgcount">0</span></button>
     <button id="cancel" class="ghost" disabled>Cancel</button>
     <button id="exportall" disabled hidden>Render all replays</button>
@@ -263,6 +271,28 @@
       <span id="clock">0:00</span>
       <button id="full" class="ghost small" type="button" title="Fullscreen preview (F)" aria-label="Fullscreen preview">Full screen</button>
       <span class="hint">Space play · ←/→ seek · F full screen</span>
+    </div>
+
+    <div id="settings" class="tray" hidden>
+      <header><span>Settings</span><button class="ghost small" type="button" data-close="settings">Close</button></header>
+      <div class="body setbody">
+        <h4>Appearance</h4>
+        <label class="field"><span>Theme</span>
+          <select id="theme" aria-label="Colour theme"><option value="auto">Auto (follow my device)</option><option value="dark">Dark</option><option value="light">Light</option><option value="sakura">Sakura</option></select>
+        </label>
+        <label class="toggle"><input id="hints" type="checkbox" checked> <span>Keyboard hints <small>the shortcut reminder under the preview</small></span></label>
+        <h4>Experimental</h4>
+        <label class="toggle"><input id="smoothnum" type="checkbox" checked> <span>Smooth numbers <small>the pp counter rolls up like the community overlays (a bit slower export)</small></span></label>
+        <label class="toggle"><input id="showboard" type="checkbox" checked> <span>Online leaderboard <small>on the osu!lazer outro</small></span></label>
+        <small id="boardmsg" class="note"></small>
+        <h4>Test mode</h4>
+        <label class="toggle"><input id="testmode" type="checkbox"> <span>Test mode <small>loads a top player's replay for you, so there is nothing to upload (the beatmap is downloaded for it)</small></span></label>
+        <div id="testbox" hidden>
+          <label class="field"><span>Replay</span><select id="testpick"></select></label>
+          <div class="row"><button id="testrandom" class="ghost small" type="button">Load a random one</button><button id="testload" class="ghost small" type="button">Load this one</button></div>
+          <small id="testmsg" class="note"></small>
+        </div>
+      </div>
     </div>
 
     <div id="msgtray" class="tray" hidden>
@@ -412,7 +442,6 @@
           <label class="field" style="margin-top:10px"><span>Bitrate (Mbps) <small id="mbpshint" style="font-weight:400;opacity:.7"></small></span>
             <input id="mbps" type="number" min="0.5" max="100" step="0.5" value="7.5">
           </label>
-          <label class="toggle" style="margin-top:10px"><input id="smoothnum" type="checkbox" checked> <span>Smooth numbers <small>the pp counter rolls up like the community overlays (a bit slower export)</small></span></label>
           <label class="toggle" style="margin-top:10px"><input id="fastdraft" type="checkbox"> <span>Fast draft <small>skips the storyboard, background video, hit lighting and tosu overlay images; much quicker</small></span></label>
         </div>
         <div class="group">
@@ -430,8 +459,6 @@
           <label class="field" style="margin-top:10px"><span>Card style</span>
             <select id="cardstyle"><option value="lazer">osu!lazer</option><option value="stable">osu!stable</option><option value="simple">Simple</option></select>
           </label>
-          <label class="toggle"><input id="showboard" type="checkbox" checked> <span>Online leaderboard <small>on the osu!lazer outro</small></span></label>
-          <small id="boardmsg" class="note"></small>
         </div>
         <div class="group">
           <h3>Render only part of the map</h3>
@@ -462,6 +489,6 @@
 <div class="dropveil" id="dropveil"><div>Drop files to load them<small>.osr replay · .osz map set · .osu · .osk skin · image · song</small></div></div>
 
 <script src="vendor/lzma-d-min.js"></script>
-<script type="module" src="src/main.js?v=20261110g"></script>
+<script type="module" src="src/main.js?v=20261110j"></script>
 </body>
 </html>

@@ -245,3 +245,7 @@ Space plays and pauses, Left/Right seek 5 s (Shift: 1 s), Home/End jump to the s
 ### Themes
 
 The top bar has a theme picker: Auto (follows your system), Dark, Light and Sakura. The choice is remembered in your browser. The video preview itself always stays dark.
+
+## Settings and test mode
+
+The gear in the top bar opens Settings: appearance (theme, keyboard hints), experimental options (smooth numbers, the online leaderboard) and **Test mode**. Test mode loads a top player's replay from `samples/` (listed in `samples/index.json`) so you don't have to upload one each time; the beatmap is then downloaded the usual way. It can load a random replay or a chosen one, and stays on until you turn it off.
