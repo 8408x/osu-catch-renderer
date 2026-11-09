@@ -200,7 +200,7 @@ const reduced = () => {
 };
 function initCalm() {
   const sel = $('motion');
-  let v = store.get('motion') ?? (store.get('calm') === '1' ? 'reduce' : 'on');
+  let v = store.get('motion') ?? 'on';
   if (!['on', 'auto', 'reduce'].includes(v)) v = 'on';
   sel.value = v;
   document.documentElement.dataset.motion = v;
