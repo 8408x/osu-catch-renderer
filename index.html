@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="app-version" content="20261111q">
+  <meta name="app-version" content="20261111r">
   <script>try{var t=localStorage.getItem("ocr.theme");if(t==="light"||t==="dark"||t==="sakura")document.documentElement.dataset.theme=t;else if(matchMedia("(prefers-color-scheme: light)").matches)document.documentElement.dataset.theme="light";}catch(e){}</script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>osu!catch Replay Renderer</title>
-  <link rel="icon" type="image/png" href="assets/favicon.png?v=20261111q">
+  <link rel="icon" type="image/png" href="assets/favicon.png?v=20261111r">
   <style>
     :root {
       color-scheme: dark;
@@ -168,6 +168,7 @@
     .count[data-tone="warn"]::before { content:'! '; }
     .count[data-tone="err"]::before { content:'\00D7  '; }
     .missmarks i { width:3px; height:11px; border-top:3px solid #fff3; box-sizing:border-box; }
+    :root[data-motion="reduce"] .guide > img.vanish { animation:none; opacity:0; }
     :root[data-motion="reduce"] .chip i, :root[data-motion="reduce"] .chip, :root[data-motion="reduce"] .pane:not([hidden]) { animation:none; }
     :root[data-motion="reduce"] * { transition:none !important; animation:none !important; scroll-behavior:auto !important; }
     /* ---- appearance pass ---- */
@@ -204,7 +205,11 @@
     .guide > img { width:auto; height:min(40cqh, 210px); max-width:60cqw; margin:0 auto; object-fit:contain; }
     @container (max-height:330px) { .guide > img, .guide ol { display:none; } .guide { gap:10px; padding:4%; } }
     .guide { gap:12px; }
-    .guide > img { will-change:transform; }
+    .guide > img { will-change:transform; touch-action:none; user-select:none; -webkit-user-drag:none; cursor:grab; }
+    .guide > img.held { cursor:grabbing; }
+    .guide > img.vanish { animation:eggpoof .35s ease-in forwards; pointer-events:none; }
+    @keyframes eggpoof { to { opacity:0; filter:blur(6px); } }
+    .brand .logo, .guide img { -webkit-user-drag:none; }
     .eggfield { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
     .eggfruit { position:absolute; top:0; width:34px; height:auto; margin-left:-17px; }
     .eggcombo { position:absolute; left:16px; bottom:12px; font:800 clamp(22px,4cqw,38px)/1 ui-monospace, monospace; color:var(--accent); }
@@ -332,7 +337,7 @@
 <body>
 <header class="top">
   <div class="brand">
-    <img class="logo" src="assets/logo.png?v=20261111q" alt="" width="32" height="32">
+    <img class="logo" src="assets/logo.png?v=20261111r" alt="" width="32" height="32">
     <span>Catch Renderer <small>osu!catch replay to MP4</small></span>
   </div>
   <div id="contact">
@@ -363,7 +368,7 @@
     </div>
     <div class="stagewrap" id="stagewrap"><canvas id="stage" width="1280" height="720"></canvas>
       <div class="guide" id="guide">
-        <img src="assets/welcome.png?v=20261111q" alt="" width="447" height="460" decoding="async">
+        <img src="assets/welcome.png?v=20261111r" alt="" width="447" height="460" decoding="async">
         <h2>Turn an osu!catch replay into a video</h2>
         <ol>
           <li><b>Drop your replay</b> (.osr) anywhere on this page. The map is downloaded for you.</li>
@@ -636,6 +641,6 @@
 <div class="dropveil" id="dropveil"><div>Drop files to load them<small>.osr replay · .osz map set · .osu · .osk skin · image · song</small></div></div>
 
 <script src="vendor/lzma-d-min.js"></script>
-<script type="module" src="src/main.js?v=20261111q"></script>
+<script type="module" src="src/main.js?v=20261111r"></script>
 </body>
 </html>

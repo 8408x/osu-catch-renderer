@@ -279,7 +279,32 @@ function initEggs() {
   let x = 0, vel = 0, held = new Set(), raf = 0, last = 0, played = false, n = 0, comboN = 0, spawnAt = 0;
   const fruits = [];
   const limit = () => Math.max(0, guide.clientWidth / 2 - img.clientWidth / 2 - 10);
-  const place = () => { img.style.transform = `translateX(${x}px)`; };
+  let gone = false, dragging = null, offX = 0, offY = 0;
+  const place = () => { img.style.transform = `translate(${x + offX}px, ${offY}px)`; };
+  // pick the catcher up and let go: it vanishes (the browser's own image drag is switched off so it cannot ghost-drag)
+  img.draggable = false;
+  img.addEventListener('dragstart', (e) => e.preventDefault());
+  img.addEventListener('pointerdown', (e) => {
+    if (gone || e.button) return;
+    e.preventDefault(); img.setPointerCapture(e.pointerId);
+    dragging = { sx: e.clientX, sy: e.clientY, moved: false }; img.classList.add('held');
+  });
+  img.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    offX = e.clientX - dragging.sx; offY = e.clientY - dragging.sy;
+    if (Math.hypot(offX, offY) > 6) dragging.moved = true;
+    place();
+  });
+  const drop = () => {
+    if (!dragging) return;
+    const moved = dragging.moved; dragging = null; img.classList.remove('held');
+    if (moved) {
+      gone = true; played = false; for (const o of fruits) o.f.remove(); fruits.length = 0; comboN = 0; combo.textContent = '';
+      img.classList.add('vanish'); toast('...where did it go?');
+    } else { offX = offY = 0; place(); }
+  };
+  img.addEventListener('pointerup', drop);
+  img.addEventListener('pointercancel', drop);
   const visible = () => !guide.hidden && guide.offsetParent !== null;
   const tick = (now) => {
     const dt = Math.min(48, now - (last || now)); last = now;
@@ -310,14 +335,14 @@ function initEggs() {
   document.addEventListener('keydown', (e) => {
     if (!visible() || e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName ?? '')) return;
     if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-      e.preventDefault(); held.add(e.key); if (e.shiftKey) held.add('Shift');
+      e.preventDefault(); if (gone) return; held.add(e.key); if (e.shiftKey) held.add('Shift');
       if (!played) { played = true; spawnAt = performance.now() + 600; }
       kick();
     }
   });
   document.addEventListener('keyup', (e) => { held.delete(e.key); if (e.key === 'Shift') held.delete('Shift'); });
   window.addEventListener('blur', () => held.clear());
-  new MutationObserver(() => { if (!visible()) { for (const o of fruits) o.f.remove(); fruits.length = 0; played = false; comboN = 0; combo.textContent = ''; x = 0; vel = 0; place(); } }).observe(guide, { attributes: true, attributeFilter: ['hidden'] });
+  new MutationObserver(() => { if (!visible()) { for (const o of fruits) o.f.remove(); fruits.length = 0; played = false; comboN = 0; combo.textContent = ''; x = 0; vel = 0; offX = offY = 0; gone = false; img.classList.remove('vanish'); place(); } }).observe(guide, { attributes: true, attributeFilter: ['hidden'] });
 }
 
 function initHints() {
