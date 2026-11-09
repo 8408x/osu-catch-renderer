@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="app-version" content="20261111c">
+  <meta name="app-version" content="20261111d">
   <script>try{var t=localStorage.getItem("ocr.theme");if(t==="light"||t==="dark"||t==="sakura")document.documentElement.dataset.theme=t;else if(matchMedia("(prefers-color-scheme: light)").matches)document.documentElement.dataset.theme="light";}catch(e){}</script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>osu!catch Replay Renderer</title>
@@ -127,15 +127,11 @@
     .summary b { color:var(--text); font-weight:650; }
     #export.rendering { opacity:1; cursor:progress; min-width:136px; background:linear-gradient(90deg, var(--accent) var(--p,0%), color-mix(in srgb, var(--accent) 32%, var(--surface2)) var(--p,0%)); border-color:var(--accent); box-shadow:none; }
     .guide { pointer-events:auto; gap:16px; overflow:hidden; border-style:dashed; border-color:var(--line2); }
-    .guide .fruits { display:flex; justify-content:center; gap:10px; height:clamp(26px,5cqw,44px); }
-    .guide .fruits i { width:clamp(20px,3.6cqw,34px); height:clamp(20px,3.6cqw,34px); border-radius:50%; background:radial-gradient(circle at 32% 30%, #fff8 0 14%, transparent 15%), var(--c, var(--accent)); animation:bob 2.4s ease-in-out infinite; animation-delay:var(--d); box-shadow:0 6px 14px -8px var(--c, var(--accent)); }
-    .guide .fruits i:nth-child(2) { --c:#9b6bd6; } .guide .fruits i:nth-child(3) { --c:#ffb04a; } .guide .fruits i:nth-child(4) { --c:#7ccf6a; }
-    @keyframes bob { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-9px); } }
     .guideacts { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; }
     body.dragging .guide { border-color:var(--accent); background:linear-gradient(var(--surface2),var(--surface)); }
     .fx-fruit { position:fixed; z-index:99; pointer-events:none; width:12px; height:12px; border-radius:50%; background:var(--c); animation:pop 1.1s cubic-bezier(.2,.7,.3,1) forwards; }
     @keyframes pop { 0% { transform:translate(0,0) scale(.4); opacity:1; } 70% { opacity:1; } 100% { transform:translate(var(--dx),var(--dy)) scale(1); opacity:0; } }
-    @media (prefers-reduced-motion: reduce) { .chip, .pane:not([hidden]), .guide .fruits i { animation:none; } button { transition:none; } }
+    @media (prefers-reduced-motion: reduce) { .chip, .pane:not([hidden]) { animation:none; } button { transition:none; } }
     .rangehandle.set, .rangehandle:hover, .rangehandle:focus-visible { opacity:1; }
     .rangehandle[hidden] { display:none; }
     #clock { color:var(--dim); font-variant-numeric:tabular-nums; min-width:92px; text-align:right; }
@@ -277,7 +273,6 @@
     </div>
     <div class="stagewrap" id="stagewrap"><canvas id="stage" width="1280" height="720"></canvas>
       <div class="guide" id="guide">
-        <div class="fruits" aria-hidden="true"><i style="--d:0s"></i><i style="--d:.35s"></i><i style="--d:.7s"></i><i style="--d:1.05s"></i></div>
         <h2>Turn an osu!catch replay into a video</h2>
         <ol>
           <li><b>Drop your replay</b> (.osr) anywhere on this page. The map is downloaded for you.</li>
@@ -532,6 +527,6 @@
 <div class="dropveil" id="dropveil"><div>Drop files to load them<small>.osr replay · .osz map set · .osu · .osk skin · image · song</small></div></div>
 
 <script src="vendor/lzma-d-min.js"></script>
-<script type="module" src="src/main.js?v=20261111c"></script>
+<script type="module" src="src/main.js?v=20261111d"></script>
 </body>
 </html>
