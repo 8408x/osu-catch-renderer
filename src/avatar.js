@@ -97,7 +97,7 @@ export async function loadBoard(md5, beatmapId = 0) {
   say('Loading the leaderboard…');
   setOnline('board', 'dim', 'Leaderboard: loading…');
   try {
-    const res = await fetch(`${lookupBase()}/scores?checksum=${md5}${beatmapId ? `&id=${beatmapId}` : ''}`);
+    const res = await fetch(`${lookupBase()}/scores?checksum=${md5}${beatmapId ? `&id=${beatmapId}` : ''}`, { cache: 'no-store' });
     const j = await res.json().catch(() => null);
     if (!res.ok) throw new Error(j?.error || `the lookup answered ${res.status}`);
     if (!Array.isArray(j?.scores)) throw new Error('the lookup Worker is out of date: re-paste worker/osu-lookup.js in Cloudflare');
