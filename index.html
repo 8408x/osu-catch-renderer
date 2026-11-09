@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="app-version" content="20261111y">
+  <meta name="app-version" content="20261111z">
   <script>try{var t=localStorage.getItem("ocr.theme");if(t==="light"||t==="dark"||t==="sakura"||t==="arcade")document.documentElement.dataset.theme=t;else if(matchMedia("(prefers-color-scheme: light)").matches)document.documentElement.dataset.theme="light";}catch(e){}</script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>osu!catch Replay Renderer</title>
-  <link rel="icon" type="image/png" href="assets/favicon.png?v=20261111y">
+  <link rel="icon" type="image/png" href="assets/favicon.png?v=20261111z">
   <style>
     :root {
       color-scheme: dark;
@@ -179,6 +179,7 @@
     .count[data-tone="err"]::before { content:'\00D7  '; }
     .missmarks i { width:3px; height:11px; border-top:3px solid #fff3; box-sizing:border-box; }
     :root[data-motion="reduce"] .guide > img.vanish { animation:none; opacity:0; }
+    :root[data-motion="reduce"] #ver.tap, :root[data-motion="reduce"] .brand .logo.tap, :root[data-motion="reduce"] .brand .logo:hover { animation:none; transform:none; }
     :root[data-motion="reduce"] .chip i, :root[data-motion="reduce"] .chip, :root[data-motion="reduce"] .pane:not([hidden]) { animation:none; }
     :root[data-motion="reduce"] * { transition:none !important; animation:none !important; scroll-behavior:auto !important; }
     /* ---- appearance pass ---- */
@@ -238,7 +239,15 @@
     #eggdlg dl { display:grid; grid-template-columns:1fr auto; gap:6px 18px; margin:0 0 10px; }
     #eggdlg dt { color:var(--dim); } #eggdlg dd { margin:0; font-weight:700; text-align:right; }
     #eggdlg p { margin:0 0 12px; color:var(--faint); font-size:12px; }
-    #ver { cursor:default; user-select:none; }
+    #ver { cursor:pointer; user-select:none; transition:color .15s, opacity .15s; }
+    #ver:hover { color:var(--text); }
+    #ver.tap { animation:vertap .25s ease-out; }
+    @keyframes vertap { 40% { opacity:.25; transform:translateX(3px); } }
+    .brand .logo { cursor:pointer; transition:transform .15s ease-out; }
+    .brand .logo:hover { transform:rotate(-10deg) scale(1.1); }
+    .brand .logo.tap { animation:logotap .35s ease-out; }
+    @keyframes logotap { 30% { transform:scale(.8) rotate(8deg); } 65% { transform:scale(1.18) rotate(-8deg); } }
+    .guide > img:not(.vanish):hover { filter:brightness(1.07); }
     .eggtoast { position:fixed; left:calc((100vw - var(--side)) / 2); top:calc(var(--top) + 18px); transform:translateX(-50%); z-index:70; padding:10px 18px; border-radius:999px; background:var(--accent); color:var(--accent-ink); font-weight:700; box-shadow:0 10px 30px var(--shadow); animation:eggtoastin .22s ease-out both; pointer-events:none; }
     @keyframes eggtoastin { from { opacity:0; transform:translate(-50%, -8px); } to { opacity:1; transform:translateX(-50%); } }
     @media (max-width: 980px) { .eggtoast { left:50%; } }
@@ -361,7 +370,7 @@
 <body>
 <header class="top">
   <div class="brand">
-    <img class="logo" src="assets/logo.png?v=20261111y" alt="" width="32" height="32">
+    <img class="logo" src="assets/logo.png?v=20261111z" alt="" width="32" height="32">
     <span>Catch Renderer <small>osu!catch replay to MP4</small></span>
   </div>
   <div id="contact">
@@ -392,7 +401,7 @@
     </div>
     <div class="stagewrap" id="stagewrap"><canvas id="stage" width="1280" height="720"></canvas>
       <div class="guide" id="guide">
-        <img src="assets/welcome.png?v=20261111y" alt="" width="447" height="460" decoding="async">
+        <img src="assets/welcome.png?v=20261111z" alt="" width="447" height="460" decoding="async">
         <h2>Turn an osu!catch replay into a video</h2>
         <ol>
           <li><b>Drop your replay</b> (.osr) anywhere on this page. The map is downloaded for you.</li>
@@ -667,6 +676,6 @@
 <div class="dropveil" id="dropveil"><div>Drop files to load them<small>.osr replay · .osz map set · .osu · .osk skin · image · song</small></div></div>
 
 <script src="vendor/lzma-d-min.js"></script>
-<script type="module" src="src/main.js?v=20261111y"></script>
+<script type="module" src="src/main.js?v=20261111z"></script>
 </body>
 </html>

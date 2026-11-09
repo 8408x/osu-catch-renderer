@@ -266,6 +266,8 @@ function initDevCard() {
   let clicks = [];
   ver.addEventListener('click', () => {
     const now = Date.now(); clicks = clicks.filter((t) => now - t < 4000); clicks.push(now);
+    ver.classList.remove('tap'); void ver.offsetWidth; ver.classList.add('tap');
+    if (clicks.length >= 3 && clicks.length < 7) eggToast(`${7 - clicks.length} more…`, 900);
     if (clicks.length < 7) return;
     clicks = []; egg('dev'); eggToast('Developer mode on!', 1400);
     setTimeout(() => {
@@ -308,6 +310,8 @@ function initEggs() {
   let clicks = [];
   logo?.addEventListener('click', () => {
     const now = Date.now(); clicks = clicks.filter((t) => now - t < 1800); clicks.push(now);
+    logo.classList.remove('tap'); void logo.offsetWidth; logo.classList.add('tap');
+    if (clicks.length >= 3 && clicks.length < 5) toast(`${5 - clicks.length} more…`, 900);
     if (clicks.length >= 5) { clicks = []; shower(); toast('Fruit shower!'); }
   });
 
@@ -529,7 +533,7 @@ try {
     initFiles();
     initEggs();
     initDevCard();
-    import('./ez2.js?v=20261111y').then((m) => m.watchForEz2()).catch(() => { /* the hidden game is optional */ });
+    import('./ez2.js?v=20261111z').then((m) => m.watchForEz2()).catch(() => { /* the hidden game is optional */ });
     initResets();
     initDrop();
     initCelebrate();
