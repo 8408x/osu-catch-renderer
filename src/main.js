@@ -1,31 +1,31 @@
-import './ui.js?v=20261111b';
-import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261111b';
-import { parseOsu } from './osu.js?v=20261111b';
-import { buildScene, evaluateCatches, findJudgeShift, resolveColours } from './catch.js?v=20261111b';
-import { compareWithReplay } from './score.js?v=20261111b';
-import { nightcoreBeats } from './nightcore.js?v=20261111b';
-import { ReplayTrack } from './replay.js?v=20261111b';
-import { drawFrame, loadOverlayFonts } from './render.js?v=20261111b';
-import { loadArgonFonts } from './argon.js?v=20261111b';
-import { TosuOverlays } from './tosu.js?v=20261111b';
-import { exportMp4, webCodecsAvailable } from './encode.js?v=20261111b';
-import { VERSION } from './version.js?v=20261111b';
-import { md5 } from './md5.js?v=20261111b';
-import { resolveRange } from './range.js?v=20261111b';
-import { initLayoutEditor } from './layoutui.js?v=20261111b';
-import { setSmoothNumbers } from './countup.js?v=20261111b';
-import { drawCard } from './card.js?v=20261111b';
-import { lookupPlayer, loadBoard, initAvatar, online, getBoard } from './avatar.js?v=20261111b';
-import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261111b';
-import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261111b';
-import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261111b';
-import { BackgroundVideo } from './bgvideo.js?v=20261111b';
-import { missTimes } from './extras.js?v=20261111b';
-import { buildWarp } from './warp.js?v=20261111b';
-import { buildKeys } from './keys.js?v=20261111b';
-import { prepareAudio, warpAudio, SAMPLE_RATE } from './audio.js?v=20261111b';
-import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261111b';
-import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261111b';
+import './ui.js?v=20261111c';
+import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261111c';
+import { parseOsu } from './osu.js?v=20261111c';
+import { buildScene, evaluateCatches, findJudgeShift, resolveColours } from './catch.js?v=20261111c';
+import { compareWithReplay } from './score.js?v=20261111c';
+import { nightcoreBeats } from './nightcore.js?v=20261111c';
+import { ReplayTrack } from './replay.js?v=20261111c';
+import { drawFrame, loadOverlayFonts } from './render.js?v=20261111c';
+import { loadArgonFonts } from './argon.js?v=20261111c';
+import { TosuOverlays } from './tosu.js?v=20261111c';
+import { exportMp4, webCodecsAvailable } from './encode.js?v=20261111c';
+import { VERSION } from './version.js?v=20261111c';
+import { md5 } from './md5.js?v=20261111c';
+import { resolveRange } from './range.js?v=20261111c';
+import { initLayoutEditor } from './layoutui.js?v=20261111c';
+import { setSmoothNumbers } from './countup.js?v=20261111c';
+import { drawCard } from './card.js?v=20261111c';
+import { lookupPlayer, loadBoard, initAvatar, online, getBoard } from './avatar.js?v=20261111c';
+import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261111c';
+import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261111c';
+import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261111c';
+import { BackgroundVideo } from './bgvideo.js?v=20261111c';
+import { missTimes } from './extras.js?v=20261111c';
+import { buildWarp } from './warp.js?v=20261111c';
+import { buildKeys } from './keys.js?v=20261111c';
+import { prepareAudio, warpAudio, SAMPLE_RATE } from './audio.js?v=20261111c';
+import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261111c';
+import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261111c';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('stage');
@@ -878,6 +878,9 @@ $('prevres').addEventListener('change', () => { autoCap = AUTO_CAPS[0]; setSize(
 // ---------- export ----------
 function setBusy(busy) {
   exporting = busy;
+  $('export').classList.toggle('rendering', busy);
+  $('export').textContent = busy ? 'Rendering…' : 'Render MP4';
+  if (!busy) $('export').style.removeProperty('--p');
   $('export').disabled = busy || !state.scene;
   $('exportall').disabled = busy || !state.scene;
   $('cancel').disabled = !busy;
@@ -941,8 +944,24 @@ async function setGhost(file) {
 $('ghostfile').addEventListener('change', () => setGhost($('ghostfile').files[0] ?? null));
 $('ghostclear').addEventListener('click', () => { $('ghostfile').value = ''; setGhost(null); });
 
+function updateSummary() {
+  const el = $('rendersummary');
+  if (!el) return;
+  const sc = state.scene, r = sc ? exportRange(sc) : null;
+  if (!sc || r.error) { el.textContent = ''; return; }
+  const { w, h } = size(), fps = Number($('fps').value) || 60;
+  const mbps = Math.max(0.5, Number($('mbps').value) || suggestMbps(h, fps));
+  const secs = (r.to - r.from) / (sc.rate || 1) / 1000 + ($('introon').checked ? Number($('introsec').value) || 4 : 0) + ($('outroon').checked ? Number($('outrosec').value) || 5 : 0);
+  const mb = (mbps * 1e6 / 8 + 16000) * secs / 1e6;
+  el.innerHTML = `<b>${w} × ${h}</b> · <b>${fps} fps</b> · <b>${fmtTime(secs * 1000)}</b> of video · about <b>${mb < 10 ? mb.toFixed(1) : Math.round(mb)} MB</b>${$('exslow').checked ? ' (longer with slow motion)' : ''}`;
+}
+$('pane-render').addEventListener('input', () => updateSummary());
+$('pane-render').addEventListener('change', () => updateSummary());
+$('exslow').addEventListener('change', () => updateSummary());
+
 function syncRangeUi() {
   syncMarks();
+  updateSummary();
   const sc = state.scene, seek = $('seek');
   for (const id of ['handlefrom', 'handleto', 'rangeband']) $(id).hidden = !sc;
   if (!sc) return;
@@ -1086,6 +1105,7 @@ async function renderCurrent(job = null) {
     onStatus: (text) => { stage = text; $('status').textContent = prefix + text; },
     onProgress: (p) => {
       $('bar').value = base + p * share;
+      { const pct = Math.min(100, (base + p * share) * 100); $('export').style.setProperty('--p', `${pct}%`); $('export').textContent = `Rendering ${Math.round(pct)}%`; }
       const spent = (performance.now() - started) / 1000;
       const eta = p > 0.04 && spent > 4 && stage === 'Rendering…' ? ` · about ${fmtEta(spent * (1 - p) / p)} left` : '';
       $('status').textContent = `${prefix}${stage} ${(p * 100).toFixed(0)}%${eta}`;
@@ -1137,6 +1157,7 @@ async function runExports(batch) {
     } else {
       $('status').textContent = `Done: ${made} of ${jobs.length} videos in ${secs} s.${skipped.length ? ` Skipped (no matching difficulty): ${skipped.join(', ')}.` : ''}`;
     }
+    if (made) window.dispatchEvent(new Event('ocr-done'));
   } catch (err) {
     $('status').textContent = err.name === 'AbortError' ? `Cancelled${made ? ` after ${made} finished video${made === 1 ? '' : 's'}` : ''}.` : `Export failed: ${err.message}${/allocation|memory/i.test(err.message) ? ' The browser ran out of memory. Lower the bitrate or resolution, or render a shorter range, and close other tabs.' : ''}`;
   } finally {
@@ -1244,6 +1265,8 @@ loadOverlayFonts().then((ok) => { if (ok) drawAt(state.t); });
   $('testmode').addEventListener('change', () => apply($('testmode').checked, true));
   $('testrandom').addEventListener('click', random);
   $('testload').addEventListener('click', () => useSample(Number($('testpick').value)));
+  $('guidesample')?.addEventListener('click', async () => { try { await load(); await random(); } catch (err) { msg(`Test mode: ${err.message}.`); } });
+  $('guidepick')?.addEventListener('click', () => $('osr').click());
   let was = null;
   try { was = localStorage.getItem('ocr.testmode'); } catch { /* storage blocked */ }
   if (was === '1') { $('testmode').checked = true; apply(true, false); }

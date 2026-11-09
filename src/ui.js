@@ -173,6 +173,21 @@ function initTheme() {
 }
 
 /** Settings panel extras: keyboard hints on or off (remembered). */
+/** A little burst of fruit from the Render button when a video finishes (skipped with reduced motion). */
+function initCelebrate() {
+  window.addEventListener('ocr-done', () => {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const r = document.getElementById('export').getBoundingClientRect(), cols = ['#ff6b8a', '#9b6bd6', '#ffb04a', '#7ccf6a'];
+    for (let i = 0; i < 18; i++) {
+      const el = document.createElement('i'), a = (-Math.PI / 2) + (Math.random() - 0.5) * 2.4, d = 60 + Math.random() * 110;
+      el.className = 'fx-fruit';
+      el.style.cssText = `left:${r.left + r.width / 2}px;top:${r.top + r.height / 2}px;--c:${cols[i % 4]};--dx:${Math.cos(a) * d}px;--dy:${Math.sin(a) * d + 70}px`;
+      document.body.append(el);
+      setTimeout(() => el.remove(), 1200);
+    }
+  });
+}
+
 function initHints() {
   const box = $('hints');
   const apply = () => document.body.classList.toggle('nohints', !box.checked);
@@ -227,14 +242,14 @@ function initDrop() {
     input.files = dt.files;
     input.dispatchEvent(new Event('change', { bubbles: true }));
   };
-  window.addEventListener('dragenter', (e) => { if (hasFiles(e)) { depth++; veil.classList.add('on'); } });
-  window.addEventListener('dragleave', () => { depth = Math.max(0, depth - 1); if (!depth) veil.classList.remove('on'); });
+  window.addEventListener('dragenter', (e) => { if (hasFiles(e)) { depth++; veil.classList.add('on'); document.body.classList.add('dragging'); } });
+  window.addEventListener('dragleave', () => { depth = Math.max(0, depth - 1); if (!depth) { veil.classList.remove('on'); document.body.classList.remove('dragging'); } });
   window.addEventListener('dragover', (e) => { if (hasFiles(e)) e.preventDefault(); });
   window.addEventListener('drop', (e) => {
     if (!hasFiles(e)) return;
     e.preventDefault();
     depth = 0;
-    veil.classList.remove('on');
+    veil.classList.remove('on'); document.body.classList.remove('dragging');
     const by = { osr: [], osu: [], osk: [], img: [], map: [] };
     for (const f of e.dataTransfer.files) {
       const n = f.name.toLowerCase();
@@ -266,6 +281,7 @@ try {
     initTheme();
     initHints();
     initDrop();
+    initCelebrate();
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else run();
   if (document.readyState === 'complete') restoreChoices(); else window.addEventListener('load', restoreChoices);
