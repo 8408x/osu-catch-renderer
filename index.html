@@ -2,10 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="app-version" content="20261111m">
+  <meta name="app-version" content="20261111n">
   <script>try{var t=localStorage.getItem("ocr.theme");if(t==="light"||t==="dark"||t==="sakura")document.documentElement.dataset.theme=t;else if(matchMedia("(prefers-color-scheme: light)").matches)document.documentElement.dataset.theme="light";}catch(e){}</script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>osu!catch Replay Renderer</title>
+  <link rel="icon" type="image/png" href="assets/favicon.png">
   <style>
     :root {
       color-scheme: dark;
@@ -172,7 +173,7 @@
     /* ---- appearance pass ---- */
     .top { background:linear-gradient(180deg, var(--surface), color-mix(in srgb, var(--surface) 88%, var(--bg))); padding:0 18px; }
     .brand { font-size:16px; gap:11px; }
-    .brand svg { width:32px; height:32px; filter:drop-shadow(0 3px 6px color-mix(in srgb, var(--accent) 45%, transparent)); }
+    .brand .logo { width:32px; height:32px; flex:none; filter:drop-shadow(0 3px 6px color-mix(in srgb, var(--accent) 45%, transparent)); }
     .brand small { display:block; font-size:11.5px; margin-top:-2px; }
     .brand > span { display:flex; flex-direction:column; line-height:1.15; }
     .panes { background:var(--bg); padding:14px; }
@@ -322,7 +323,7 @@
 <body>
 <header class="top">
   <div class="brand">
-    <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="18" r="11" fill="#ff6b8a"/><path d="M16 8c0-3 2-5 6-5-.2 3.4-2.4 5-6 5z" fill="#7ee0a0"/><path d="M10 15a7 7 0 0 1 4-3" stroke="#ffd0da" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+    <img class="logo" src="assets/logo.png" alt="" width="32" height="32">
     <span>Catch Renderer <small>osu!catch replay to MP4</small></span>
   </div>
   <div id="contact">
@@ -626,6 +627,6 @@
 <div class="dropveil" id="dropveil"><div>Drop files to load them<small>.osr replay · .osz map set · .osu · .osk skin · image · song</small></div></div>
 
 <script src="vendor/lzma-d-min.js"></script>
-<script type="module" src="src/main.js?v=20261111m"></script>
+<script type="module" src="src/main.js?v=20261111n"></script>
 </body>
 </html>

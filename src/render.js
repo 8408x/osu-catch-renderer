@@ -7,19 +7,19 @@
 //   - droplets use 0.8x and tiny droplets 0.4x of that; sprites are capped at 160 px
 //   - catcher sprite = texture size x 0.35 x catcher scale, hung from the plate line 16 px down
 
-import { FIELD_W, FIELD_H } from './catch.js?v=20261111m';
-import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261111m';
-import { hudAt, scoreShownAt } from './score.js?v=20261111m';
-import { plateAt, explosionsAt } from './plate.js?v=20261111m';
-import { drawArgonHud, drawArgonPart } from './argon.js?v=20261111m';
-import { healthAt } from './health.js?v=20261111m';
-import { livePp } from './pp.js?v=20261111m';
-import { keysAt } from './keys.js?v=20261111m';
-import { ORDER, rectOf, fullRectOf, WIDGETS, styleInfo } from './layout.js?v=20261111m';
-import { lookFor, styleData } from './styles.js?v=20261111m';
-import { drawModIcons, drawModBadges } from './mods.js?v=20261111m';
-import { drawFlashlight } from './flashlight.js?v=20261111m';
-import { drawHitboxes, drawMissFlash, drawKeyPad, drawTrail, drawCatchMeter } from './extras.js?v=20261111m';
+import { FIELD_W, FIELD_H } from './catch.js?v=20261111n';
+import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261111n';
+import { hudAt, scoreShownAt } from './score.js?v=20261111n';
+import { plateAt, explosionsAt } from './plate.js?v=20261111n';
+import { drawArgonHud, drawArgonPart } from './argon.js?v=20261111n';
+import { healthAt } from './health.js?v=20261111n';
+import { livePp } from './pp.js?v=20261111n';
+import { keysAt } from './keys.js?v=20261111n';
+import { ORDER, rectOf, fullRectOf, WIDGETS, styleInfo } from './layout.js?v=20261111n';
+import { lookFor, styleData } from './styles.js?v=20261111n';
+import { drawModIcons, drawModBadges } from './mods.js?v=20261111n';
+import { drawFlashlight } from './flashlight.js?v=20261111n';
+import { drawHitboxes, drawMissFlash, drawKeyPad, drawTrail, drawCatchMeter } from './extras.js?v=20261111n';
 
 const ZONE = 120;  // room below the field for the catcher, in field units
 const PAD = 12;
