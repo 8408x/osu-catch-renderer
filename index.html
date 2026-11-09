@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="app-version" content="20261111j">
+  <meta name="app-version" content="20261111l">
   <script>try{var t=localStorage.getItem("ocr.theme");if(t==="light"||t==="dark"||t==="sakura")document.documentElement.dataset.theme=t;else if(matchMedia("(prefers-color-scheme: light)").matches)document.documentElement.dataset.theme="light";}catch(e){}</script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>osu!catch Replay Renderer</title>
@@ -200,7 +200,8 @@
     .transport { border-radius:var(--r); gap:14px; padding:8px 14px; }
     .transport .rangehandle { width:14px; margin-left:-7px; top:0; height:30px; opacity:.7; }
     .transport .rangehandle::after { left:5px; }
-    .guide svg { width:min(150px, 22cqw); height:auto; margin:0 auto; }
+    .guide img { width:auto; height:min(40cqh, 210px); max-width:60cqw; margin:0 auto; object-fit:contain; }
+    @container (max-height:330px) { .guide img, .guide ol { display:none; } .guide { gap:10px; padding:4%; } }
     .guide { gap:12px; }
     @media (prefers-reduced-motion: reduce) { .chip i, .chip, .pane:not([hidden]) { animation:none; } button { transition:none; } }
     .rangehandle.set, .rangehandle:hover, .rangehandle:focus-visible { opacity:1; }
@@ -352,7 +353,7 @@
     </div>
     <div class="stagewrap" id="stagewrap"><canvas id="stage" width="1280" height="720"></canvas>
       <div class="guide" id="guide">
-        <svg viewBox="0 0 160 90" aria-hidden="true"><circle cx="40" cy="14" r="8" fill="#ff6b8a"/><circle cx="82" cy="30" r="8" fill="#ffb04a"/><circle cx="120" cy="10" r="8" fill="#7ccf6a"/><circle cx="62" cy="52" r="5" fill="#9b6bd6"/><path d="M40 78h80l-10 8H50z" fill="currentColor" opacity=".5"/><rect x="48" y="70" width="64" height="8" rx="4" fill="var(--accent)"/></svg>
+        <img src="assets/welcome.png" alt="" width="372" height="367" decoding="async">
         <h2>Turn an osu!catch replay into a video</h2>
         <ol>
           <li><b>Drop your replay</b> (.osr) anywhere on this page. The map is downloaded for you.</li>
@@ -625,6 +626,6 @@
 <div class="dropveil" id="dropveil"><div>Drop files to load them<small>.osr replay · .osz map set · .osu · .osk skin · image · song</small></div></div>
 
 <script src="vendor/lzma-d-min.js"></script>
-<script type="module" src="src/main.js?v=20261111j"></script>
+<script type="module" src="src/main.js?v=20261111l"></script>
 </body>
 </html>
