@@ -446,6 +446,7 @@ try {
     initCalm();
     initFiles();
     initEggs();
+    import('./ez2.js?v=20261111x').then((m) => m.watchForEz2()).catch(() => { /* the hidden game is optional */ });
     initResets();
     initDrop();
     initCelebrate();

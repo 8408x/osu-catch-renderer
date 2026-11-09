@@ -2,14 +2,14 @@
 // from a parsed beatmap, following osu!lazer's JuiceStream / SliderEventGenerator logic,
 // and works out which objects a given replay caught.
 
-import { createPath } from './slider.js?v=20261111v';
-import { LegacyRandom, statelessInt, statelessSingle } from './rng.js?v=20261111v';
-import { buildCatcherFx } from './catcher.js?v=20261111v';
-import { buildHud, compareWithReplay } from './score.js?v=20261111v';
-import { buildHealth } from './health.js?v=20261111v';
-import { buildDifficulty, maxPerformance } from './pp.js?v=20261111v';
-import { buildPlate } from './plate.js?v=20261111v';
-import { makeSampler, bananaSamples } from './hitsounds.js?v=20261111v';
+import { createPath } from './slider.js?v=20261111x';
+import { LegacyRandom, statelessInt, statelessSingle } from './rng.js?v=20261111x';
+import { buildCatcherFx } from './catcher.js?v=20261111x';
+import { buildHud, compareWithReplay } from './score.js?v=20261111x';
+import { buildHealth } from './health.js?v=20261111x';
+import { buildDifficulty, maxPerformance } from './pp.js?v=20261111x';
+import { buildPlate } from './plate.js?v=20261111x';
+import { makeSampler, bananaSamples } from './hitsounds.js?v=20261111x';
 
 export const FIELD_W = 512;
 export const FIELD_H = 384;
