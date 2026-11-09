@@ -6,7 +6,7 @@
 //     always explode), or drops when it was missed.
 // Everything is computed once per (scene, replay); `plateAt` then answers "what is where at time t".
 
-import { LegacyRandom } from './rng.js?v=20261111o';
+import { LegacyRandom } from './rng.js?v=20261111q';
 
 const OBJECT_RADIUS = 64;
 const FIELD_H = 384;

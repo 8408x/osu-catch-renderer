@@ -231,6 +231,95 @@ function initFiles() {
   }
 }
 
+
+/** Hidden extras. Left/right arrows walk the catcher on the welcome card (Shift dashes) and fruit starts to fall;
+ *  click the apple logo five times, or type the old code, for a fruit shower. */
+function initEggs() {
+  const guide = $('guide'), img = guide?.querySelector('img');
+  const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.dataset.motion === 'reduce';
+  const FRUITS = ['pear', 'orange', 'apple', 'grapes'].map((n) => { const i = new Image(); i.src = `assets/egg-${n}.png?v=${document.querySelector('meta[name=app-version]')?.content ?? ''}`; return i.src; });
+  const toast = (text) => {
+    const el = document.createElement('div');
+    el.className = 'eggtoast'; el.textContent = text; el.setAttribute('role', 'status');
+    document.body.append(el); setTimeout(() => el.remove(), 2400);
+  };
+  const shower = (n = 40) => {
+    if (calm()) { toast('Fruit shower (animation is off)'); return; }
+    for (let i = 0; i < n; i++) {
+      const f = document.createElement('img');
+      f.className = 'eggrain'; f.src = FRUITS[i % 4]; f.alt = '';
+      f.style.cssText = `left:${Math.random() * 100}vw;animation-delay:${Math.random() * 1.2}s;animation-duration:${1.6 + Math.random() * 1.4}s;width:${30 + Math.random() * 30}px`;
+      document.body.append(f); setTimeout(() => f.remove(), 4500);
+    }
+  };
+
+  // the apple logo, five quick clicks
+  const logo = document.querySelector('.brand .logo');
+  let clicks = [];
+  logo?.addEventListener('click', () => {
+    const now = Date.now(); clicks = clicks.filter((t) => now - t < 1800); clicks.push(now);
+    if (clicks.length >= 5) { clicks = []; shower(); toast('Fruit shower!'); }
+  });
+
+  // the old code
+  const code = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'KeyB', 'KeyA'];
+  let at = 0;
+  document.addEventListener('keydown', (e) => {
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName ?? '')) return;
+    at = e.code === code[at] ? at + 1 : (e.code === code[0] ? 1 : 0);
+    if (at === code.length) { at = 0; shower(60); toast('Hyper dash! +10,000'); }
+  });
+
+  if (!guide || !img) return;
+  // the catcher on the welcome card
+  const field = document.createElement('div');
+  field.className = 'eggfield'; field.setAttribute('aria-hidden', 'true');
+  const combo = document.createElement('div'); combo.className = 'eggcombo';
+  field.append(combo); guide.append(field);
+  let x = 0, vel = 0, held = new Set(), raf = 0, last = 0, played = false, n = 0, comboN = 0, spawnAt = 0;
+  const fruits = [];
+  const limit = () => Math.max(0, guide.clientWidth / 2 - img.clientWidth / 2 - 10);
+  const place = () => { img.style.transform = `translateX(${x}px)`; };
+  const visible = () => !guide.hidden && guide.offsetParent !== null;
+  const tick = (now) => {
+    const dt = Math.min(48, now - (last || now)); last = now;
+    const dash = held.has('Shift');
+    const dir = (held.has('ArrowRight') ? 1 : 0) - (held.has('ArrowLeft') ? 1 : 0);
+    const target = dir * (dash ? 0.95 : 0.45);                     // px per ms
+    vel += (target - vel) * Math.min(1, dt / 70);
+    x = Math.max(-limit(), Math.min(limit(), x + vel * dt)); place();
+    if (played && !calm()) {
+      if (now > spawnAt) {
+        spawnAt = now + 700 + Math.random() * 500;
+        const f = document.createElement('img'); f.className = 'eggfruit'; f.src = FRUITS[n++ % 4]; f.alt = '';
+        const fx = guide.clientWidth / 2 + (Math.random() * 2 - 1) * (limit() + img.clientWidth / 2 - 30);
+        f.style.left = `${fx}px`; field.append(f); fruits.push({ f, x: fx, y: -40 });
+      }
+      const g = guide.getBoundingClientRect(), c = img.getBoundingClientRect();
+      const plateY = c.top - g.top + c.height * 0.06, mid = c.left - g.left + c.width / 2, half = c.width * 0.46;
+      for (let i = fruits.length - 1; i >= 0; i--) {
+        const o = fruits[i]; o.y += dt * 0.28; o.f.style.transform = `translateY(${o.y}px)`;
+        if (o.y + 28 >= plateY && o.y < plateY + 20 && Math.abs(o.x - mid) < half) { comboN++; combo.textContent = `${comboN}x`; combo.classList.remove('pop'); void combo.offsetWidth; combo.classList.add('pop'); o.f.remove(); fruits.splice(i, 1); }
+        else if (o.y > guide.clientHeight) { if (comboN) { comboN = 0; combo.textContent = ''; } o.f.remove(); fruits.splice(i, 1); }
+      }
+    }
+    raf = held.size || Math.abs(vel) > 0.01 || fruits.length || (played && visible()) ? requestAnimationFrame(tick) : 0;
+    if (!raf) last = 0;
+  };
+  const kick = () => { if (!raf) raf = requestAnimationFrame(tick); };
+  document.addEventListener('keydown', (e) => {
+    if (!visible() || e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName ?? '')) return;
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      e.preventDefault(); held.add(e.key); if (e.shiftKey) held.add('Shift');
+      if (!played) { played = true; spawnAt = performance.now() + 600; }
+      kick();
+    }
+  });
+  document.addEventListener('keyup', (e) => { held.delete(e.key); if (e.key === 'Shift') held.delete('Shift'); });
+  window.addEventListener('blur', () => held.clear());
+  new MutationObserver(() => { if (!visible()) { for (const o of fruits) o.f.remove(); fruits.length = 0; played = false; comboN = 0; combo.textContent = ''; x = 0; vel = 0; place(); } }).observe(guide, { attributes: true, attributeFilter: ['hidden'] });
+}
+
 function initHints() {
   const box = $('hints');
   const apply = () => document.body.classList.toggle('nohints', !box.checked);
@@ -325,6 +414,7 @@ try {
     initHints();
     initCalm();
     initFiles();
+    initEggs();
     initResets();
     initDrop();
     initCelebrate();
