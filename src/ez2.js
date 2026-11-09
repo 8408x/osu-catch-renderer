@@ -34,6 +34,7 @@ export function makeChart() {
 
 export function openEz2() {
   if (document.getElementById('ez2')) return;
+  window.dispatchEvent(new CustomEvent('ocr-egg', { detail: 'ez2' }));
   const root = document.createElement('div');
   root.id = 'ez2'; root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', 'EZ2CATCH mini game');
   root.style.cssText = 'position:fixed;inset:0;z-index:100;background:#05060f;touch-action:none;user-select:none;-webkit-user-select:none';
@@ -201,7 +202,10 @@ export function openEz2() {
     g.fillStyle = '#ffffff22'; g.fillRect(16, 48, 150, 8); g.fillStyle = gauge < 25 ? '#ff7b8f' : '#7ee0a0'; g.fillRect(16, 48, 150 * gauge / 100, 8);
     g.textAlign = 'center';
     if (t < 0 && mode === 'play') { g.fillStyle = '#fff'; g.font = `800 ${Math.min(80, W / 6)}px system-ui, sans-serif`; g.fillText(String(Math.ceil(-t)), W / 2, H * 0.4); }
-    if (mode === 'play' && t > endAt()) { mode = 'results'; stopAudio(); }
+    if (mode === 'play' && t > endAt()) {
+      mode = 'results'; stopAudio();
+      try { const k = 'ocr.ez2best'; if (score > Number(localStorage.getItem(k) ?? 0)) localStorage.setItem(k, String(score)); } catch { /* storage blocked */ }
+    }
     if (mode === 'results') {
       g.fillStyle = 'rgba(5,6,15,.82)'; g.fillRect(0, 0, W, H);
       const acc = (counts.KOOL + counts.COOL * 0.8 + counts.GOOD * 0.45) / total, rank = acc > 0.95 ? 'S' : acc > 0.88 ? 'A' : acc > 0.75 ? 'B' : acc > 0.6 ? 'C' : 'D';

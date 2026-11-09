@@ -167,8 +167,14 @@ function initStatus() {
 function initTheme() {
   const sel = $('theme'), root = document.documentElement, media = matchMedia('(prefers-color-scheme: light)');
   let saved = 'auto';
-  try { const v = localStorage.getItem('ocr.theme'); if (['dark', 'light', 'sakura'].includes(v)) saved = v; } catch { /* storage blocked */ }
+  try { const v = localStorage.getItem('ocr.theme'); if (['dark', 'light', 'sakura', 'arcade'].includes(v)) saved = v; } catch { /* storage blocked */ }
   const apply = () => { root.dataset.theme = saved === 'auto' ? (media.matches ? 'light' : 'dark') : saved; };
+  const addArcade = () => { if (![...sel.options].some((o) => o.value === 'arcade')) sel.append(new Option('Arcade (secret)', 'arcade')); };
+  if (saved === 'arcade') addArcade();
+  sel.addEventListener('pointerdown', (e) => {                    // hold Shift while opening the theme list
+    if (!e.shiftKey || [...sel.options].some((o) => o.value === 'arcade')) return;
+    addArcade(); egg('arcade'); eggToast('Secret theme unlocked: Arcade');
+  });
   sel.value = saved; apply();
   sel.addEventListener('change', () => {
     saved = sel.value; apply();
@@ -237,19 +243,57 @@ function initFiles() {
 }
 
 
+/** Easter-egg helpers: one message at a time, and a tally of which eggs this browser has found. */
+function eggToast(text, ms = 2400) {
+  document.querySelectorAll('.eggtoast').forEach((t) => t.remove());
+  const el = document.createElement('div');
+  el.className = 'eggtoast'; el.textContent = text; el.setAttribute('role', 'status');
+  document.body.append(el); setTimeout(() => el.remove(), ms);
+}
+const EGG_IDS = ['walk', 'vanish', 'shower', 'konami', 'ez2', 'hyper', 'combo', 'arcade', 'idle', 'wrongfile', 'dev'];
+function egg(id) {
+  let got = [];
+  try { got = JSON.parse(store.get('eggs') ?? '[]'); } catch { got = []; }
+  if (!got.includes(id)) { got.push(id); store.set('eggs', JSON.stringify(got)); }
+}
+window.addEventListener('ocr-egg', (e) => egg(e.detail));
+window.addEventListener('ocr-done', () => store.set('renders', String(Number(store.get('renders') ?? 0) + 1)));
+let hyperUntil = 0;
+
+/** Click the version line seven times: a small stats card (kept in this browser only). */
+function initDevCard() {
+  const ver = $('ver'); if (!ver) return;
+  let clicks = [];
+  ver.addEventListener('click', () => {
+    const now = Date.now(); clicks = clicks.filter((t) => now - t < 4000); clicks.push(now);
+    if (clicks.length < 7) return;
+    clicks = []; egg('dev'); eggToast('Developer mode on!', 1400);
+    setTimeout(() => {
+      if (document.getElementById('eggdlg')) return;
+      let got = []; try { got = JSON.parse(store.get('eggs') ?? '[]'); } catch { got = []; }
+      const d = document.createElement('div');
+      d.id = 'eggdlg'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-label', 'Developer stats');
+      const rows = [['Version', document.querySelector('meta[name=app-version]')?.content ?? '?'], ['Render runs finished here', store.get('renders') ?? '0'],
+        ['EZ2CATCH best score', store.get('ez2best') ?? 'not played yet'], ['Easter eggs found', `${got.filter((g) => EGG_IDS.includes(g)).length} of ${EGG_IDS.length}`], ['Theme', document.documentElement.dataset.theme ?? '?']];
+      d.innerHTML = `<h3>Developer stats</h3><dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl><p>Only stored in this browser.</p><button type="button" class="primary">Close</button>`;
+      document.body.append(d);
+      const off = () => { d.remove(); document.removeEventListener('keydown', esc, true); };
+      const esc = (e) => { if (e.key === 'Escape') { e.stopPropagation(); off(); } };
+      document.addEventListener('keydown', esc, true);
+      d.querySelector('button').addEventListener('click', off); d.querySelector('button').focus();
+    }, 1200);
+  });
+}
+
 /** Hidden extras. Left/right arrows walk the catcher on the welcome card (Shift dashes) and fruit starts to fall;
  *  click the apple logo five times, or type the old code, for a fruit shower. */
 function initEggs() {
   const guide = $('guide'), img = guide?.querySelector('img');
   const calm = reduced;
   const FRUITS = ['pear', 'orange', 'apple', 'grapes'].map((n) => { const i = new Image(); i.src = `assets/egg-${n}.png?v=${document.querySelector('meta[name=app-version]')?.content ?? ''}`; return i.src; });
-  const toast = (text) => {
-    document.querySelectorAll('.eggtoast').forEach((t) => t.remove());   // one message at a time
-    const el = document.createElement('div');
-    el.className = 'eggtoast'; el.textContent = text; el.setAttribute('role', 'status');
-    document.body.append(el); setTimeout(() => el.remove(), 2400);
-  };
+  const toast = eggToast;
   const shower = (n = 40) => {
+    egg('shower');
     if (calm()) return;                                        // no falling fruit with reduced motion; the message still shows
     for (let i = 0; i < n; i++) {
       const f = document.createElement('img');
@@ -273,7 +317,21 @@ function initEggs() {
   document.addEventListener('keydown', (e) => {
     if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName ?? '')) return;
     at = e.code === code[at] ? at + 1 : (e.code === code[0] ? 1 : 0);
-    if (at === code.length) { at = 0; shower(60); toast('Hyper dash! +10,000'); }
+    if (at === code.length) { at = 0; egg('konami'); shower(60); toast('Hyper dash! +10,000'); }
+  });
+
+  // typed words: "hyper" (hyperdash glow for the welcome catcher) and "combo" (a gold full-combo banner)
+  let typed = '';
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1 || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName ?? '')) return;
+    typed = (typed + e.key.toUpperCase()).slice(-8);
+    if (typed.endsWith('HYPER')) { typed = ''; egg('hyper'); hyperUntil = performance.now() + 9000; toast('HYPER!'); img?.classList.add('hyper'); setTimeout(() => { if (performance.now() >= hyperUntil) img?.classList.remove('hyper'); }, 9100); }
+    else if (typed.endsWith('COMBO')) {
+      typed = ''; egg('combo');
+      document.querySelectorAll('.eggbanner').forEach((b) => b.remove());
+      const b = document.createElement('div'); b.className = 'eggbanner'; b.textContent = 'FULL COMBO';
+      document.body.append(b); setTimeout(() => b.remove(), 2600);
+    }
   });
 
   if (!guide || !img) return;
@@ -282,6 +340,7 @@ function initEggs() {
   field.className = 'eggfield'; field.setAttribute('aria-hidden', 'true');
   const combo = document.createElement('div'); combo.className = 'eggcombo';
   field.append(combo); guide.append(field);
+  let auto = false, lastGhost = 0, idleTimer = 0;
   let x = 0, vel = 0, held = new Set(), raf = 0, last = 0, played = false, n = 0, comboN = 0, spawnAt = 0;
   const fruits = [];
   const limit = () => Math.max(0, guide.clientWidth / 2 - img.clientWidth / 2 - 10);
@@ -306,7 +365,7 @@ function initEggs() {
     const moved = dragging.moved; dragging = null; img.classList.remove('held');
     if (moved) {
       gone = true; played = false; for (const o of fruits) o.f.remove(); fruits.length = 0; comboN = 0; combo.textContent = '';
-      img.classList.add('vanish'); toast('...where did it go?');
+      egg('vanish'); img.classList.add('vanish'); toast('...where did it go?');
     } else { offX = offY = 0; place(); }
   };
   img.addEventListener('pointerup', drop);
@@ -315,10 +374,19 @@ function initEggs() {
   const tick = (now) => {
     const dt = Math.min(48, now - (last || now)); last = now;
     const dash = held.has('Shift');
-    const dir = (held.has('ArrowRight') ? 1 : 0) - (held.has('ArrowLeft') ? 1 : 0);
+    let dir = (held.has('ArrowRight') ? 1 : 0) - (held.has('ArrowLeft') ? 1 : 0);
+    if (auto && fruits.length) {                                   // idle demo: the catcher plays itself
+      const low = fruits.reduce((a, b) => (b.y > a.y ? b : a)), diff = low.x - guide.clientWidth / 2 - x;
+      dir = Math.abs(diff) > 10 ? Math.sign(diff) : 0;
+    }
     const target = dir * (dash ? 0.95 : 0.45);                     // px per ms
     vel += (target - vel) * Math.min(1, dt / 70);
     x = Math.max(-limit(), Math.min(limit(), x + vel * dt)); place();
+    if (now < hyperUntil && Math.abs(vel) > 0.12 && now - lastGhost > 45 && !calm()) {      // hyperdash: fading afterimages
+      lastGhost = now;
+      const gh = img.cloneNode(); gh.removeAttribute('id'); gh.className = 'eggghost'; gh.style.cssText = `left:${img.offsetLeft}px;top:${img.offsetTop}px;transform:translate(${x + offX}px, ${offY}px);width:${img.clientWidth}px;height:${img.clientHeight}px`;
+      guide.insertBefore(gh, img); setTimeout(() => gh.remove(), 420);
+    }
     if (played && !calm()) {
       if (now > spawnAt) {
         spawnAt = now + 700 + Math.random() * 500;
@@ -342,13 +410,25 @@ function initEggs() {
     if (!visible() || e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName ?? '')) return;
     if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
       e.preventDefault(); if (gone) return; held.add(e.key); if (e.shiftKey) held.add('Shift');
+      egg('walk');
       if (!played) { played = true; spawnAt = performance.now() + 600; }
       kick();
     }
   });
   document.addEventListener('keyup', (e) => { held.delete(e.key); if (e.key === 'Shift') held.delete('Shift'); });
   window.addEventListener('blur', () => held.clear());
-  new MutationObserver(() => { if (!visible()) { for (const o of fruits) o.f.remove(); fruits.length = 0; played = false; comboN = 0; combo.textContent = ''; x = 0; vel = 0; offX = offY = 0; gone = false; img.classList.remove('vanish'); place(); } }).observe(guide, { attributes: true, attributeFilter: ['hidden'] });
+  // left alone for a minute, the catcher plays by itself until you touch anything
+  const stopAuto = () => { if (auto) { auto = false; played = false; for (const o of fruits) o.f.remove(); fruits.length = 0; comboN = 0; combo.textContent = ''; } };
+  const arm = () => {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => {
+      if (!visible() || gone || calm() || played || document.hidden) { arm(); return; }
+      auto = true; played = true; spawnAt = performance.now() + 300; egg('idle'); kick();
+    }, 60000);
+  };
+  for (const ev of ['keydown', 'pointerdown', 'pointermove', 'touchstart', 'wheel']) document.addEventListener(ev, () => { stopAuto(); arm(); }, { passive: true, capture: true });
+  arm();
+  new MutationObserver(() => { if (!visible()) { auto = false; for (const o of fruits) o.f.remove(); fruits.length = 0; played = false; comboN = 0; combo.textContent = ''; x = 0; vel = 0; offX = offY = 0; gone = false; img.classList.remove('vanish'); place(); } }).observe(guide, { attributes: true, attributeFilter: ['hidden'] });
 }
 
 function initHints() {
@@ -413,15 +493,17 @@ function initDrop() {
     e.preventDefault();
     depth = 0;
     veil.classList.remove('on'); document.body.classList.remove('dragging');
-    const by = { osr: [], osu: [], osk: [], img: [], map: [] };
+    const by = { osr: [], osu: [], osk: [], img: [], map: [], junk: [] };
     for (const f of e.dataTransfer.files) {
       const n = f.name.toLowerCase();
       if (n.endsWith('.osr')) by.osr.push(f);
       else if (n.endsWith('.osu')) by.osu.push(f);
       else if (n.endsWith('.osk')) by.osk.push(f);
       else if (/\.(png|jpe?g)$/.test(n)) by.img.push(f);
-      else by.map.push(f);                                     // .osz, .zip and songs
+      else if (/\.(osz|zip|mp3|ogg|oga|wav|m4a|aac|flac|opus)$/.test(n)) by.map.push(f);     // maps and songs
+      else by.junk.push(f);
     }
+    if (by.junk.length && !by.osr.length && !by.osu.length && !by.osk.length && !by.img.length && !by.map.length) { egg('wrongfile'); eggToast(`${/\.(txt|md|doc|docx|pdf)$/i.test(by.junk[0].name) ? 'Nice document' : 'Nice file'}, but that's not a replay. Try an .osr!`, 3200); return; }
     give($('osr'), by.osr);
     give($('osu'), by.osu.slice(0, 1));
     give($('skin'), by.osk.slice(0, 1));
@@ -446,7 +528,8 @@ try {
     initCalm();
     initFiles();
     initEggs();
-    import('./ez2.js?v=20261111x').then((m) => m.watchForEz2()).catch(() => { /* the hidden game is optional */ });
+    initDevCard();
+    import('./ez2.js?v=20261111y').then((m) => m.watchForEz2()).catch(() => { /* the hidden game is optional */ });
     initResets();
     initDrop();
     initCelebrate();

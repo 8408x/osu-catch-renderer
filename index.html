@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="app-version" content="20261111x">
-  <script>try{var t=localStorage.getItem("ocr.theme");if(t==="light"||t==="dark"||t==="sakura")document.documentElement.dataset.theme=t;else if(matchMedia("(prefers-color-scheme: light)").matches)document.documentElement.dataset.theme="light";}catch(e){}</script>
+  <meta name="app-version" content="20261111y">
+  <script>try{var t=localStorage.getItem("ocr.theme");if(t==="light"||t==="dark"||t==="sakura"||t==="arcade")document.documentElement.dataset.theme=t;else if(matchMedia("(prefers-color-scheme: light)").matches)document.documentElement.dataset.theme="light";}catch(e){}</script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>osu!catch Replay Renderer</title>
-  <link rel="icon" type="image/png" href="assets/favicon.png?v=20261111x">
+  <link rel="icon" type="image/png" href="assets/favicon.png?v=20261111y">
   <style>
     :root {
       color-scheme: dark;
@@ -37,6 +37,16 @@
       --ok:#1f8a58; --warn:#9a6200; --err:#c4243f;
       --hover:#ffdde6; --hover-line:#e3a9ba; --accent-hover:#bb2a52; --shadow:#7a1f4222; --veil:#fff4f6ee; --strong:#000;
       --ok-bg:#dcf2e6; --warn-ink:#ffffff; --err-ink:#ffffff; --panel:#fffafb; --pop-line:rgba(120,40,70,.18);
+    }
+    /* Arcade: the secret neon theme */
+    :root[data-theme="arcade"] {
+      color-scheme: dark;
+      --bg:#07031a; --surface:#0e0830; --surface2:#160d44; --line:#2a1b6b; --line2:#3f2a94;
+      --text:#f1ecff; --dim:#b3a8f5; --faint:#9a8ee6;
+      --accent:#ff2fd0; --accent-ink:#1a0014; --focus:#38f2ff;
+      --ok:#4dffb0; --warn:#ffd84d; --err:#ff5c8a;
+      --hover:#20135c; --hover-line:#5a3fd0; --accent-hover:#ff5adb; --shadow:#000b; --veil:#07031add; --strong:#fff;
+      --ok-bg:#0f4a36; --warn-ink:#2a1f00; --err-ink:#2d0710; --panel:#0e0830; --pop-line:rgba(120,90,255,.4);
     }
     * { box-sizing:border-box; }
     html, body { height:100%; }
@@ -217,6 +227,18 @@
     @keyframes eggpop { from { transform:scale(1.5); } to { transform:none; } }
     .eggrain { position:fixed; top:-70px; height:auto; z-index:60; pointer-events:none; animation:eggfall 2.4s ease-in forwards; }
     @keyframes eggfall { to { transform:translateY(calc(100vh + 120px)) rotate(300deg); } }
+    .guide > img.hyper { filter:drop-shadow(0 0 14px #ff2fd0) drop-shadow(0 0 30px #58c8ff); }
+    .eggghost { position:absolute; opacity:.35; filter:hue-rotate(300deg) saturate(2); pointer-events:none; animation:eggghost .42s linear forwards; }
+    @keyframes eggghost { to { opacity:0; } }
+    .eggbanner { position:fixed; left:calc((100vw - var(--side)) / 2); top:38%; transform:translate(-50%,-50%); z-index:70; pointer-events:none; font:900 clamp(34px,7vw,84px)/1 system-ui, sans-serif; letter-spacing:.06em; background:linear-gradient(100deg,#b8860b 20%,#ffe27a 40%,#fff6c9 50%,#ffe27a 60%,#b8860b 80%); background-size:250% 100%; -webkit-background-clip:text; background-clip:text; color:transparent; filter:drop-shadow(0 4px 18px #ffcf6688); animation:eggbanner 2.6s ease-out forwards; }
+    @keyframes eggbanner { 0% { opacity:0; background-position:100% 0; transform:translate(-50%,-50%) scale(.7); } 15% { opacity:1; transform:translate(-50%,-50%) scale(1.05); } 30% { transform:translate(-50%,-50%) scale(1); } 70% { opacity:1; background-position:0 0; } 100% { opacity:0; background-position:0 0; } }
+    @media (max-width: 980px) { .eggbanner { left:50%; } }
+    #eggdlg { position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:90; min-width:min(86vw,340px); padding:18px 20px; background:var(--surface); color:var(--text); border:1px solid var(--line2); border-radius:14px; box-shadow:0 24px 70px var(--shadow); }
+    #eggdlg h3 { margin:0 0 10px; font-size:16px; }
+    #eggdlg dl { display:grid; grid-template-columns:1fr auto; gap:6px 18px; margin:0 0 10px; }
+    #eggdlg dt { color:var(--dim); } #eggdlg dd { margin:0; font-weight:700; text-align:right; }
+    #eggdlg p { margin:0 0 12px; color:var(--faint); font-size:12px; }
+    #ver { cursor:default; user-select:none; }
     .eggtoast { position:fixed; left:calc((100vw - var(--side)) / 2); top:calc(var(--top) + 18px); transform:translateX(-50%); z-index:70; padding:10px 18px; border-radius:999px; background:var(--accent); color:var(--accent-ink); font-weight:700; box-shadow:0 10px 30px var(--shadow); animation:eggtoastin .22s ease-out both; pointer-events:none; }
     @keyframes eggtoastin { from { opacity:0; transform:translate(-50%, -8px); } to { opacity:1; transform:translateX(-50%); } }
     @media (max-width: 980px) { .eggtoast { left:50%; } }
@@ -339,7 +361,7 @@
 <body>
 <header class="top">
   <div class="brand">
-    <img class="logo" src="assets/logo.png?v=20261111x" alt="" width="32" height="32">
+    <img class="logo" src="assets/logo.png?v=20261111y" alt="" width="32" height="32">
     <span>Catch Renderer <small>osu!catch replay to MP4</small></span>
   </div>
   <div id="contact">
@@ -370,7 +392,7 @@
     </div>
     <div class="stagewrap" id="stagewrap"><canvas id="stage" width="1280" height="720"></canvas>
       <div class="guide" id="guide">
-        <img src="assets/welcome.png?v=20261111x" alt="" width="447" height="460" decoding="async">
+        <img src="assets/welcome.png?v=20261111y" alt="" width="447" height="460" decoding="async">
         <h2>Turn an osu!catch replay into a video</h2>
         <ol>
           <li><b>Drop your replay</b> (.osr) anywhere on this page. The map is downloaded for you.</li>
@@ -645,6 +667,6 @@
 <div class="dropveil" id="dropveil"><div>Drop files to load them<small>.osr replay · .osz map set · .osu · .osk skin · image · song</small></div></div>
 
 <script src="vendor/lzma-d-min.js"></script>
-<script type="module" src="src/main.js?v=20261111x"></script>
+<script type="module" src="src/main.js?v=20261111y"></script>
 </body>
 </html>

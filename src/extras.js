@@ -1,8 +1,8 @@
 // Experimental extras drawn on top of the playfield. Everything here is optional and off by default; render.js calls
 // these only when the matching switch in Settings > Experimental is on. Playfield coordinates (field units) unless noted.
 
-import { FIELD_W, FIELD_H } from './catch.js?v=20261111x';
-import { keysAt } from './keys.js?v=20261111x';
+import { FIELD_W, FIELD_H } from './catch.js?v=20261111y';
+import { keysAt } from './keys.js?v=20261111y';
 
 const FLASH_MS = 380;
 const ERR_WINDOW_MS = 3000;
