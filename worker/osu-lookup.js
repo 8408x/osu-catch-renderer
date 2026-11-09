@@ -80,15 +80,19 @@ export default {
         const j = await res.json();
         // osu!'s old (v1) API still has every score as osu!stable counted it; use it when a key is set (OSU_V1_KEY secret)
         const old = new Map();
+        let v1note = env.OSU_V1_KEY ? '' : 'no OSU_V1_KEY secret on the Worker';
         if (env.OSU_V1_KEY) {
           try {
             const r1 = await fetch(`https://osu.ppy.sh/api/get_scores?k=${encodeURIComponent(env.OSU_V1_KEY)}&b=${b.id}&m=2&limit=100`);
             const a = r1.ok ? await r1.json() : [];
+            if (!r1.ok) v1note = `osu! v1 answered ${r1.status}`;
+            else if (!Array.isArray(a)) v1note = `osu! v1 said: ${String(a?.error ?? JSON.stringify(a)).slice(0, 80)}`;
+            else if (!a.length) v1note = 'osu! v1 returned no scores for this map';
             for (const x of Array.isArray(a) ? a : []) if (Number(x.score) > 0 && !old.has(String(x.user_id))) old.set(String(x.user_id), Number(x.score));
-          } catch { /* the v2 numbers stand */ }
+          } catch (e) { v1note = `osu! v1 failed: ${e.message}`; }
         }
         return json({
-          beatmap_id: b.id, v1: old.size, status: b.status, same_version: !b.checksum || b.checksum === sum,
+          beatmap_id: b.id, v1: old.size, v1_note: old.size ? '' : v1note, status: b.status, same_version: !b.checksum || b.checksum === sum,
           scores: (j.scores ?? []).slice(0, 50).map((x, i) => ({
             rank: i + 1, user_id: x.user_id ?? x.user?.id, username: x.user?.username ?? '', country_code: x.user?.country_code ?? '',
             score: old.get(String(x.user_id ?? x.user?.id)) ?? [x.classic_total_score, x.legacy_total_score, x.total_score, x.score].find((v) => v > 0) ?? 0,   // some scores carry a 0 in one field and the real value in another
