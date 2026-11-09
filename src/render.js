@@ -7,18 +7,18 @@
 //   - droplets use 0.8x and tiny droplets 0.4x of that; sprites are capped at 160 px
 //   - catcher sprite = texture size x 0.35 x catcher scale, hung from the plate line 16 px down
 
-import { FIELD_W, FIELD_H } from './catch.js?v=20261110a';
-import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261110a';
-import { hudAt, scoreShownAt } from './score.js?v=20261110a';
-import { plateAt, explosionsAt } from './plate.js?v=20261110a';
-import { drawArgonHud, drawArgonPart } from './argon.js?v=20261110a';
-import { healthAt } from './health.js?v=20261110a';
-import { livePp } from './pp.js?v=20261110a';
-import { keysAt } from './keys.js?v=20261110a';
-import { ORDER, rectOf, fullRectOf, WIDGETS, styleInfo } from './layout.js?v=20261110a';
-import { lookFor, styleData } from './styles.js?v=20261110a';
-import { drawModIcons, drawModBadges } from './mods.js?v=20261110a';
-import { drawFlashlight } from './flashlight.js?v=20261110a';
+import { FIELD_W, FIELD_H } from './catch.js?v=20261110b';
+import { hyperAmount, catcherStateAt, TRAIL_LIFE_MS, AFTERIMAGE_LIFE_MS } from './catcher.js?v=20261110b';
+import { hudAt, scoreShownAt } from './score.js?v=20261110b';
+import { plateAt, explosionsAt } from './plate.js?v=20261110b';
+import { drawArgonHud, drawArgonPart } from './argon.js?v=20261110b';
+import { healthAt } from './health.js?v=20261110b';
+import { livePp } from './pp.js?v=20261110b';
+import { keysAt } from './keys.js?v=20261110b';
+import { ORDER, rectOf, fullRectOf, WIDGETS, styleInfo } from './layout.js?v=20261110b';
+import { lookFor, styleData } from './styles.js?v=20261110b';
+import { drawModIcons, drawModBadges } from './mods.js?v=20261110b';
+import { drawFlashlight } from './flashlight.js?v=20261110b';
 
 const ZONE = 120;  // room below the field for the catcher, in field units
 const PAD = 12;
@@ -745,40 +745,8 @@ function drawGuides(ctx, W, H, layout, guides, u) {
   ctx.restore();
 }
 
-const FC_MS = 1400;
-/** The "FULL COMBO" splash (the Fullcombo overlay's job): plays as the last object lands when the combo was never broken. */
-function drawFullCombo(ctx, W, H, scene, t) {
-  const tl = scene.hud?.timeline;
-  if (!tl?.length || !scene.objects.length) return;
-  const end = tl[tl.length - 1];
-  if ((end.nMiss ?? 0) > 0 || !(end.combo > 0)) return;
-  const p = (t - scene.objects[scene.objects.length - 1].t) / FC_MS;
-  if (p < 0 || p > 1) return;
-  const u = H / 1080, cx = W / 2, cy = H * 0.42;
-  const grow = Math.min(1, p / 0.22), back = 1 + 2.2 * (grow - 1) ** 3 + 1.2 * (grow - 1) ** 2;   // easeOutBack
-  const alpha = Math.min(1, p / 0.08, (1 - p) / 0.28);
-  ctx.save();
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.globalAlpha = Math.max(0, alpha);
-  const band = ctx.createLinearGradient(0, cy - 160 * u, 0, cy + 160 * u);
-  band.addColorStop(0, 'rgba(255,215,90,0)'); band.addColorStop(0.5, 'rgba(255,215,90,0.22)'); band.addColorStop(1, 'rgba(255,215,90,0)');
-  ctx.fillStyle = band; ctx.fillRect(0, cy - 160 * u, W, 320 * u);
-  ctx.translate(cx, cy); ctx.scale(back, back);
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.font = `800 ${150 * u}px "Exo 2", "Torus", system-ui, sans-serif`;
-  ctx.shadowColor = 'rgba(255,190,60,0.9)'; ctx.shadowBlur = 40 * u;
-  ctx.fillStyle = '#fff4cc'; ctx.fillText('FULL COMBO', 0, 0);
-  ctx.shadowBlur = 0;
-  const sweep = -1.2 + 2.6 * p, w = ctx.measureText('FULL COMBO').width;           // a bright sheen sweeping across the letters
-  const g = ctx.createLinearGradient((sweep - 0.25) * w, 0, (sweep + 0.25) * w, 0);
-  g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.5, 'rgba(255,255,255,0.95)'); g.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.globalCompositeOperation = 'source-atop'; ctx.fillStyle = g; ctx.fillText('FULL COMBO', 0, 0);
-  ctx.restore();
-  ctx.globalAlpha = 1;
-}
-
 export function drawFrame(ctx, W, H, scene, track, t, opts = {}) {
-  const { fullCombo = false, skin, showCatchWidth = false, showHud = false, hitLighting = false, style = 'overlay', bg = null, bgDim = 0.8, keys = null, argon = null, tosu = null, sb = null, makeCanvas = null, layout: customLayout = null, guides = null } = opts;
+  const { skin, showCatchWidth = false, showHud = false, hitLighting = false, style = 'overlay', bg = null, bgDim = 0.8, keys = null, argon = null, tosu = null, sb = null, makeCanvas = null, layout: customLayout = null, guides = null } = opts;
   const overlay = true;                                    // both HUD styles use the full-height playfield
   const { s, ox, oy } = layout(W, H, overlay);
 
@@ -872,5 +840,4 @@ export function drawFrame(ctx, W, H, scene, track, t, opts = {}) {
   else if (showHud) drawOverlay(ctx, W, H, scene, t, { bg, keys, tosu, skin });
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  if (fullCombo) drawFullCombo(ctx, W, H, scene, t);
 }
