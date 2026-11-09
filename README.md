@@ -249,3 +249,7 @@ The top bar has a theme picker: Auto (follows your system), Dark, Light and Saku
 ## Settings and test mode
 
 The gear in the top bar opens Settings: appearance (theme, keyboard hints), experimental options (smooth numbers, the online leaderboard) and **Test mode**. Test mode loads a top player's replay from `samples/` (listed in `samples/index.json`) so you don't have to upload one each time; the beatmap is then downloaded the usual way. It can load a random replay or a chosen one, and stays on until you turn it off.
+
+## Updating the lookup Worker without pasting code
+
+In the Cloudflare dashboard: Workers & Pages -> `osu-lookup` -> Settings -> Builds -> Connect to Git, pick this repository and set the root directory to `worker`. After that every push that changes `worker/` is deployed automatically (the osu! secrets stay as they are).

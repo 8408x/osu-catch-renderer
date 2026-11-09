@@ -1,5 +1,6 @@
+# Lets Cloudflare build and deploy this Worker straight from GitHub (Workers Builds), so a push updates it.
+# Secrets (OSU_CLIENT_ID, OSU_CLIENT_SECRET) stay in the Cloudflare dashboard; keep_vars stops a deploy from erasing them.
 name = "osu-lookup"
 main = "osu-lookup.js"
-compatibility_date = "2026-01-01"
-# Set the secrets with:  npx wrangler secret put OSU_CLIENT_ID   and   npx wrangler secret put OSU_CLIENT_SECRET
-# Optional: ALLOW_ORIGIN = "https://8408x.github.io"
+compatibility_date = "2025-01-01"
+keep_vars = true
