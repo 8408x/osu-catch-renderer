@@ -33,7 +33,7 @@ export async function lookupPlayer(name) {
     }
     if (!j || j.id == null) throw new Error('the lookup Worker is out of date: re-paste worker/osu-lookup.js in Cloudflare');
     profile = j;
-    try { current = await loadImage(`${base}/avatar/${j.id}`); } catch { /* the initial stands in */ }
+    current = await loadPicture(`${base}/avatar/${j.id}`);
     say(`Found ${j.username}${j.rank ? ` (#${j.rank.toLocaleString('en-US')})` : ''}.`);
     setOnline('player', current ? 'ok' : 'warn', `Player: ${j.username}${j.rank ? ` (#${j.rank.toLocaleString('en-US')})` : ''}${current ? '' : ', but the picture could not be loaded'}`);
     redrawFn();
@@ -45,6 +45,22 @@ export async function lookupPlayer(name) {
     setOnline('player', 'warn', `Player: ${String(err.message).replace(/^Failed to fetch$/, 'could not reach the lookup Worker (offline or blocked)')}`);
   }
   redrawFn();
+}
+
+/** The picture as a still 256x256 canvas (an animated picture can draw blank on some browsers), retried a few times; null when it never loads. */
+async function loadPicture(src) {
+  for (let i = 0; i < 3; i++) {
+    try {
+      const img = await loadImage(i ? `${src}${src.includes('?') ? '&' : '?'}r=${i}` : src);
+      await img.decode?.().catch(() => {});
+      const c = document.createElement('canvas'); c.width = c.height = 256;
+      const k = Math.max(256 / img.naturalWidth, 256 / img.naturalHeight);
+      c.getContext('2d').drawImage(img, (256 - img.naturalWidth * k) / 2, (256 - img.naturalHeight * k) / 2, img.naturalWidth * k, img.naturalHeight * k);
+      c.naturalWidth = c.naturalHeight = 256;                // the drawing code reads these like an image's
+      return c;
+    } catch { await new Promise((r) => setTimeout(r, 400 * (i + 1))); }
+  }
+  return null;
 }
 
 function loadImage(src) {
@@ -94,7 +110,7 @@ export async function loadBoard(md5, beatmapId = 0) {
     const mine = who && !profile ? j.scores.find((x) => x.username.toLowerCase() === who) : null;
     if (mine) {
       profile = { id: mine.user_id, username: mine.username, country_code: mine.country_code, rank: null };
-      try { current = await loadImage(`${lookupBase()}/avatar/${mine.user_id}`); setOnline('player', 'ok', `Player: ${mine.username}, found on the leaderboard (the profile lookup itself failed, so no rank)`); } catch { /* the initial stands in */ }
+      current = await loadPicture(`${lookupBase()}/avatar/${mine.user_id}`); if (current) { setOnline('player', 'ok', `Player: ${mine.username}, found on the leaderboard (the profile lookup itself failed, so no rank)`); }
     }
   } catch (err) {
     say(`No leaderboard: ${err.message}.`);
