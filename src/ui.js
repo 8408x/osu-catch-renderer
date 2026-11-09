@@ -181,7 +181,7 @@ function initTheme() {
 /** A little burst of fruit from the Render button when a video finishes (skipped with reduced motion). */
 function initCelebrate() {
   window.addEventListener('ocr-done', () => {
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.dataset.motion === 'reduce') return;
+    if (reduced()) return;
     const r = document.getElementById('export').getBoundingClientRect(), cols = ['#ff6b8a', '#9b6bd6', '#ffb04a', '#7ccf6a'];
     for (let i = 0; i < 18; i++) {
       const el = document.createElement('i'), a = (-Math.PI / 2) + (Math.random() - 0.5) * 2.4, d = 60 + Math.random() * 110;
@@ -193,13 +193,18 @@ function initCelebrate() {
   });
 }
 
-/** Settings: a reduce-motion switch of the site's own (remembered); the device's own setting still applies too. */
+/** Animations are on by default; a Settings choice can follow the device's reduce-motion setting or turn them off. */
+const reduced = () => {
+  const m = document.documentElement.dataset.motion;
+  return m === 'reduce' || (m === 'auto' && matchMedia('(prefers-reduced-motion: reduce)').matches);
+};
 function initCalm() {
-  const box = $('calm');
-  const apply = () => { if (box.checked) document.documentElement.dataset.motion = 'reduce'; else delete document.documentElement.dataset.motion; };
-  box.checked = store.get('calm') === '1';
-  apply();
-  box.addEventListener('change', () => { apply(); store.set('calm', box.checked ? '1' : '0'); });
+  const sel = $('motion');
+  let v = store.get('motion') ?? (store.get('calm') === '1' ? 'reduce' : 'on');
+  if (!['on', 'auto', 'reduce'].includes(v)) v = 'on';
+  sel.value = v;
+  document.documentElement.dataset.motion = v;
+  sel.addEventListener('change', () => { document.documentElement.dataset.motion = sel.value; store.set('motion', sel.value); });
 }
 
 /** Each of the Look, Sound and Render tabs gets a button that puts that tab's own controls back to their starting values. */
@@ -236,7 +241,7 @@ function initFiles() {
  *  click the apple logo five times, or type the old code, for a fruit shower. */
 function initEggs() {
   const guide = $('guide'), img = guide?.querySelector('img');
-  const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.dataset.motion === 'reduce';
+  const calm = reduced;
   const FRUITS = ['pear', 'orange', 'apple', 'grapes'].map((n) => { const i = new Image(); i.src = `assets/egg-${n}.png?v=${document.querySelector('meta[name=app-version]')?.content ?? ''}`; return i.src; });
   const toast = (text) => {
     document.querySelectorAll('.eggtoast').forEach((t) => t.remove());   // one message at a time

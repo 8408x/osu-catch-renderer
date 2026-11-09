@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="app-version" content="20261111s">
+  <meta name="app-version" content="20261111t">
   <script>try{var t=localStorage.getItem("ocr.theme");if(t==="light"||t==="dark"||t==="sakura")document.documentElement.dataset.theme=t;else if(matchMedia("(prefers-color-scheme: light)").matches)document.documentElement.dataset.theme="light";}catch(e){}</script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>osu!catch Replay Renderer</title>
-  <link rel="icon" type="image/png" href="assets/favicon.png?v=20261111s">
+  <link rel="icon" type="image/png" href="assets/favicon.png?v=20261111t">
   <style>
     :root {
       color-scheme: dark;
@@ -218,7 +218,7 @@
     .eggrain { position:fixed; top:-70px; height:auto; z-index:60; pointer-events:none; animation:eggfall 2.4s ease-in forwards; }
     @keyframes eggfall { to { transform:translateY(calc(100vh + 120px)) rotate(300deg); } }
     .eggtoast { position:fixed; left:50%; bottom:28px; transform:translateX(-50%); z-index:70; padding:10px 18px; border-radius:999px; background:var(--accent); color:var(--accent-ink); font-weight:700; box-shadow:0 10px 30px var(--shadow); animation:panein .2s ease-out both; }
-    @media (prefers-reduced-motion: reduce) { .chip i, .chip, .pane:not([hidden]) { animation:none; } button { transition:none; } }
+    @media (prefers-reduced-motion: reduce) { :root[data-motion="auto"] .chip i, :root[data-motion="auto"] .chip, :root[data-motion="auto"] .pane:not([hidden]) { animation:none; } :root[data-motion="auto"] button { transition:none; } }
     .rangehandle.set, .rangehandle:hover, .rangehandle:focus-visible { opacity:1; }
     .rangehandle[hidden] { display:none; }
     #clock { color:var(--dim); font-variant-numeric:tabular-nums; min-width:92px; text-align:right; }
@@ -337,7 +337,7 @@
 <body>
 <header class="top">
   <div class="brand">
-    <img class="logo" src="assets/logo.png?v=20261111s" alt="" width="32" height="32">
+    <img class="logo" src="assets/logo.png?v=20261111t" alt="" width="32" height="32">
     <span>Catch Renderer <small>osu!catch replay to MP4</small></span>
   </div>
   <div id="contact">
@@ -368,7 +368,7 @@
     </div>
     <div class="stagewrap" id="stagewrap"><canvas id="stage" width="1280" height="720"></canvas>
       <div class="guide" id="guide">
-        <img src="assets/welcome.png?v=20261111s" alt="" width="447" height="460" decoding="async">
+        <img src="assets/welcome.png?v=20261111t" alt="" width="447" height="460" decoding="async">
         <h2>Turn an osu!catch replay into a video</h2>
         <ol>
           <li><b>Drop your replay</b> (.osr) anywhere on this page. The map is downloaded for you.</li>
@@ -400,7 +400,9 @@
         <label class="field"><span>Theme</span>
           <select id="theme" aria-label="Colour theme"><option value="auto">Auto (follow my device)</option><option value="dark">Dark</option><option value="light">Light</option><option value="sakura">Sakura</option></select>
         </label>
-        <label class="toggle"><input id="calm" type="checkbox" autocomplete="off"> <span>Reduce motion <small>no animations or the fruit burst (already on if your device asks for it)</small></span></label>
+        <label class="field"><span>Animations</span>
+          <select id="motion" aria-label="Animations"><option value="on">On</option><option value="auto">Follow my device's reduce-motion setting</option><option value="reduce">Reduced (no animations)</option></select>
+        </label>
         <label class="toggle"><input id="hints" type="checkbox" checked> <span>Keyboard hints <small>the shortcut reminder under the preview</small></span></label>
         <h4>Online</h4>
         <label class="toggle"><input id="showboard" type="checkbox" checked autocomplete="off"> <span>Online leaderboard <small>the map's real top scores on the osu!lazer outro and in the Live leaderboard widget</small></span></label>
@@ -641,6 +643,6 @@
 <div class="dropveil" id="dropveil"><div>Drop files to load them<small>.osr replay · .osz map set · .osu · .osk skin · image · song</small></div></div>
 
 <script src="vendor/lzma-d-min.js"></script>
-<script type="module" src="src/main.js?v=20261111s"></script>
+<script type="module" src="src/main.js?v=20261111t"></script>
 </body>
 </html>
