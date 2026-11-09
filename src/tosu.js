@@ -5,9 +5,9 @@
 // are needed for a whole song. Chromium, Edge and Firefox can rasterise this; where it is not possible the caller falls
 // back to the canvas drawing.
 
-import { hudAt } from './score.js?v=20261110z';
-import { livePp } from './pp.js?v=20261110z';
-import { countUp } from './countup.js?v=20261110z';
+import { hudAt } from './score.js?v=20261111a';
+import { livePp } from './pp.js?v=20261111a';
+import { countUp } from './countup.js?v=20261111a';
 
 const CIRCUMFERENCE = 30 * Math.PI * 2;                 // the progress ring's circle, as in the overlay's App.js
 const OSU_GRADE = ['SSH', 'SS', 'SH', 'S', 'A', 'B', 'C', 'D', 'F', ''];   // lib/consts.js

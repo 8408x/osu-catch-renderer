@@ -232,7 +232,7 @@ Pick a **Card style** (osu!lazer, osu!stable or Simple) in the Render tab. The c
 
 ### Online leaderboard
 
-With "Online leaderboard on the outro" ticked, the osu!lazer outro shows the map's real osu!catch top scores (fetched through the Worker, `/scores?checksum=<beatmap md5>`) and adds the replay as the last row. It shows a real place only when that player has a score on the board with the same combo and accuracy, because a replay file's score (stable scoring) can't be compared with the board's (lazer scoring). This needs the updated `worker/osu-lookup.js` pasted into Cloudflare. Without it, or for maps that aren't on osu!, the card keeps the combo graph.
+With "Online leaderboard" ticked in Settings (on by default), the osu!lazer outro shows the map's real osu!catch top scores (fetched through the Worker, `/scores?checksum=<beatmap md5>`) and adds the replay as the last row. It shows a real place only when that player has a score on the board with the same combo and accuracy, because a replay file's score (stable scoring) can't be compared with the board's (lazer scoring). This needs the updated `worker/osu-lookup.js` pasted into Cloudflare. Without it, or for maps that aren't on osu!, the card keeps the combo graph.
 
 ### Smooth numbers
 
@@ -256,4 +256,4 @@ In the Cloudflare dashboard: Workers & Pages -> `osu-lookup` -> Settings -> Buil
 
 ## Live leaderboard
 
-Tick **Live leaderboard** in the Layout tab to show the online top scores down the side of the video, with the player's own row climbing as the running score passes each of them. It needs **Online leaderboard** switched on in Settings. Board scores use osu!'s old-style score when it has one, which is the same scoring the replay's running score uses; a row without a score is skipped over as a dash, so the climb is a close guide rather than an exact result.
+Tick **Live leaderboard** in the Layout tab to show the online top scores down the side of the video, with the player's own row climbing as the running score passes each of them. It loads the board by itself when ticked. Board scores use osu!'s old-style score when it has one, which is the same scoring the replay's running score uses; a row without a score is skipped over as a dash, so the climb is a close guide rather than an exact result.
