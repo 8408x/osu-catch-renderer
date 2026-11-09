@@ -1,32 +1,32 @@
-import './ui.js?v=20261111f';
-import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261111f';
-import { parseOsu } from './osu.js?v=20261111f';
-import { buildScene, evaluateCatches, findJudgeShift, resolveColours } from './catch.js?v=20261111f';
-import { compareWithReplay } from './score.js?v=20261111f';
-import { nightcoreBeats } from './nightcore.js?v=20261111f';
-import { ReplayTrack } from './replay.js?v=20261111f';
-import { drawFrame, loadOverlayFonts } from './render.js?v=20261111f';
-import { lookFor, styleData } from './styles.js?v=20261111f';
-import { loadArgonFonts } from './argon.js?v=20261111f';
-import { TosuOverlays } from './tosu.js?v=20261111f';
-import { exportMp4, webCodecsAvailable } from './encode.js?v=20261111f';
-import { VERSION } from './version.js?v=20261111f';
-import { md5 } from './md5.js?v=20261111f';
-import { resolveRange } from './range.js?v=20261111f';
-import { initLayoutEditor } from './layoutui.js?v=20261111f';
-import { setSmoothNumbers } from './countup.js?v=20261111f';
-import { drawCard } from './card.js?v=20261111f';
-import { lookupPlayer, loadBoard, initAvatar, online, getBoard } from './avatar.js?v=20261111f';
-import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261111f';
-import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261111f';
-import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261111f';
-import { BackgroundVideo } from './bgvideo.js?v=20261111f';
-import { missTimes } from './extras.js?v=20261111f';
-import { buildWarp } from './warp.js?v=20261111f';
-import { buildKeys } from './keys.js?v=20261111f';
-import { prepareAudio, warpAudio, SAMPLE_RATE } from './audio.js?v=20261111f';
-import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261111f';
-import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261111f';
+import './ui.js?v=20261111g';
+import { parseOsr, modsToString, MODE, MOD } from './osr.js?v=20261111g';
+import { parseOsu } from './osu.js?v=20261111g';
+import { buildScene, evaluateCatches, findJudgeShift, resolveColours } from './catch.js?v=20261111g';
+import { compareWithReplay } from './score.js?v=20261111g';
+import { nightcoreBeats } from './nightcore.js?v=20261111g';
+import { ReplayTrack } from './replay.js?v=20261111g';
+import { drawFrame, loadOverlayFonts } from './render.js?v=20261111g';
+import { lookFor, styleData } from './styles.js?v=20261111g';
+import { loadArgonFonts } from './argon.js?v=20261111g';
+import { TosuOverlays } from './tosu.js?v=20261111g';
+import { exportMp4, webCodecsAvailable } from './encode.js?v=20261111g';
+import { VERSION } from './version.js?v=20261111g';
+import { md5 } from './md5.js?v=20261111g';
+import { resolveRange } from './range.js?v=20261111g';
+import { initLayoutEditor } from './layoutui.js?v=20261111g';
+import { setSmoothNumbers } from './countup.js?v=20261111g';
+import { drawCard } from './card.js?v=20261111g';
+import { lookupPlayer, loadBoard, initAvatar, online, getBoard } from './avatar.js?v=20261111g';
+import { loadDefaultSkin, loadOskSkin, describeSkin } from './skin.js?v=20261111g';
+import { readOsz, findDifficulty, findAudio, findImage, findVideo } from './osz.js?v=20261111g';
+import { parseStoryboard, Storyboard, imageSize } from './storyboard.js?v=20261111g';
+import { BackgroundVideo } from './bgvideo.js?v=20261111g';
+import { missTimes } from './extras.js?v=20261111g';
+import { buildWarp } from './warp.js?v=20261111g';
+import { buildKeys } from './keys.js?v=20261111g';
+import { prepareAudio, warpAudio, SAMPLE_RATE } from './audio.js?v=20261111g';
+import { fetchSetForReplay, parseSetId } from './mirror.js?v=20261111g';
+import { collectHitsounds, mixHitsounds } from './hitsounds.js?v=20261111g';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('stage');
@@ -475,7 +475,7 @@ $('osu').addEventListener('change', async (e) => {
       state.beatmap = parseOsu(new TextDecoder().decode(buf));
       state.beatmapFrom = 'file';
     } catch (err) {
-      state.loadErrors.osu = `Could not read the beatmap: ${err.message}`;
+      state.loadErrors.osu = `Could not read the beatmap: ${friendly(err.message)}`;
     }
   }
   refresh();
@@ -493,7 +493,7 @@ $('audio').addEventListener('change', async (e) => {
       if (/\.(osz|zip)$/i.test(file.name)) state.osz = { ...readOsz(bytes), name: file.name };
       else state.audioFile = { name: file.name, bytes };
     } catch (err) {
-      state.loadErrors.audio = `Could not read ${file.name}: ${err.message}`;
+      state.loadErrors.audio = `Could not read ${file.name}: ${friendly(err.message)}`;
     }
   }
   refresh();
@@ -535,7 +535,7 @@ $('mirrorbtn').addEventListener('click', async () => {
     status.textContent = `Got beatmap set ${res.setId} from ${res.mirror} (${(res.bytes.length / 1e6).toFixed(1)} MB).`
       + (res.matched ? '' : ' It has no difficulty with exactly this replay\'s hash, so it may be a newer version of the map than the one you played.');
   } catch (err) {
-    status.textContent = err.name === 'AbortError' ? (quietAbort ? '' : 'Download cancelled.') : err.message;
+    status.textContent = err.name === 'AbortError' ? (quietAbort ? '' : 'Download cancelled.') : friendly(err.message);
     quietAbort = false;
   } finally {
     mirrorAbort = null;
@@ -1171,7 +1171,7 @@ async function runExports(batch) {
     }
     if (made) window.dispatchEvent(new Event('ocr-done'));
   } catch (err) {
-    $('status').textContent = err.name === 'AbortError' ? `Cancelled${made ? ` after ${made} finished video${made === 1 ? '' : 's'}` : ''}.` : `Export failed: ${err.message}${/allocation|memory/i.test(err.message) ? ' The browser ran out of memory. Lower the bitrate or resolution, or render a shorter range, and close other tabs.' : ''}`;
+    $('status').textContent = err.name === 'AbortError' ? `Cancelled${made ? ` after ${made} finished video${made === 1 ? '' : 's'}` : ''}.` : `Render failed: ${friendly(err.message)}`;
   } finally {
     setBusy(false);
     $('bar').value = 0;
@@ -1184,7 +1184,18 @@ async function runExports(batch) {
 $('export').addEventListener('click', () => runExports(false));
 $('exportall').addEventListener('click', () => runExports(true));
 
-$('cancel').addEventListener('click', () => abort?.abort());
+$('cancel').addEventListener('click', () => { if (abort && confirm('Stop rendering? Progress on this video is lost (videos already finished are kept).')) abort.abort(); });
+
+/** Browser and network errors in plain words, with what to try next. */
+function friendly(m) {
+  m = String(m ?? '');
+  if (/allocation|memory/i.test(m)) return 'the browser ran out of memory. Lower the bitrate or resolution, render a shorter range, and close other tabs.';
+  if (/failed to fetch|networkerror|load failed/i.test(m)) return 'could not reach the server. Check your internet connection and try again.';
+  if (/HTTP 404|not found/i.test(m)) return `${m} (that file or page does not exist any more).`;
+  if (/HTTP 5\d\d|HTTP 429/i.test(m)) return `${m} (the server is busy or down; try again in a minute).`;
+  if (/decode/i.test(m)) return `${m} (the file may be damaged or in a format this browser cannot play).`;
+  return m;
+}
 
 setSize();
 refresh();
@@ -1257,7 +1268,7 @@ loadOverlayFonts().then((ok) => { if (ok) drawAt(state.t); });
       $('testpick').value = String(i);
       $('osr').dispatchEvent(new Event('change'));
       msg(`${e.player}, ${e.map}, ${e.mods}. The beatmap downloads automatically.`);
-    } catch (err) { msg(`Test mode: ${err.message}.`); }
+    } catch (err) { msg(`Test mode: ${friendly(err.message)}`); }
   };
   const random = async () => {
     try {
@@ -1265,19 +1276,19 @@ loadOverlayFonts().then((ok) => { if (ok) drawAt(state.t); });
       let i = Math.floor(Math.random() * entries.length);
       if (entries.length > 1 && i === cur && state.replay) i = (i + 1) % entries.length;
       await useSample(i);
-    } catch (err) { msg(`Test mode: ${err.message}.`); }
+    } catch (err) { msg(`Test mode: ${friendly(err.message)}`); }
   };
   const apply = async (on, fresh) => {
     $('testbox').hidden = !on;
     try { localStorage.setItem('ocr.testmode', on ? '1' : '0'); } catch { /* storage blocked */ }
     if (!on) return;
-    try { await load(); } catch (err) { msg(`Test mode: ${err.message}.`); return; }
+    try { await load(); } catch (err) { msg(`Test mode: ${friendly(err.message)}`); return; }
     if (fresh || !state.replay) await random();
   };
   $('testmode').addEventListener('change', () => apply($('testmode').checked, true));
   $('testrandom').addEventListener('click', random);
   $('testload').addEventListener('click', () => useSample(Number($('testpick').value)));
-  $('guidesample')?.addEventListener('click', async () => { try { await load(); await random(); } catch (err) { msg(`Test mode: ${err.message}.`); } });
+  $('guidesample')?.addEventListener('click', async () => { try { await load(); await random(); } catch (err) { msg(`Test mode: ${friendly(err.message)}`); } });
   $('guidepick')?.addEventListener('click', () => $('osr').click());
   let was = null;
   try { was = localStorage.getItem('ocr.testmode'); } catch { /* storage blocked */ }

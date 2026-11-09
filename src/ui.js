@@ -59,7 +59,7 @@ function restoreChoices() {
 }
 
 function initTrays() {
-  const pairs = [['msgbtn', 'msgtray'], ['setbtn', 'settings']];
+  const pairs = [['msgbtn', 'msgtray'], ['setbtn', 'settings'], ['helpbtn', 'helptray']];
   const set = (btnId, trayId, open) => {
     const tray = $(trayId), btn = $(btnId);
     tray.hidden = !open;
@@ -76,11 +76,12 @@ function initTrays() {
     x.addEventListener('click', () => { const p = pairs.find(([, t]) => t === x.dataset.close); if (p) set(p[0], p[1], false); });
   }
   document.addEventListener('pointerdown', (e) => {          // a click anywhere else closes the logs
-    if (e.target.closest('.tray, #msgbtn, #setbtn, .chip')) return;
+    if (e.target.closest('.tray, #msgbtn, #setbtn, #helpbtn, .chip')) return;
     for (const [b, t] of pairs) if (!$(t).hidden) set(b, t, false);
   });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') for (const [b, t] of pairs) set(b, t, false);
+    else if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName ?? '')) { e.preventDefault(); $('helpbtn').click(); }
   });
   return set;
 }
@@ -176,7 +177,7 @@ function initTheme() {
 /** A little burst of fruit from the Render button when a video finishes (skipped with reduced motion). */
 function initCelebrate() {
   window.addEventListener('ocr-done', () => {
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.dataset.motion === 'reduce') return;
     const r = document.getElementById('export').getBoundingClientRect(), cols = ['#ff6b8a', '#9b6bd6', '#ffb04a', '#7ccf6a'];
     for (let i = 0; i < 18; i++) {
       const el = document.createElement('i'), a = (-Math.PI / 2) + (Math.random() - 0.5) * 2.4, d = 60 + Math.random() * 110;
@@ -186,6 +187,35 @@ function initCelebrate() {
       setTimeout(() => el.remove(), 1200);
     }
   });
+}
+
+/** Settings: a reduce-motion switch of the site's own (remembered); the device's own setting still applies too. */
+function initCalm() {
+  const box = $('calm');
+  const apply = () => { if (box.checked) document.documentElement.dataset.motion = 'reduce'; else delete document.documentElement.dataset.motion; };
+  box.checked = store.get('calm') === '1';
+  apply();
+  box.addEventListener('change', () => { apply(); store.set('calm', box.checked ? '1' : '0'); });
+}
+
+/** Each of the Look, Sound and Render tabs gets a button that puts that tab's own controls back to their starting values. */
+function initResets() {
+  for (const btn of document.querySelectorAll('[data-reset]')) {
+    btn.addEventListener('click', () => {
+      if (!confirm('Put every setting in this tab back to its default? Your files are not touched.')) return;
+      for (const el of $(btn.dataset.reset).querySelectorAll('input, select, textarea')) {
+        if (el.type === 'file' || el.disabled) continue;
+        const before = el.type === 'checkbox' || el.type === 'radio' ? el.checked : el.value;
+        if (el.type === 'checkbox' || el.type === 'radio') el.checked = el.defaultChecked;
+        else if (el.tagName === 'SELECT') { const d = [...el.options].find((o) => o.defaultSelected) ?? el.options[0]; el.value = d.value; }
+        else el.value = el.defaultValue;
+        if ((el.type === 'checkbox' || el.type === 'radio' ? el.checked : el.value) !== before) {
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+    });
+  }
 }
 
 function initHints() {
@@ -280,6 +310,8 @@ try {
     initKeys();
     initTheme();
     initHints();
+    initCalm();
+    initResets();
     initDrop();
     initCelebrate();
   };
